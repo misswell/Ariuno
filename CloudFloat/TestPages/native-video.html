@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CloudFloat · 原生视频 PiP 测试</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #080b12;
+      --card: #121725;
+      --line: rgba(255, 255, 255, 0.10);
+      --text: #edf1f8;
+      --muted: #97a1b3;
+      --accent: #5b8cff;
+      --good: #45d483;
+      --warn: #ffb44d;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background:
+        radial-gradient(1200px 700px at 15% -10%, rgba(70, 110, 255, 0.20), transparent 60%),
+        radial-gradient(900px 600px at 100% 100%, rgba(137, 66, 255, 0.16), transparent 55%),
+        var(--bg);
+      color: var(--text);
+      font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+    }
+    main {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: calc(env(safe-area-inset-top, 0px) + 20px) 18px calc(env(safe-area-inset-bottom, 0px) + 28px);
+    }
+    .eyebrow {
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: -0.02em; }
+    p.lead { margin: 0 0 18px; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .stage {
+      background: #000;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    }
+    video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 14px 0 18px;
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      border-radius: 11px;
+      padding: 9px 13px;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1;
+      cursor: pointer;
+    }
+    button:active { transform: scale(0.98); }
+    button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .tile {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 11px 12px;
+    }
+    .tile .k { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+    .tile .v { margin-top: 4px; font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+    .tile .v.good { color: var(--good); }
+    .tile .v.warn { color: var(--warn); }
+    h2 { font-size: 13px; margin: 20px 0 8px; color: var(--muted); font-weight: 650; }
+    .log {
+      background: #0c111c;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      padding: 12px;
+      font-family: "SF Mono", ui-monospace, Menlo, "PingFang SC", monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #aab6c9;
+      max-height: 168px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+    .note {
+      margin-top: 18px;
+      padding: 13px 14px;
+      border-radius: 13px;
+      border: 1px solid rgba(255, 180, 77, 0.22);
+      background: rgba(255, 180, 77, 0.07);
+      color: #e5cda5;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+    code { font-family: "SF Mono", ui-monospace, Menlo, monospace; font-size: 0.92em; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">CloudFloat · M0 / M2</div>
+  <h1>原生 HTML5 视频 PiP 测试</h1>
+  <p class="lead">
+    这是一个离线合成视频，用于先验证 WKWebView、媒体事件与 HTML5 画中画本身是否正常。
+    它不代表《云·星穹铁道》支持 PiP。测试视频带时间戳，便于判断画面是否冻结。
+  </p>
+
+  <div class="stage">
+    <video id="video" src="sample.mp4" playsinline loop muted controls preload="auto"></video>
+  </div>
+
+  <div class="controls">
+    <button id="play" class="primary">播放 / 暂停</button>
+    <button id="mute">取消静音</button>
+    <button id="pip">进入画中画（页面点击）</button>
+    <button id="reload">重新加载视频</button>
+  </div>
+
+  <div class="grid">
+    <div class="tile"><div class="k">readyState</div><div class="v" id="ready">—</div></div>
+    <div class="tile"><div class="k">播放状态</div><div class="v" id="playstate">—</div></div>
+    <div class="tile"><div class="k">尺寸</div><div class="v" id="size">—</div></div>
+    <div class="tile"><div class="k">当前时间</div><div class="v" id="time">—</div></div>
+    <div class="tile"><div class="k">HTML5 PiP 支持</div><div class="v" id="supported">—</div></div>
+    <div class="tile"><div class="k">演示模式</div><div class="v" id="mode">—</div></div>
+    <div class="tile"><div class="k">document.pictureInPicture</div><div class="v" id="docpip">—</div></div>
+    <div class="tile"><div class="k">PiP 权限策略</div><div class="v" id="policy">—</div></div>
+  </div>
+
+  <h2>媒体事件（最近 12 条）</h2>
+  <div class="log" id="log">等待事件…</div>
+
+  <div class="note">
+    人工验证要点：1）点击播放后时间戳持续变化；2）点击“进入画中画”或网页右上角 PiP 控件，
+    系统浮窗出现；3）把 App 切到后台 1/5/15/30 分钟，观察时间戳是否继续；4）返回 App 后视频
+    仍可操作。模拟器不支持系统 PiP，请使用真机。服务器会话是否持续运行无法由本页证明。
+  </div>
+</main>
+
+<script>
+(() => {
+  'use strict';
+  const video = document.getElementById('video');
+  const logElement = document.getElementById('log');
+  const events = [];
+  const params = new URLSearchParams(location.search);
+  const autoPlayRequested = params.get('autoplay') === '1';
+
+  function supportsPiP(v) {
+    try {
+      if (typeof v.webkitSupportsPresentationMode === 'function') {
+        return !!v.webkitSupportsPresentationMode('picture-in-picture');
+      }
+      if (typeof v.requestPictureInPicture === 'function') return true;
+    } catch (error) {}
+    return false;
+  }
+
+  function modeOf(v) {
+    try {
+      return typeof v.webkitPresentationMode === 'string' ? v.webkitPresentationMode : 'inline';
+    } catch (error) {
+      return 'unknown';
+    }
+  }
+
+  function refresh() {
+    document.getElementById('ready').textContent = String(video.readyState);
+    document.getElementById('ready').className = 'v ' + (video.readyState >= 3 ? 'good' : 'warn');
+    document.getElementById('playstate').textContent = video.paused ? '暂停' : '播放中';
+    document.getElementById('playstate').className = 'v ' + (video.paused ? 'warn' : 'good');
+    document.getElementById('size').textContent = `${video.videoWidth}×${video.videoHeight}`;
+    document.getElementById('time').textContent = `${video.currentTime.toFixed(1)}s / ${Number.isFinite(video.duration) ? video.duration.toFixed(1) + 's' : '—'}`;
+    const supported = supportsPiP(video);
+    document.getElementById('supported').textContent = supported ? '支持' : '不支持';
+    document.getElementById('supported').className = 'v ' + (supported ? 'good' : 'warn');
+    document.getElementById('mode').textContent = modeOf(video);
+    document.getElementById('docpip').textContent = document.pictureInPictureEnabled ? '启用' : '未启用/不支持';
+    try {
+      const policy = document.featurePolicy && typeof document.featurePolicy.allowsFeature === 'function'
+        ? document.featurePolicy.allowsFeature('picture-in-picture')
+        : null;
+      document.getElementById('policy').textContent = policy === null ? '未知' : (policy ? '允许' : '禁止');
+      document.getElementById('policy').className = 'v ' + (policy === false ? 'warn' : '');
+    } catch (error) {
+      document.getElementById('policy').textContent = '未知';
+    }
+  }
+
+  function log(name) {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    events.unshift(`${time}  ${name}  mode=${modeOf(video)}  readyState=${video.readyState}`);
+    while (events.length > 12) events.pop();
+    logElement.textContent = events.join('\n');
+    refresh();
+  }
+
+  ['playing', 'pause', 'waiting', 'stalled', 'emptied', 'error', 'loadedmetadata',
+   'loadeddata', 'enterpictureinpicture', 'leavepictureinpicture',
+   'webkitpresentationmodechanged', 'visibilitychange'].forEach((name) => {
+    const target = name === 'visibilitychange' ? document : video;
+    target.addEventListener(name, () => log(name), true);
+  });
+
+  video.addEventListener('timeupdate', () => {
+    document.getElementById('time').textContent =
+      `${video.currentTime.toFixed(1)}s / ${Number.isFinite(video.duration) ? video.duration.toFixed(1) + 's' : '—'}`;
+  });
+
+  document.getElementById('play').addEventListener('click', () => {
+    if (video.paused) {
+      video.play().catch((error) => log('play rejected: ' + error.name));
+    } else {
+      video.pause();
+    }
+  });
+
+  document.getElementById('mute').addEventListener('click', (event) => {
+    video.muted = !video.muted;
+    event.target.textContent = video.muted ? '取消静音' : '静音';
+    refresh();
+  });
+
+  document.getElementById('pip').addEventListener('click', () => {
+    try {
+      if (typeof video.webkitSetPresentationMode === 'function') {
+        video.webkitSetPresentationMode('picture-in-picture');
+      } else if (typeof video.requestPictureInPicture === 'function') {
+        video.requestPictureInPicture().catch((error) => log('PiP rejected: ' + error.name));
+      } else {
+        log('PiP not supported');
+      }
+    } catch (error) {
+      log('PiP exception: ' + error.name);
+    }
+  });
+
+  document.getElementById('reload').addEventListener('click', () => {
+    video.load();
+    log('video.load()');
+  });
+
+  video.muted = true;
+  refresh();
+  window.setInterval(refresh, 1000);
+
+  const playPromise = video.play();
+  if (playPromise && typeof playPromise.catch === 'function') {
+    playPromise.catch((error) => {
+      log('autoplay blocked: ' + error.name);
+      if (autoPlayRequested) {
+        log('tap "播放 / 暂停" to start');
+      }
+    });
+  }
+})();
+</script>
+</body>
+</html>

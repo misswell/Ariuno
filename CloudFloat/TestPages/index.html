@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CloudFloat · 测试页索引</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: calc(env(safe-area-inset-top, 0px) + 28px) 20px 40px;
+      background: radial-gradient(1100px 600px at 10% -10%, rgba(70,110,255,.20), transparent 60%), #080b12;
+      color: #edf1f8; font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+    main { max-width: 720px; margin: 0 auto; }
+    .eyebrow { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: #5b8cff; font-weight: 700; }
+    h1 { font-size: 26px; margin: 6px 0 8px; }
+    p { color: #97a1b3; font-size: 13px; line-height: 1.6; }
+    a.card { display: block; margin-top: 12px; padding: 16px; border-radius: 16px; text-decoration: none;
+      background: #121725; border: 1px solid rgba(255,255,255,.10); color: inherit; }
+    a.card strong { display: block; font-size: 15px; margin-bottom: 4px; }
+    a.card span { color: #97a1b3; font-size: 12px; line-height: 1.5; }
+    .note { margin-top: 22px; padding: 14px; border-radius: 14px; background: rgba(255,180,77,.07);
+      border: 1px solid rgba(255,180,77,.22); color: #e5cda5; font-size: 12px; line-height: 1.6; }
+    code { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="eyebrow">CloudFloat · Test Pages</div>
+  <h1>离线媒体测试页</h1>
+  <p>这些页面用于 M0 预研与自动化集成测试。它们不包含任何官方游戏资源，也不代表官方网页支持 PiP。</p>
+  <a class="card" href="native-video.html">
+    <strong>原生视频（HTML5 PiP 正例）</strong>
+    <span>合成测试视频，带时间戳、媒体事件日志与页面内 PiP 按钮。</span>
+  </a>
+  <a class="card" href="canvas-only.html">
+    <strong>仅 Canvas（PiP 反例）</strong>
+    <span>实时 Canvas 画面，没有 video 元素，PiP 必须被禁用并说明原因。</span>
+  </a>
+  <a class="card" href="nested-iframe.html">
+    <strong>跨域 iframe</strong>
+    <span>父页面与子 frame 来自不同端口；用于验证每 frame 独立探测与权限策略。</span>
+  </a>
+  <div class="note">
+    在 App 内使用“设置 → 测试页实验室”加载这些页面。若要在 Safari 中测试，可从 Mac 使用
+    <code>python3 -m http.server</code> 在 TestPages 目录启动本地服务器；跨域测试需另起一个端口。
+  </div>
+</main>
+</body>
+</html>

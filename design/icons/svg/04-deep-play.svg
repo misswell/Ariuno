@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.7" y2="1">
+      <stop offset="0" stop-color="#0A1330"/>
+      <stop offset="0.55" stop-color="#111F46"/>
+      <stop offset="1" stop-color="#1B2C63"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.46" r="0.44">
+      <stop offset="0" stop-color="#5372FF" stop-opacity="0.72"/>
+      <stop offset="1" stop-color="#4A6BFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="violet" cx="0.1" cy="0.95" r="0.5">
+      <stop offset="0" stop-color="#7B4BFF" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7B4BFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0.35" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.20"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.05"/>
+    </linearGradient>
+    <filter id="glowBig" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="52"/>
+    </filter>
+    <filter id="glowMid" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="30"/>
+    </filter>
+    <filter id="glowSmall" x="-80%" y="-80%" width="260%" height="260%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#halo)"/>
+  <rect width="1024" height="1024" fill="url(#violet)"/>
+
+  <g filter="url(#glowBig)" opacity="0.30">
+    <rect x="232" y="302" width="560" height="420" rx="104" fill="#7C9BFF"/>
+  </g>
+
+  <rect x="232" y="302" width="560" height="420" rx="104" fill="url(#glass)" stroke="#FFFFFF" stroke-opacity="0.8" stroke-width="10"/>
+
+  <g filter="url(#glowMid)" opacity="0.55">
+    <path d="M486 424 L486 600 L630 512 Z" fill="#FFFFFF"/>
+  </g>
+
+  <path d="M486 424 L486 600 L630 512 Z" fill="#FFFFFF" stroke="#FFFFFF" stroke-width="26" stroke-linejoin="round"/>
+</svg>

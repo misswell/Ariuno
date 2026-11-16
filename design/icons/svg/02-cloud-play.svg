@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#74C2FF"/>
+      <stop offset="0.5" stop-color="#3B84FF"/>
+      <stop offset="1" stop-color="#1B4FDD"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.78" cy="0.12" r="0.6">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cloud" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E2EFFF"/>
+    </linearGradient>
+    <mask id="cloudCut">
+      <circle cx="372" cy="560" r="110" fill="#FFFFFF"/>
+      <circle cx="512" cy="516" r="154" fill="#FFFFFF"/>
+      <circle cx="652" cy="560" r="110" fill="#FFFFFF"/>
+      <path d="M300 580 L724 580 L724 600 Q724 670 654 670 L370 670 Q300 670 300 600 Z" fill="#FFFFFF"/>
+      <path d="M474 445 L474 605 L600 525 Z" fill="#000000" stroke="#000000" stroke-width="34" stroke-linejoin="round"/>
+    </mask>
+    <filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="34"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <rect width="1024" height="1024" fill="url(#glow)"/>
+
+  <g filter="url(#soft)" opacity="0.30">
+    <circle cx="372" cy="590" r="110" fill="#0B2F7A"/>
+    <circle cx="512" cy="546" r="154" fill="#0B2F7A"/>
+    <circle cx="652" cy="590" r="110" fill="#0B2F7A"/>
+    <path d="M300 610 L724 610 L724 630 Q724 700 654 700 L370 700 Q300 700 300 630 Z" fill="#0B2F7A"/>
+  </g>
+
+  <rect width="1024" height="1024" fill="url(#cloud)" mask="url(#cloudCut)"/>
+</svg>

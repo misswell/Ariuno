@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CloudFloat · Cookie read probe</title>
+</head>
+<body style="background:#080b12;color:#eef2f8;font-family:-apple-system,sans-serif;padding:24px">
+  <h1>Cookie read probe</h1>
+  <pre id="result" style="white-space:pre-wrap;color:#9aa6b9"></pre>
+  <script>
+    (() => {
+      'use strict';
+      document.getElementById('result').textContent = document.cookie || '(empty)';
+    })();
+  </script>
+</body>
+</html>

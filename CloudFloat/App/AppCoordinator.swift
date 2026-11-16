@@ -1,0 +1,954 @@
+import Combine
+import Foundation
+import SwiftUI
+import UIKit
+
+enum AppRoute: Equatable {
+    case home
+    case game
+}
+
+enum DebugPresentation: String, Identifiable {
+    case testLab
+    case diagnostics
+    case settings
+    case capability
+
+    var id: String { rawValue }
+}
+
+struct RecoveryPrompt: Identifiable, Equatable {
+    let id: UUID
+    let trigger: RecoveryTrigger
+    let title: String
+    let message: String
+    let confirmTitle: String
+
+    init(
+        id: UUID = UUID(),
+        trigger: RecoveryTrigger,
+        title: String,
+        message: String,
+        confirmTitle: String
+    ) {
+        self.id = id
+        self.trigger = trigger
+        self.title = title
+        self.message = message
+        self.confirmTitle = confirmTitle
+    }
+}
+
+enum ToastKind: Equatable {
+    case info
+    case warning
+    case error
+}
+
+struct ToastMessage: Identifiable, Equatable {
+    let id: UUID
+    let text: String
+    let kind: ToastKind
+
+    init(id: UUID = UUID(), text: String, kind: ToastKind) {
+        self.id = id
+        self.text = text
+        self.kind = kind
+    }
+}
+
+struct PiPCapabilityReport: Identifiable, Equatable {
+    let id: UUID
+    let generatedAt: Date
+    let platformSupportsPiP: Bool
+    let webViewAllowsPiP: Bool
+    let probeScriptLoaded: Bool
+    let hasProbeSnapshot: Bool
+    let aggregate: MediaAggregate
+    let availability: PiPAvailability
+    let pageHost: String?
+    let sessionState: GameSessionState
+    let nativePipelineStatus: NativeMediaPipelineStatus
+    let isSimulator: Bool
+    let notes: [String]
+
+    init(
+        id: UUID = UUID(),
+        generatedAt: Date,
+        platformSupportsPiP: Bool,
+        webViewAllowsPiP: Bool,
+        probeScriptLoaded: Bool,
+        hasProbeSnapshot: Bool,
+        aggregate: MediaAggregate,
+        availability: PiPAvailability,
+        pageHost: String?,
+        sessionState: GameSessionState,
+        nativePipelineStatus: NativeMediaPipelineStatus,
+        isSimulator: Bool,
+        notes: [String]
+    ) {
+        self.id = id
+        self.generatedAt = generatedAt
+        self.platformSupportsPiP = platformSupportsPiP
+        self.webViewAllowsPiP = webViewAllowsPiP
+        self.probeScriptLoaded = probeScriptLoaded
+        self.hasProbeSnapshot = hasProbeSnapshot
+        self.aggregate = aggregate
+        self.availability = availability
+        self.pageHost = pageHost
+        self.sessionState = sessionState
+        self.nativePipelineStatus = nativePipelineStatus
+        self.isSimulator = isSimulator
+        self.notes = notes
+    }
+
+    var verdictTitle: String {
+        if !platformSupportsPiP { return "当前设备不支持系统画中画" }
+        if !webViewAllowsPiP { return "WebView 未启用画中画" }
+        if !probeScriptLoaded { return "媒体探测脚本缺失" }
+        if !hasProbeSnapshot { return "尚未收到媒体探测数据" }
+        if let reason = availability.reason { return reason.userMessage }
+        return "系统画中画可用"
+    }
+
+    var verdictDetail: String {
+        if let reason = availability.reason {
+            return reason.userMessage
+        }
+        if availability.isAvailable {
+            return "检测到正在播放且支持 HTML5 PiP 的视频。仍需在网页内点击 PiP 控件（或由原生按钮触发并处理用户激活失败）。"
+        }
+        return "未知状态，请重新检测。"
+    }
+}
+
+/// Top-level composition root. Owns the stable browser session and wires observations into
+/// the session state machine, diagnostics and PiP coordinator. It never reloads automatically.
+@MainActor
+final class AppCoordinator: ObservableObject {
+    let settings: AppSettings
+    let diagnostics: DiagnosticsStore
+    let browser: BrowserSession
+    let media: MediaDetector
+    let session: SessionMonitor
+    let pip: WebPictureInPictureCoordinator
+    let network: NetworkObserver
+    let recovery: WebContentRecovery
+    let cookieStore: CookieStore
+    let audioSession: AudioSessionManager
+
+    @Published var route: AppRoute = .home
+    @Published private(set) var hasStartedBrowser = false
+    @Published var recoveryPrompt: RecoveryPrompt?
+    @Published private(set) var toast: ToastMessage?
+    @Published private(set) var isClearingWebsiteData = false
+    @Published private(set) var websiteDataError: String?
+    /// Debug/QA entry point for launch-argument driven screenshots and manual checks. The
+    /// settings are only applied from launch arguments in DEBUG builds.
+    @Published var debugPresentation: DebugPresentation?
+
+    #if DEBUG
+    private var debugLocalGameServer: LocalHTTPServer?
+    #endif
+
+    private var cancellables = Set<AnyCancellable>()
+    private var toastTask: Task<Void, Never>?
+    private var lastSnapshotSignature = ""
+    private var lastNetworkStatus: NetworkStatus = .unknown
+
+    init(settings: AppSettings, diagnostics: DiagnosticsStore) {
+        self.settings = settings
+        self.diagnostics = diagnostics
+
+        let policy = NavigationPolicy(
+            allowsLocalTestPages: settings.allowLocalTestPages && FeatureFlags.localTestServerEnabled,
+            localTestPorts: [],
+            allowedFileDirectory: Bundle.main.resourceURL?.appendingPathComponent("TestPages")
+        )
+        let browserSession = BrowserSession(
+            navigationPolicy: policy,
+            inPageControlEnabled: settings.enableInPagePiPButton
+        )
+        self.browser = browserSession
+        self.media = browserSession.mediaDetector
+        self.session = SessionMonitor()
+        self.pip = WebPictureInPictureCoordinator(
+            mediaDetector: browserSession.mediaDetector,
+            configurationAllowsPiP: { [weak browserSession] in
+                browserSession?.pictureInPictureAllowedByConfiguration ?? false
+            }
+        )
+        self.network = NetworkObserver()
+        self.recovery = WebContentRecovery()
+        self.cookieStore = browserSession.cookieStore
+        self.audioSession = AudioSessionManager()
+
+        wire()
+        start()
+
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-CFOpenTestLab") {
+            debugPresentation = .testLab
+        } else if arguments.contains("-CFOpenDiagnostics") {
+            debugPresentation = .diagnostics
+        } else if arguments.contains("-CFOpenSettings") {
+            debugPresentation = .settings
+        } else if arguments.contains("-CFOpenCapability") {
+            debugPresentation = .capability
+        }
+        if arguments.contains("-CFOpenLocalGame") {
+            Task { @MainActor in
+                await self.openDebugLocalGame()
+            }
+        }
+        if arguments.contains("-CFOpenOfficialEntry") {
+            continueGame()
+        }
+        #endif
+    }
+
+    // MARK: - Lifecycle
+
+    func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            diagnostics.info(.app, "scene.background", "进入后台；保留 WebView，不自动重载")
+            session.appDidEnterBackground()
+            media.stopPolling()
+            session.setMediaProbePolling(false)
+            updateAudioSession()
+        case .active:
+            diagnostics.info(.app, "scene.active", "回到前台；继续使用现有页面")
+            session.appDidBecomeActive()
+            if hasStartedBrowser {
+                media.startPolling()
+                session.setMediaProbePolling(media.isPolling)
+                browser.verifyExistingPageOnForeground()
+            }
+            pip.refreshAvailability()
+            updateAudioSession()
+        case .inactive:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    // MARK: - Navigation
+
+    func continueGame() {
+        route = .game
+        hasStartedBrowser = true
+        if browser.isShowingBlankPage {
+            browser.loadGame()
+            diagnostics.info(.app, "session.continue", "开始加载官方入口")
+        } else {
+            browser.verifyExistingPageOnForeground()
+            diagnostics.info(.app, "session.continue", "继续使用已加载的页面")
+        }
+        media.startPolling()
+        session.setMediaProbePolling(media.isPolling)
+    }
+
+    func backToHome() {
+        route = .home
+    }
+
+    func exitSession() {
+        if session.pipVisible {
+            pip.exitPiP()
+        }
+        browser.endSession()
+        session.userExited()
+        media.stopPolling()
+        session.setMediaProbePolling(false)
+        recovery.reset()
+        audioSession.deactivate()
+        hasStartedBrowser = false
+        route = .home
+        diagnostics.info(.app, "session.exit", "用户退出会话；网站数据与登录状态保留")
+    }
+
+    // MARK: - PiP
+
+    func requestPictureInPicture() async -> PiPRequestOutcome {
+        session.pipRequestStarted()
+        let outcome = await pip.requestPiP()
+        if case .failure(let reason, _) = outcome {
+            session.pipRequestFailed(reason: reason)
+        }
+        return outcome
+    }
+
+    func exitPictureInPicture() {
+        pip.exitPiP()
+    }
+
+    func makePiPCapabilityReport(refresh: Bool = true) -> PiPCapabilityReport {
+        if refresh {
+            media.refreshNow()
+            pip.refreshAvailability()
+        }
+        let aggregate = media.aggregate
+        return PiPCapabilityReport(
+            generatedAt: Date(),
+            platformSupportsPiP: pip.platformSupportsPiP,
+            webViewAllowsPiP: browser.pictureInPictureAllowedByConfiguration,
+            probeScriptLoaded: media.probeScriptLoaded,
+            hasProbeSnapshot: media.lastSnapshotReceivedAt != nil,
+            aggregate: aggregate,
+            availability: pip.availability,
+            pageHost: browser.currentHost,
+            sessionState: session.state,
+            nativePipelineStatus: NativePictureInPictureCoordinator.status,
+            isSimulator: Self.isSimulator,
+            notes: capabilityNotes(aggregate: aggregate)
+        )
+    }
+
+    private func capabilityNotes(aggregate: MediaAggregate) -> [String] {
+        var notes: [String] = [
+            "PiP 已显示 ≠ 媒体仍在实时传输 ≠ 云游戏服务器端会话仍在运行。三层必须分别验证。",
+            "服务器会话状态：UNVERIFIED。App 无法通过公开 API 证明自动战斗或游戏进度仍在继续。"
+        ]
+        if Self.isSimulator {
+            notes.append("模拟器通常不支持系统画中画；T01/T03/T04/T05 必须在真实 iPhone 上验证。")
+        }
+        if !media.probeScriptLoaded {
+            notes.append("MediaProbe.js 未加载，无法判断网页媒体能力。")
+        } else if media.lastSnapshotReceivedAt == nil {
+            notes.append("尚未收到媒体探测快照；请先打开官方页面并让游戏画面开始播放。")
+        }
+        if aggregate.kind == .canvas {
+            notes.append("页面仅检测到 Canvas/WebGL，没有可进入 HTML5 PiP 的 video 元素。")
+        }
+        if aggregate.kind == .crossOriginFrame {
+            notes.append("媒体可能位于跨域 iframe；父页面不能读取子 frame DOM，子 frame 会独立上报探测结果。")
+        }
+        if aggregate.hasPiPCapablePlayingVideo
+            && !aggregate.mainFrameHasPiPCapablePlayingVideo {
+            notes.append("可 PiP 的视频位于跨域子 frame。WebKit 不允许父页面跨域调用子 frame 的 PiP，请点击网页内（视频所在 frame）右上角的 PiP 按钮；原生按钮会如实提示需要网页内点击。")
+        }
+        if let video = aggregate.bestVideo {
+            if video.drmProtected {
+                notes.append("视频受 DRM/EME 保护，系统 PiP 可能被禁止。")
+            }
+            if !video.pipSupported {
+                notes.append("该视频节点不支持 HTML5 PiP（webkitSupportsPresentationMode 为 false）。")
+            }
+            if video.pipFeatureAllowed == false {
+                notes.append("iframe 的 Permissions Policy 禁止 picture-in-picture。")
+            }
+        }
+        notes.append("M4 原生媒体管线：\(NativePictureInPictureCoordinator.status.displayText)")
+        return notes
+    }
+
+    // MARK: - Recovery
+
+    func requestUserReload() {
+        performUserConfirmedReload(source: .userRequestedReload)
+    }
+
+    func confirmRecovery() {
+        guard let prompt = recoveryPrompt else { return }
+        recoveryPrompt = nil
+        performUserConfirmedReload(source: prompt.trigger)
+    }
+
+    func dismissRecoveryPrompt() {
+        recoveryPrompt = nil
+    }
+
+    private func promptRecovery(for trigger: RecoveryTrigger) {
+        guard recoveryPrompt == nil else { return }
+        let decision = recovery.decide(
+            trigger: trigger,
+            isPiPActive: session.pipVisible,
+            hasLoadedPage: browser.hasLoadedPage
+        )
+        switch decision.action {
+        case .promptUser(let reason):
+            recoveryPrompt = RecoveryPrompt(
+                trigger: trigger,
+                title: "需要恢复页面",
+                message: decision.userMessage ?? reason,
+                confirmTitle: "重新加载"
+            )
+            diagnostics.warning(
+                .recovery,
+                "recovery.prompt",
+                "需要用户确认后恢复",
+                ["trigger": trigger.rawValue, "reason": reason]
+            )
+        case .noAction(let reason):
+            diagnostics.info(
+                .recovery,
+                "recovery.no_action",
+                reason,
+                ["trigger": trigger.rawValue]
+            )
+            if let message = decision.userMessage {
+                showToast(message, .warning)
+            }
+        case .reloadNow:
+            // Non-user triggers must never reach this branch: that would be an automatic
+            // reload, which this app deliberately does not implement.
+            diagnostics.warning(.recovery, "recovery.unexpected_auto", "忽略自动重载分支")
+        }
+    }
+
+    private func performUserConfirmedReload(source: RecoveryTrigger) {
+        let decision = recovery.decide(
+            trigger: .userRequestedReload,
+            isPiPActive: session.pipVisible,
+            hasLoadedPage: browser.hasLoadedPage
+        )
+        switch decision.action {
+        case .reloadNow:
+            if session.pipVisible {
+                pip.exitPiP()
+            }
+            recovery.noteReloadAttempt()
+            session.recoveryStarted()
+            browser.reloadForRecovery()
+            diagnostics.info(
+                .recovery,
+                "recovery.reload",
+                "用户确认后重新加载",
+                ["source": source.rawValue]
+            )
+            showToast("正在重新加载；若云游戏会话重新启动，可能产生额外云游戏时长", .warning)
+        case .promptUser(let reason):
+            showToast(decision.userMessage ?? reason, .warning)
+        case .noAction(let reason):
+            showToast(decision.userMessage ?? reason, .warning)
+        }
+    }
+
+    // MARK: - Privacy
+
+    /// Only invoked after an explicit destructive confirmation in Settings.
+    func clearWebsiteData() async -> Bool {
+        guard !isClearingWebsiteData else { return false }
+        isClearingWebsiteData = true
+        websiteDataError = nil
+        defer { isClearingWebsiteData = false }
+
+        if session.pipVisible {
+            pip.exitPiP()
+        }
+        browser.endSession()
+        session.userExited()
+        media.stopPolling()
+        session.setMediaProbePolling(false)
+        recovery.reset()
+        audioSession.deactivate()
+        hasStartedBrowser = false
+        route = .home
+
+        let result = await cookieStore.clearAll()
+        switch result {
+        case .success:
+            diagnostics.info(.privacy, "privacy.data_cleared", "用户确认并清除了网站数据")
+            showToast("网站数据已清除，登录状态已按网站策略退出", .info)
+            return true
+        case .failure(let error):
+            websiteDataError = error.localizedDescription
+            diagnostics.error(.privacy, "privacy.clear_failed", error.localizedDescription)
+            showToast("清除网站数据失败", .error)
+            return false
+        }
+    }
+
+    // MARK: - External links
+
+    func confirmExternalOpen() {
+        browser.confirmExternalOpen()
+    }
+
+    func cancelExternalOpen() {
+        browser.cancelExternalOpen()
+    }
+
+    // MARK: - Toast
+
+    func showToast(_ text: String, _ kind: ToastKind = .info) {
+        let message = ToastMessage(text: text, kind: kind)
+        toast = message
+        toastTask?.cancel()
+        toastTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 3_500_000_000)
+            guard !Task.isCancelled else { return }
+            if self?.toast?.id == message.id {
+                self?.toast = nil
+            }
+        }
+    }
+
+    // MARK: - Teardown (tests)
+
+    func shutdown() {
+        toastTask?.cancel()
+        toastTask = nil
+        cancellables.removeAll()
+        network.stop()
+        audioSession.deactivate()
+        browser.tearDown()
+    }
+
+    // MARK: - Wiring
+
+    #if DEBUG
+    /// Test/QA-only hook: load a local page through the real GameView/browser shell without
+    /// touching the official service. Used by session-retention integration tests.
+    func loadDebugLocalPage(_ url: URL) {
+        var policy = browser.navigationPolicy
+        policy.allowsLocalTestPages = true
+        if let port = url.port {
+            policy.localTestPorts = [port]
+        }
+        policy.allowedFileDirectory = LocalHTTPServer.testPagesDirectory()
+        browser.applyDebugNavigationPolicy(policy)
+
+        route = .game
+        hasStartedBrowser = true
+        media.startPolling()
+        session.setMediaProbePolling(true)
+        browser.webView.load(URLRequest(url: url))
+    }
+
+    /// Loads the bundled offline video page through the real GameView/browser shell. This is
+    /// a visual smoke test only; it never touches the official service.
+    private func openDebugLocalGame() async {
+        guard let directory = LocalHTTPServer.testPagesDirectory() else {
+            diagnostics.error(.test, "debug.local_game", "TestPages 资源缺失")
+            return
+        }
+        do {
+            let server = LocalHTTPServer(rootDirectory: directory)
+            let port = try await server.start()
+            debugLocalGameServer = server
+
+            var policy = browser.navigationPolicy
+            policy.allowsLocalTestPages = true
+            policy.localTestPorts = [Int(port)]
+            policy.allowedFileDirectory = directory
+            browser.applyDebugNavigationPolicy(policy)
+
+            route = .game
+            hasStartedBrowser = true
+            media.startPolling()
+            session.setMediaProbePolling(true)
+            diagnostics.info(
+                .test,
+                "debug.local_game",
+                "加载本地测试页到游戏视图",
+                ["port": String(port)]
+            )
+            guard let url = URL(string: "http://127.0.0.1:\(port)/native-video.html") else {
+                return
+            }
+            browser.webView.load(URLRequest(url: url))
+        } catch {
+            diagnostics.error(.test, "debug.local_game_failed", error.localizedDescription)
+            showToast("本地测试页启动失败", .error)
+        }
+    }
+    #endif
+
+    private func start() {
+        network.start()
+        diagnostics.info(
+            .app,
+            "app.launch",
+            "CloudFloat 启动",
+            [
+                "version": appVersion,
+                "os": UIDevice.current.systemVersion,
+                "simulator": Self.isSimulator ? "1" : "0"
+            ]
+        )
+        if media.probeScriptLoaded {
+            diagnostics.info(.media, "media.probe_loaded", "MediaProbe.js 已加载")
+        } else {
+            diagnostics.error(.media, "media.probe_missing", media.lastProbeError ?? "探测脚本缺失")
+        }
+        diagnostics.info(
+            .pip,
+            "pip.platform",
+            pip.platformSupportsPiP ? "系统支持画中画" : "系统不支持画中画（模拟器通常如此）"
+        )
+        diagnostics.info(.pip, "pip.m4_status", NativePictureInPictureCoordinator.status.displayText)
+    }
+
+    private func wire() {
+        browser.onEvent = { [weak self] event in
+            self?.handleBrowserEvent(event)
+        }
+        media.onSnapshot = { [weak self] aggregate, snapshot in
+            self?.handleMediaSnapshot(aggregate, snapshot: snapshot)
+        }
+        media.onEvent = { [weak self] event in
+            self?.handleMediaEvent(event)
+        }
+        media.onProbeError = { [weak self] message in
+            self?.diagnostics.warning(.media, "media.probe_error", message)
+        }
+        pip.onStateChanged = { [weak self] state in
+            self?.handlePiPState(state)
+        }
+        pip.onOutcome = { [weak self] outcome, availability in
+            self?.logPiPOutcome(outcome, availability: availability)
+        }
+        session.onDiagnostic = { [weak self] severity, code, message, metadata in
+            self?.diagnostics.record(
+                category: .session,
+                severity: severity,
+                code: code,
+                message: message,
+                metadata: metadata
+            )
+        }
+        session.onTransition = { [weak self] previous, next in
+            self?.handleSessionTransition(from: previous, to: next)
+        }
+        network.onChange = { [weak self] status in
+            self?.handleNetworkChange(status)
+        }
+        audioSession.onError = { [weak self] message in
+            self?.diagnostics.warning(.session, "audio.session_error", message)
+        }
+
+        settings.$enableInPagePiPButton
+            .dropFirst()
+            .sink { [weak self] enabled in
+                self?.media.setInPageControlEnabled(enabled)
+                self?.diagnostics.info(
+                    .app,
+                    "settings.inpage_pip",
+                    enabled ? "页面内 PiP 控件已启用" : "页面内 PiP 控件已禁用（子 frame 下次导航后生效）"
+                )
+            }
+            .store(in: &cancellables)
+
+        settings.$enableBackgroundAudio
+            .dropFirst()
+            .sink { [weak self] _ in
+                self?.updateAudioSession()
+            }
+            .store(in: &cancellables)
+
+        settings.$allowLocalTestPages
+            .dropFirst()
+            .sink { [weak self] enabled in
+                self?.browser.updateLocalTestAccess(enabled: enabled)
+            }
+            .store(in: &cancellables)
+    }
+
+    private func handleBrowserEvent(_ event: BrowserEvent) {
+        switch event {
+        case .loadStarted:
+            recoveryPrompt = nil
+            session.startLoading()
+            diagnostics.info(.navigation, "nav.start", "开始加载主框架")
+
+        case .navigationCommitted(let host):
+            session.navigationCommitted()
+            diagnostics.debug(
+                .navigation,
+                "nav.commit",
+                "主框架已收到内容",
+                ["host": host ?? ""]
+            )
+
+        case .loadFinished(let host):
+            session.loadFinished()
+            media.startPolling()
+            session.setMediaProbePolling(media.isPolling)
+            media.refreshNow()
+            pip.refreshAvailability()
+            diagnostics.info(
+                .navigation,
+                "nav.finish",
+                "页面加载完成",
+                ["host": host ?? ""]
+            )
+
+        case .navigationFailed(let failure):
+            session.navigationFailed(TLSErrorClassifier.userMessage(for: failure))
+            diagnostics.record(
+                category: .navigation,
+                severity: .error,
+                code: failure.isTLSError ? "nav.tls_failure" : "nav.failure",
+                message: TLSErrorClassifier.userMessage(for: failure),
+                metadata: [
+                    "code": String(failure.code),
+                    "host": failure.host ?? "",
+                    "tls": failure.isTLSError ? "1" : "0",
+                    "provisional": failure.isProvisional ? "1" : "0"
+                ]
+            )
+            if route == .game && !failure.isCancelled {
+                promptRecovery(for: .navigationFailure)
+            }
+
+        case .webContentProcessTerminated:
+            session.webContentTerminated()
+            diagnostics.error(.recovery, "webcontent.terminated", "WebContent 进程终止")
+            promptRecovery(for: .webContentTerminated)
+
+        case .tlsChallenge(let host):
+            diagnostics.debug(
+                .security,
+                "tls.challenge",
+                "收到服务器信任校验；使用系统默认校验，不绕过证书错误",
+                ["host": host]
+            )
+
+        case .redirect(let host):
+            diagnostics.debug(.navigation, "nav.redirect", "服务器重定向", ["host": host ?? ""])
+
+        case .blockedNavigation(let host, let reason):
+            diagnostics.warning(
+                .security,
+                "nav.blocked",
+                "已阻止导航",
+                ["host": host ?? "", "reason": reason.rawValue]
+            )
+
+        case .externalURLRequested(let host):
+            diagnostics.info(
+                .navigation,
+                "nav.external",
+                "外部链接等待用户确认",
+                ["host": host ?? ""]
+            )
+
+        case .externalOpenFailed:
+            diagnostics.warning(.navigation, "nav.external_failed", "系统未能打开外部链接")
+            showToast("系统未能打开该外部链接", .warning)
+
+        case .httpError(let status, let host):
+            diagnostics.warning(
+                .navigation,
+                "nav.http_error",
+                "页面返回 HTTP \(status)",
+                ["host": host ?? "", "status": String(status)]
+            )
+
+        case .mediaCaptureDenied(let host):
+            diagnostics.warning(
+                .security,
+                "security.media_capture_denied",
+                "已拒绝网页的摄像头/麦克风权限请求",
+                ["host": host ?? ""]
+            )
+
+        case .popupOpened:
+            diagnostics.info(.navigation, "popup.opened", "已打开登录/授权弹窗")
+
+        case .popupClosed:
+            diagnostics.info(.navigation, "popup.closed", "登录/授权弹窗已关闭")
+
+        case .popupNavigationFailed(let message):
+            diagnostics.warning(.navigation, "popup.failed", "登录/授权弹窗加载失败")
+            showToast("登录窗口加载失败：\(message)", .warning)
+
+        case .titleChanged:
+            break
+        }
+        updateAudioSession()
+    }
+
+    private func handleMediaSnapshot(_ aggregate: MediaAggregate, snapshot: MediaFrameSnapshot) {
+        session.handle(mediaAggregate: aggregate, snapshotReceivedAt: snapshot.receivedAt)
+        pip.handle(aggregate: aggregate, snapshotReceivedAt: snapshot.receivedAt)
+        pip.refreshAvailability()
+        updateAudioSession()
+
+        let signature = [
+            aggregate.kind.rawValue,
+            String(aggregate.videoCount),
+            String(aggregate.playingVideoCount),
+            String(aggregate.piPCapablePlayingVideoCount),
+            aggregate.isInPiP ? "pip" : "inline"
+        ].joined(separator: "|")
+
+        if signature != lastSnapshotSignature {
+            lastSnapshotSignature = signature
+            diagnostics.info(
+                .media,
+                "media.snapshot",
+                aggregate.summaryText,
+                media.diagnosticsMetadata
+            )
+        } else if settings.verboseDiagnostics {
+            diagnostics.debug(
+                .media,
+                "media.snapshot",
+                aggregate.summaryText,
+                media.diagnosticsMetadata
+            )
+        }
+    }
+
+    private func handleMediaEvent(_ event: MediaPlaybackEvent) {
+        session.handle(mediaEvent: event)
+        pip.handle(event: event)
+        updateAudioSession()
+
+        switch event.name {
+        case .enterpictureinpicture:
+            diagnostics.info(
+                .pip,
+                "pip.entered",
+                "网页报告已进入画中画",
+                ["origin": event.origin, "mode": event.presentationMode ?? ""]
+            )
+        case .leavepictureinpicture:
+            diagnostics.info(
+                .pip,
+                "pip.left",
+                "网页报告已退出画中画；服务器会话状态 UNVERIFIED",
+                ["origin": event.origin]
+            )
+        case .error:
+            diagnostics.warning(
+                .media,
+                "media.error",
+                "视频元素报告错误",
+                ["origin": event.origin, "readyState": String(event.readyState ?? -1)]
+            )
+        case .waiting, .stalled:
+            if settings.verboseDiagnostics {
+                diagnostics.debug(
+                    .media,
+                    "media.\(event.name.rawValue)",
+                    "媒体等待/停滞",
+                    ["origin": event.origin]
+                )
+            }
+        case .playing, .pause, .emptied, .loadedmetadata, .loadeddata,
+             .presentationmodechanged, .visibilitychange, .domchanged:
+            if settings.verboseDiagnostics {
+                diagnostics.debug(
+                    .media,
+                    "media.\(event.name.rawValue)",
+                    "媒体事件",
+                    [
+                        "origin": event.origin,
+                        "topFrame": event.isTopFrame ? "1" : "0",
+                        "mode": event.presentationMode ?? ""
+                    ]
+                )
+            }
+        }
+    }
+
+    private func handlePiPState(_ state: WebPictureInPictureCoordinator.State) {
+        switch state {
+        case .active:
+            session.pipBecameActive()
+        case .available, .unavailable:
+            if session.pipVisible {
+                session.pipBecameInactive()
+            }
+        case .unknown, .starting:
+            break
+        }
+        updateAudioSession()
+    }
+
+    private func logPiPOutcome(_ outcome: PiPRequestOutcome, availability: PiPAvailability) {
+        switch outcome {
+        case .success(let method):
+            diagnostics.info(
+                .pip,
+                "pip.success",
+                "画中画请求成功",
+                ["method": method]
+            )
+        case .failure(let reason, let detail):
+            diagnostics.record(
+                category: .pip,
+                severity: reason == .requiresUserGesture ? .info : .warning,
+                code: "pip.failure",
+                message: reason.userMessage,
+                metadata: [
+                    "reason": reason.rawValue,
+                    "detail": detail ?? "",
+                    "available": availability.isAvailable ? "1" : "0"
+                ]
+            )
+        }
+    }
+
+    private func handleSessionTransition(from previous: GameSessionState, to next: GameSessionState) {
+        switch next {
+        case .streamStalled:
+            showToast("画面停滞；App 不会自动重连，可手动重试", .warning)
+        case .disconnected:
+            showToast("连接中断；等待网络恢复，不会自动重载", .warning)
+        case .ready:
+            if previous == .reconnecting {
+                diagnostics.info(.recovery, "recovery.ready", "恢复后页面就绪")
+            }
+        case .failed:
+            if recoveryPrompt == nil, session.failureReason?.contains("WebContent") == true {
+                promptRecovery(for: .webContentTerminated)
+            }
+        case .pipActive:
+            diagnostics.info(.pip, "pip.state_active", "状态机已进入画中画状态")
+        default:
+            break
+        }
+        updateAudioSession()
+    }
+
+    private func handleNetworkChange(_ status: NetworkStatus) {
+        let previous = lastNetworkStatus
+        lastNetworkStatus = status
+        session.setNetworkStatus(status)
+        diagnostics.info(
+            .network,
+            "network.change",
+            "网络状态：\(status.displayName)",
+            ["interface": status.rawValue]
+        )
+        if status == .unavailable {
+            showToast("网络不可用；不会无限重试", .warning)
+        } else if status.isAvailable, previous == .unavailable, session.state == .disconnected {
+            showToast("网络已恢复；如画面未恢复可手动重连", .info)
+        }
+    }
+
+    private func updateAudioSession() {
+        // Only genuine foreground playback or a visible PiP window may keep the session
+        // active. Background playback without PiP is not used for keep-alive.
+        let realMedia = session.mediaPlayingObserved && (session.appIsForeground || session.pipVisible)
+        audioSession.update(
+            isMediaPlaying: realMedia,
+            isPiPActive: session.pipVisible,
+            enabled: settings.enableBackgroundAudio,
+            appIsForeground: session.appIsForeground
+        )
+    }
+
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary ?? [:]
+        let version = info["CFBundleShortVersionString"] as? String ?? "?"
+        let build = info["CFBundleVersion"] as? String ?? "?"
+        return "\(version) (\(build))"
+    }
+
+    private static var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        return true
+        #else
+        return false
+        #endif
+    }
+}

@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #0E1420;
+    --muted: #667085;
+    --accent: #327AFA;
+    --line: rgba(16, 24, 40, .07);
+  }
+  body {
+    width: 1820px;
+    background: #F5F6F8;
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { padding: 72px 64px 56px; }
+
+  header { position: relative; margin-bottom: 48px; }
+  .eyebrow {
+    display: inline-block; font-size: 15px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 16px;
+  }
+  h1 { font-size: 58px; line-height: 1.12; letter-spacing: -.02em; font-weight: 700; }
+  .sub { margin-top: 18px; font-size: 20px; line-height: 1.65; color: var(--muted); max-width: 1080px; }
+  .current {
+    position: absolute; right: 0; top: 4px; display: flex; align-items: center; gap: 18px;
+    background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 16px 22px 16px 16px;
+    box-shadow: 0 12px 30px rgba(16,24,40,.06);
+  }
+  .current img { width: 72px; height: 72px; border-radius: 22.37%; display: block; }
+  .current b { display: block; font-size: 16px; margin-bottom: 4px; }
+  .current span { font-size: 13px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 30px;
+    padding: 40px 36px 34px; display: flex; flex-direction: column; align-items: center;
+    box-shadow: 0 22px 50px rgba(16,24,40,.07);
+  }
+  .icon-wrap { position: relative; width: 268px; height: 268px; margin-bottom: 30px; }
+  .icon-wrap::after {
+    content: ""; position: absolute; inset: 24px 18px -22px; z-index: 0;
+    background: rgba(50,122,250,.16); filter: blur(34px); border-radius: 50%;
+  }
+  .icon-wrap img {
+    position: relative; z-index: 1; width: 100%; height: 100%; display: block;
+    border-radius: 22.37%; box-shadow: 0 16px 34px rgba(16,24,40,.20);
+  }
+  .meta { width: 100%; text-align: left; }
+  .no { font-size: 13px; font-weight: 700; letter-spacing: .16em; color: var(--accent); }
+  .name { font-size: 27px; font-weight: 700; letter-spacing: -.01em; margin-top: 8px; }
+  .en { font-size: 14px; color: #98A2B3; letter-spacing: .04em; margin-top: 4px; }
+  .desc { font-size: 16px; line-height: 1.62; color: var(--muted); margin-top: 14px; }
+
+  .real { margin-top: 44px; background: #fff; border: 1px solid var(--line); border-radius: 30px; padding: 38px 40px 40px; box-shadow: 0 22px 50px rgba(16,24,40,.05); }
+  .real h2 { font-size: 24px; letter-spacing: -.01em; }
+  .real .hint { font-size: 15px; color: var(--muted); margin-top: 8px; margin-bottom: 26px; }
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .panel { border-radius: 24px; padding: 30px 26px 26px; }
+  .panel.light { background: linear-gradient(135deg, #E8EEF7 0%, #F7F3EC 100%); }
+  .panel.dark { background: linear-gradient(135deg, #0B1020 0%, #1C2742 100%); }
+  .panel .tag { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; margin-bottom: 22px; }
+  .panel.light .tag { color: #8A94A6; }
+  .panel.dark .tag { color: #8FA0C0; }
+  .row { display: flex; gap: 22px; justify-content: space-between; }
+  .item { text-align: center; }
+  .item img { width: 112px; height: 112px; border-radius: 22.37%; display: block; box-shadow: 0 10px 24px rgba(16,24,40,.18); }
+  .panel.dark .item img { box-shadow: 0 10px 24px rgba(0,0,0,.45); }
+  .item span { display: block; margin-top: 12px; font-size: 12px; letter-spacing: .08em; }
+  .panel.light .item span { color: #7A8496; }
+  .panel.dark .item span { color: #93A3C4; }
+
+  .sizewrap { display: flex; align-items: flex-start; gap: 56px; margin-top: 32px; }
+  .smalls { display: flex; flex-direction: column; gap: 18px; }
+  .pick { flex: 1; border-left: 1px solid var(--line); padding-left: 44px; }
+  .pick h3 { font-size: 16px; letter-spacing: .02em; margin-bottom: 14px; }
+  .pick ul { list-style: none; }
+  .pick li { font-size: 15px; line-height: 1.6; color: var(--muted); margin-bottom: 10px; }
+  .pick b { color: var(--ink); font-weight: 600; }
+  .small-set { display: flex; gap: 16px; align-items: center; }
+  .small-set img { border-radius: 22.37%; display: block; }
+  .small-set .lbl { font-size: 13px; color: var(--muted); width: 52px; }
+
+  footer { margin-top: 40px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; color: #98A2B3; }
+  footer .dots { display: flex; gap: 8px; }
+  footer .dot { width: 10px; height: 10px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">CloudFloat · App Icon</div>
+    <h1>六款图标方向</h1>
+    <p class="sub">全部按 iOS 图标规范绘制：1024 × 1024 满版、无圆角、无透明通道，系统会自动裁成圆角矩形。主色延续 AccentColor（#327AFA），图形围绕“云游戏 + 画中画 + 漂浮”三个关键词。</p>
+    <div class="current">
+      <img src="png/00-current.png" alt="现行图标">
+      <div><b>现行图标</b><span>双窗轮廓 · 紫蓝渐变</span></div>
+    </div>
+  </header>
+
+  <section class="grid">
+    <div class="card">
+      <div class="icon-wrap"><img src="png/01-floating-pip.png" alt="01 双窗悬浮"></div>
+      <div class="meta">
+        <div class="no">01</div>
+        <div class="name">双窗悬浮</div>
+        <div class="en">FLOATING PIP</div>
+        <p class="desc">大窗轮廓里浮出一块白色小窗，最直白地表达“画中画”。延续现行图标的构图，但改成实心小窗 + 投影，层级更干净。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap"><img src="png/02-cloud-play.png" alt="02 云端开玩"></div>
+      <div class="meta">
+        <div class="no">02</div>
+        <div class="name">云端开玩</div>
+        <div class="en">CLOUD PLAY</div>
+        <p class="desc">云朵里挖出一个播放键，一秒说清“在云上玩游戏”。造型最亲和，小尺寸识别度也最高，适合走轻松、消费级路线。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap"><img src="png/03-minimal-blue.png" alt="03 蓝白极简"></div>
+      <div class="meta">
+        <div class="no">03</div>
+        <div class="name">蓝白极简</div>
+        <div class="en">MINIMAL BLUE</div>
+        <p class="desc">浅色底 + 粗蓝描边，把画中画收进屏幕内部。最克制、最像系统级工具，白底和深色壁纸上都立得住。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap"><img src="png/04-deep-play.png" alt="04 深空播放"></div>
+      <div class="meta">
+        <div class="no">04</div>
+        <div class="name">深空播放</div>
+        <div class="en">DEEP PLAY</div>
+        <p class="desc">深海军蓝背景 + 玻璃屏 + 白色播放键，靠光晕营造夜间、沉浸的气质。适合和深色模式 UI 成套。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap"><img src="png/05-float-screen.png" alt="05 浮空屏"></div>
+      <div class="meta">
+        <div class="no">05</div>
+        <div class="name">浮空屏</div>
+        <div class="en">FLOATING SCREEN</div>
+        <p class="desc">主屏微微倾斜、小窗脱开悬浮，强调名字里的“Float”。动态感最强，也最容易被记住。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="icon-wrap"><img src="png/06-cloud-window.png" alt="06 云托浮窗"></div>
+      <div class="meta">
+        <div class="no">06</div>
+        <div class="name">云上浮窗</div>
+        <div class="en">CLOUD WINDOW</div>
+        <p class="desc">播放窗悬浮在云朵上方，把“云”和“画中画”两件事同时收进画面，品牌语义最完整。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="real">
+    <h2>尺寸与明暗测试</h2>
+    <p class="hint">按 iOS 主屏 112 pt 展示；图标下方编号对应左上方案。浅色与深色壁纸各看一遍，检查小尺寸是否还能读出图形。</p>
+    <div class="panels">
+      <div class="panel light">
+        <div class="tag">Light wallpaper</div>
+        <div class="row">
+          <div class="item"><img src="png/01-floating-pip.png"><span>01</span></div>
+          <div class="item"><img src="png/02-cloud-play.png"><span>02</span></div>
+          <div class="item"><img src="png/03-minimal-blue.png"><span>03</span></div>
+          <div class="item"><img src="png/04-deep-play.png"><span>04</span></div>
+          <div class="item"><img src="png/05-float-screen.png"><span>05</span></div>
+          <div class="item"><img src="png/06-cloud-window.png"><span>06</span></div>
+        </div>
+      </div>
+      <div class="panel dark">
+        <div class="tag">Dark wallpaper</div>
+        <div class="row">
+          <div class="item"><img src="png/01-floating-pip.png"><span>01</span></div>
+          <div class="item"><img src="png/02-cloud-play.png"><span>02</span></div>
+          <div class="item"><img src="png/03-minimal-blue.png"><span>03</span></div>
+          <div class="item"><img src="png/04-deep-play.png"><span>04</span></div>
+          <div class="item"><img src="png/05-float-screen.png"><span>05</span></div>
+          <div class="item"><img src="png/06-cloud-window.png"><span>06</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sizewrap">
+    <div class="smalls">
+      <div class="small-set">
+        <span class="lbl">60 px</span>
+        <img src="png/01-floating-pip.png" width="60" height="60"><img src="png/02-cloud-play.png" width="60" height="60"><img src="png/03-minimal-blue.png" width="60" height="60"><img src="png/04-deep-play.png" width="60" height="60"><img src="png/05-float-screen.png" width="60" height="60"><img src="png/06-cloud-window.png" width="60" height="60">
+      </div>
+      <div class="small-set">
+        <span class="lbl">40 px</span>
+        <img src="png/01-floating-pip.png" width="40" height="40"><img src="png/02-cloud-play.png" width="40" height="40"><img src="png/03-minimal-blue.png" width="40" height="40"><img src="png/04-deep-play.png" width="40" height="40"><img src="png/05-float-screen.png" width="40" height="40"><img src="png/06-cloud-window.png" width="40" height="40">
+      </div>
+      <div class="small-set">
+        <span class="lbl">29 px</span>
+        <img src="png/01-floating-pip.png" width="29" height="29"><img src="png/02-cloud-play.png" width="29" height="29"><img src="png/03-minimal-blue.png" width="29" height="29"><img src="png/04-deep-play.png" width="29" height="29"><img src="png/05-float-screen.png" width="29" height="29"><img src="png/06-cloud-window.png" width="29" height="29">
+      </div>
+    </div>
+    <div class="pick">
+      <h3>选择建议</h3>
+      <ul>
+        <li><b>要稳 → 01 双窗悬浮</b>：延续现行图标，老用户一眼认得出，画中画语义最直白。</li>
+        <li><b>要快 → 02 云端开玩</b>：小尺寸最清楚，适合主推“云游戏”这件事。</li>
+        <li><b>要记住 → 05 浮空屏</b>：倾斜的主屏 + 脱开的小窗，最有“Float”的动感。</li>
+        <li><b>注意 → 03</b> 是浅底，在纯白壁纸上会略淡；<b>04</b> 是深底，在纯黑壁纸上边界偏弱。</li>
+      </ul>
+    </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>CloudFloat · 2026-11-16 · 源文件：design/icons/svg（矢量）、design/icons/png（1024 导出）</span>
+    <span class="dots">
+      <span class="dot" style="background:#7B4BFF"></span>
+      <span class="dot" style="background:#327AFA"></span>
+      <span class="dot" style="background:#0FA8E8"></span>
+      <span class="dot" style="background:#0B1533"></span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>

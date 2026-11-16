@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>CloudFloat · 登录弹窗样例</title>
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #070a11; color: #eef2f8;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif; }
+    body { display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card {
+      width: min(420px, 100%); background: #111725; border: 1px solid rgba(255,255,255,.10);
+      border-radius: 22px; padding: 22px; box-shadow: 0 24px 70px rgba(0,0,0,.45);
+    }
+    .eyebrow { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: #ffb44d; font-weight: 700; }
+    h1 { font-size: 21px; margin: 5px 0 8px; letter-spacing: -.02em; }
+    p { color: #9aa6b9; font-size: 12px; line-height: 1.6; margin: 0 0 14px; }
+    label { display: block; font-size: 11px; color: #9aa6b9; margin: 10px 0 5px; }
+    input {
+      width: 100%; border: 1px solid rgba(255,255,255,.12); background: #0b101b;
+      color: #eef2f8; border-radius: 11px; padding: 11px 12px; font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, sans-serif;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .hint { margin-top: 7px; font-size: 10px; color: #6c7a90; line-height: 1.5; }
+    button {
+      width: 100%; margin-top: 16px; border: 0; border-radius: 12px; padding: 12px;
+      background: linear-gradient(135deg, #2f6bff, #7a3df0); color: #fff;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Heiti SC", -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      font-size: 14px;
+      font-weight: 650;
+      line-height: 1;
+      cursor: pointer;
+    }
+    button.secondary { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); margin-top: 8px; }
+    .log { margin-top: 14px; padding: 10px; border-radius: 10px; background: #0b101b;
+      border: 1px solid rgba(255,255,255,.08); font-family: "SF Mono", ui-monospace, Menlo, "PingFang SC", monospace;
+      font-size: 10px;
+      line-height: 1.5;
+      color: #8e9cb2; white-space: pre-wrap; min-height: 38px; }
+    .note { margin-top: 14px; padding: 11px; border-radius: 12px; background: rgba(255,180,77,.07);
+      border: 1px solid rgba(255,180,77,.22); color: #e5cda5; font-size: 11px; line-height: 1.55; }
+    code { font-family: "SF Mono", ui-monospace, Menlo, monospace; }
+  </style>
+</head>
+<body>
+<main class="card">
+  <div class="eyebrow">CloudFloat · Popup Sample</div>
+  <h1>登录弹窗样例</h1>
+  <p>用于验证 <code>window.open</code> / <code>target=_blank</code> 弹窗是否被 WebView 正确承载。此页面不连接任何服务器，也不要输入真实账号。</p>
+  <label>测试账号（仅占位）</label>
+  <input id="account" value="test-user" autocomplete="off" autocapitalize="none" spellcheck="false">
+  <label>测试密码（仅占位）</label>
+  <input id="password" type="password" value="not-a-real-password" autocomplete="off">
+  <div class="hint">正式应用中，账号密码只应输入官方登录页面；本地样例不会提交、保存或读取这些输入。</div>
+  <button id="open">打开登录弹窗（window.open）</button>
+  <button id="linkTarget" class="secondary">使用 target=_blank 链接</button>
+  <div class="log" id="log">等待操作…</div>
+  <div class="note">
+    自动化测试使用 <code>?auto=1</code> 在页面加载后尝试打开弹窗；真实 WKWebView 默认要求用户手势。
+    手动验证：点击按钮，App 应弹出“登录 / 授权”窗口；关闭后主页面保持不刷新。
+  </div>
+  <a id="hiddenLink" href="popup-target.html" target="_blank" style="display:none">popup</a>
+</main>
+<script>
+(() => {
+  'use strict';
+  const logElement = document.getElementById('log');
+  const params = new URLSearchParams(location.search);
+  let attempts = 0;
+
+  function log(message) {
+    const time = new Date().toLocaleTimeString('zh-CN', { hour12: false });
+    attempts += 1;
+    logElement.textContent += `\n${time} ${message}`;
+  }
+
+  function openPopup(method) {
+    try {
+      const popup = window.open('popup-target.html', 'cloudfloat-login-popup', 'width=420,height=640');
+      if (popup) {
+        log(`window.open 返回窗口 (${method})`);
+      } else {
+        log(`window.open 返回 null（可能被用户手势策略拦截）(${method})`);
+      }
+    } catch (error) {
+      log(`window.open 抛出 ${error.name}`);
+    }
+  }
+
+  document.getElementById('open').addEventListener('click', () => openPopup('button'));
+  document.getElementById('linkTarget').addEventListener('click', () => {
+    document.getElementById('hiddenLink').click();
+  });
+
+  if (params.get('auto') === '1') {
+    window.setTimeout(() => openPopup('auto'), 500);
+  }
+
+  window.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'cloudfloat-popup-closed') {
+      log('收到弹窗关闭消息');
+    }
+  });
+})();
+</script>
+</body>
+</html>

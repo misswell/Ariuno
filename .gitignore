@@ -1,0 +1,11 @@
+# Build output
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+
+# Local evidence (curated copies live in docs/images)
+artifacts/
+
+# macOS
+.DS_Store
