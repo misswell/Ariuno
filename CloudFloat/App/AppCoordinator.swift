@@ -128,14 +128,17 @@ struct PiPCapabilityReport: Identifiable, Equatable {
 final class AppCoordinator: ObservableObject {
     let settings: AppSettings
     let diagnostics: DiagnosticsStore
-    let browser: BrowserSession
-    let media: MediaDetector
+    let tabs: BrowserTabManager
+    let bookmarks: BookmarkStore
     let session: SessionMonitor
-    let pip: WebPictureInPictureCoordinator
     let network: NetworkObserver
     let recovery: WebContentRecovery
-    let cookieStore: CookieStore
     let audioSession: AudioSessionManager
+
+    var browser: BrowserSession { tabs.activeSession }
+    var media: MediaDetector { browser.mediaDetector }
+    var pip: WebPictureInPictureCoordinator { browser.pipCoordinator }
+    var cookieStore: CookieStore { browser.cookieStore }
 
     @Published var route: AppRoute = .home
     @Published private(set) var hasStartedBrowser = false
@@ -165,25 +168,18 @@ final class AppCoordinator: ObservableObject {
             localTestPorts: [],
             allowedFileDirectory: Bundle.main.resourceURL?.appendingPathComponent("TestPages")
         )
-        let browserSession = BrowserSession(
+        self.tabs = BrowserTabManager(
             navigationPolicy: policy,
             inPageControlEnabled: settings.enableInPagePiPButton
         )
-        self.browser = browserSession
-        self.media = browserSession.mediaDetector
+        self.bookmarks = BookmarkStore()
         self.session = SessionMonitor()
-        self.pip = WebPictureInPictureCoordinator(
-            mediaDetector: browserSession.mediaDetector,
-            configurationAllowsPiP: { [weak browserSession] in
-                browserSession?.pictureInPictureAllowedByConfiguration ?? false
-            }
-        )
         self.network = NetworkObserver()
         self.recovery = WebContentRecovery()
-        self.cookieStore = browserSession.cookieStore
         self.audioSession = AudioSessionManager()
 
         wire()
+        configure(tabs.activeSession)
         start()
 
         #if DEBUG
@@ -199,11 +195,11 @@ final class AppCoordinator: ObservableObject {
         }
         if arguments.contains("-CFOpenLocalGame") {
             Task { @MainActor in
-                await self.openDebugLocalGame()
+                await self.openDebugLocalPage()
             }
         }
-        if arguments.contains("-CFOpenOfficialEntry") {
-            continueGame()
+        if arguments.contains("-CFOpenBrowser") {
+            continueBrowsing()
         }
         #endif
     }
@@ -237,16 +233,60 @@ final class AppCoordinator: ObservableObject {
 
     // MARK: - Navigation
 
-    func continueGame() {
+    func continueBrowsing() {
         route = .game
         hasStartedBrowser = true
         if browser.isShowingBlankPage {
-            browser.loadGame()
-            diagnostics.info(.app, "session.continue", "开始加载官方入口")
+            browser.loadURL(URLInputParser.placeholderURL())
+            diagnostics.info(.app, "session.continue", "打开新标签页")
         } else {
             browser.verifyExistingPageOnForeground()
             diagnostics.info(.app, "session.continue", "继续使用已加载的页面")
         }
+        media.startPolling()
+        session.setMediaProbePolling(media.isPolling)
+    }
+
+    func openURL(_ url: URL) {
+        route = .game
+        hasStartedBrowser = true
+        browser.loadURL(url)
+        media.startPolling()
+        session.setMediaProbePolling(media.isPolling)
+        session.resetForTabSwitch(hasLoadedPage: false)
+        diagnostics.info(
+            .navigation,
+            "nav.open",
+            "打开用户输入的地址",
+            ["host": url.host ?? ""]
+        )
+    }
+
+    func openAddressText(_ text: String) {
+        guard let url = URLInputParser.url(from: text) else {
+            showToast("请输入有效的网址", .warning)
+            return
+        }
+        openURL(url)
+    }
+
+    func activateTab(_ tabSession: BrowserSession) {
+        tabs.activateTab(tabSession)
+        session.resetForTabSwitch(hasLoadedPage: tabSession.hasLoadedPage)
+        route = .game
+        hasStartedBrowser = true
+        media.startPolling()
+        session.setMediaProbePolling(media.isPolling)
+    }
+
+    func closeTab(_ tabSession: BrowserSession) {
+        tabs.closeTab(tabSession)
+    }
+
+    func createTab(url: URL? = nil) {
+        tabs.createTab(url: url)
+        route = .game
+        hasStartedBrowser = true
         media.startPolling()
         session.setMediaProbePolling(media.isPolling)
     }
@@ -259,7 +299,7 @@ final class AppCoordinator: ObservableObject {
         if session.pipVisible {
             pip.exitPiP()
         }
-        browser.endSession()
+        browser.resetToBlank()
         session.userExited()
         media.stopPolling()
         session.setMediaProbePolling(false)
@@ -412,7 +452,7 @@ final class AppCoordinator: ObservableObject {
             }
             recovery.noteReloadAttempt()
             session.recoveryStarted()
-            browser.reloadForRecovery()
+            browser.reload()
             diagnostics.info(
                 .recovery,
                 "recovery.reload",
@@ -439,7 +479,7 @@ final class AppCoordinator: ObservableObject {
         if session.pipVisible {
             pip.exitPiP()
         }
-        browser.endSession()
+        browser.resetToBlank()
         session.userExited()
         media.stopPolling()
         session.setMediaProbePolling(false)
@@ -521,9 +561,9 @@ final class AppCoordinator: ObservableObject {
 
     /// Loads the bundled offline video page through the real GameView/browser shell. This is
     /// a visual smoke test only; it never touches the official service.
-    private func openDebugLocalGame() async {
+    private func openDebugLocalPage() async {
         guard let directory = LocalHTTPServer.testPagesDirectory() else {
-            diagnostics.error(.test, "debug.local_game", "TestPages 资源缺失")
+            diagnostics.error(.test, "debug.local_page", "TestPages 资源缺失")
             return
         }
         do {
@@ -543,8 +583,8 @@ final class AppCoordinator: ObservableObject {
             session.setMediaProbePolling(true)
             diagnostics.info(
                 .test,
-                "debug.local_game",
-                "加载本地测试页到游戏视图",
+                "debug.local_page",
+                "加载本地测试页到浏览器视图",
                 ["port": String(port)]
             )
             guard let url = URL(string: "http://127.0.0.1:\(port)/native-video.html") else {
@@ -552,7 +592,7 @@ final class AppCoordinator: ObservableObject {
             }
             browser.webView.load(URLRequest(url: url))
         } catch {
-            diagnostics.error(.test, "debug.local_game_failed", error.localizedDescription)
+            diagnostics.error(.test, "debug.local_page_failed", error.localizedDescription)
             showToast("本地测试页启动失败", .error)
         }
     }
@@ -584,23 +624,27 @@ final class AppCoordinator: ObservableObject {
     }
 
     private func wire() {
-        browser.onEvent = { [weak self] event in
+        tabs.onSessionCreated = { [weak self] session in
+            self?.configure(session)
+        }
+        tabs.onSessionEvent = { [weak self] session, event in
+            guard session === self?.browser else { return }
             self?.handleBrowserEvent(event)
         }
-        media.onSnapshot = { [weak self] aggregate, snapshot in
+        tabs.onMediaSnapshot = { [weak self] session, aggregate, snapshot in
+            guard session === self?.browser else { return }
             self?.handleMediaSnapshot(aggregate, snapshot: snapshot)
         }
-        media.onEvent = { [weak self] event in
+        tabs.onMediaEvent = { [weak self] session, event in
+            guard session === self?.browser else { return }
             self?.handleMediaEvent(event)
         }
-        media.onProbeError = { [weak self] message in
+        tabs.onProbeError = { [weak self] session, message in
+            guard session === self?.browser else { return }
             self?.diagnostics.warning(.media, "media.probe_error", message)
         }
-        pip.onStateChanged = { [weak self] state in
-            self?.handlePiPState(state)
-        }
-        pip.onOutcome = { [weak self] outcome, availability in
-            self?.logPiPOutcome(outcome, availability: availability)
+        tabs.onAnyChange = { [weak self] in
+            self?.objectWillChange.send()
         }
         session.onDiagnostic = { [weak self] severity, code, message, metadata in
             self?.diagnostics.record(
@@ -624,7 +668,7 @@ final class AppCoordinator: ObservableObject {
         settings.$enableInPagePiPButton
             .dropFirst()
             .sink { [weak self] enabled in
-                self?.media.setInPageControlEnabled(enabled)
+                self?.tabs.sessions.forEach { $0.mediaDetector.setInPageControlEnabled(enabled) }
                 self?.diagnostics.info(
                     .app,
                     "settings.inpage_pip",
@@ -643,9 +687,20 @@ final class AppCoordinator: ObservableObject {
         settings.$allowLocalTestPages
             .dropFirst()
             .sink { [weak self] enabled in
-                self?.browser.updateLocalTestAccess(enabled: enabled)
+                self?.tabs.sessions.forEach { $0.updateLocalTestAccess(enabled: enabled) }
             }
             .store(in: &cancellables)
+    }
+
+    private func configure(_ session: BrowserSession) {
+        session.pipCoordinator.onStateChanged = { [weak self] state in
+            guard session === self?.browser else { return }
+            self?.handlePiPState(state)
+        }
+        session.pipCoordinator.onOutcome = { [weak self] outcome, availability in
+            guard session === self?.browser else { return }
+            self?.logPiPOutcome(outcome, availability: availability)
+        }
     }
 
     private func handleBrowserEvent(_ event: BrowserEvent) {

@@ -4,7 +4,7 @@ CloudFloat 是一个 iOS 原生（Swift + SwiftUI + WKWebView）的云游戏画�
 
 > **当前状态（2026-11-16）**
 > - 源码、工程配置、测试页与开发文档已实现；模拟器构建成功。
-> - 自动化测试 **113 项全部通过**（状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、导航白名单、恢复策略、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - 自动化测试 **130 项全部通过**（状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、导航白名单、恢复策略、隐私脱敏、诊断导出、本地 HTTP 服务）。
 > - 真机 iPhone 15 Pro 已完成：本地视频 PiP 5 分钟（T01 PASS）、官方登录并进入云游戏（T02 PASS）、登录跨升级保持（T09 PASS）、游戏自动战斗实时 PiP（T03 PASS，单次约 5 分钟）。
 > - **T04/T05 FAIL**：后台无输入约 15 分钟后，游戏自身提示“长时间未操作游戏，已中断连接，错误码 -1022”，PiP 结束。App 没有也不应绕过服务器空闲超时。
 > - 因此，本仓库**不能**作为“可后台挂机”的交付结论，只能交付浏览器 + 画中画能力探测 + 会话诊断原型。
@@ -20,13 +20,16 @@ CloudFloat 是一个 iOS 原生（Swift + SwiftUI + WKWebView）的云游戏画�
 
 ## 它做什么
 
-- 用稳定的 `WKWebView` 打开 `https://sr.mihoyo.com/cloud/`，保留系统移动端 User-Agent、Cookie 与网页输入。
+- 用多个独立 `WKWebView` 标签页浏览任意网址；地址栏支持输入/补全 HTTPS，不内置、不写死任何站点。
+- 提供书签（用户自建、持久化）、前进/后退、刷新/停止、标签切换等 Safari 式基础浏览功能。
+- 真机登录、Cookie、网页输入由官方网页自身处理；系统移动端 User-Agent 保持不变。
 - 页面加载后向每个 frame 注入只读媒体探测脚本，观测 `video`、`canvas`、`iframe`、`readyState`、PiP 能力与媒体事件；不采集媒体 URL。
 - 优先使用网页 HTML5 PiP；当原生 `evaluateJavaScript` 缺少用户激活时，提供页面内轻量 PiP 控件并如实提示。
 - 用独立状态机区分：PiP 浮窗是否显示、媒体是否仍有播放观测、服务器端会话是否持续（后者始终显示 UNVERIFIED）。
 - 前台低频轮询 + 事件驱动；进入后台停止轮询，不刷新页面，不自动重连，不重复启动云游戏会话。
 - 诊断日志在内存中生成，导出前脱敏；无账号密码、Cookie 值或完整带 token URL。
 - 离线测试页：原生视频、仅 Canvas、跨域 iframe、登录弹窗样例；Debug 构建可启动仅回环的本地 HTTP 服务。
+- 云游戏小窗 PiP 仍保留，但不再绑定特定站点；只要当前网页视频支持 HTML5 PiP 即可使用。
 
 ## 它不做什么
 
@@ -82,7 +85,7 @@ xcodebuild \
 最近一次结果（2026-11-16，iPhone 17 Pro / iOS 26.3.1 模拟器）：
 
 ```text
-Executed 113 tests, with 0 failures (0 unexpected)
+Executed 130 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -122,7 +125,7 @@ CloudFloat/
 │   ├── UI/                         # Home/Game/PiPStatus/Diagnostics/Settings/Capability
 │   ├── Developer/                  # 回环测试服务器、测试页实验室
 │   ├── TestPages/                  # 离线 HTML/视频测试资源
-│   └── Tests/                      # 113 项自动化测试
+│   └── Tests/                      # 130 项自动化测试
 ├── docs/                           # 可行性、架构、QA、限制、报告、隐私与审核风险
 └── artifacts/                      # 构建/截图原始证据（非源码）
 ```

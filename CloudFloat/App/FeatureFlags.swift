@@ -7,7 +7,6 @@ import Foundation
 /// not claim a native PiP media pipeline.
 enum FeatureFlags {
     static let appDisplayName = "CloudFloat"
-    static let gameURLString = "https://sr.mihoyo.com/cloud/"
     static let minimumIOSVersion = "17.0"
 
     static var isDebugBuild: Bool {

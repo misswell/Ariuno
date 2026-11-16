@@ -10,6 +10,8 @@ struct GameView: View {
     @State private var showExitConfirmation = false
     @State private var isPiPRequestInFlight = false
     @State private var activeAlert: GameAlert?
+    @State private var addressText = ""
+    @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -24,7 +26,7 @@ struct GameView: View {
 
             VStack(spacing: 8) {
                 if toolbarVisible {
-                    toolbar
+                    addressBar
                         .padding(.horizontal, 12)
                         .transition(.move(edge: .top).combined(with: .opacity))
                 } else {
@@ -32,12 +34,15 @@ struct GameView: View {
                 }
                 Spacer(minLength: 0)
                 sessionBanner
+                bottomBar
+                    .padding(.horizontal, 12)
             }
             .padding(.top, 6)
             .padding(.bottom, 8)
         }
         .statusBarHidden(coordinator.route == .game)
         .onAppear {
+            syncAddressText()
             if coordinator.settings.autoHideToolbar {
                 scheduleAutoHide()
             }
@@ -50,7 +55,14 @@ struct GameView: View {
             withAnimation(.easeInOut(duration: 0.18)) {
                 toolbarVisible = true
             }
+            syncAddressText()
             scheduleAutoHide()
+        }
+        .onChange(of: coordinator.browser.currentURL?.absoluteString) { _, _ in
+            syncAddressText()
+        }
+        .onChange(of: coordinator.tabs.activeSessionID) { _, _ in
+            syncAddressText()
         }
         .onChange(of: coordinator.settings.autoHideToolbar) { _, _ in
             scheduleAutoHide()
@@ -85,7 +97,7 @@ struct GameView: View {
             }
             Button("取消", role: .cancel) {}
         } message: {
-            Text("将停止当前网页会话并关闭画中画。登录 Cookie 与网站数据会保留，除非你在设置中清除。")
+            Text("将停止当前标签页并关闭画中画。登录 Cookie 与网站数据会保留，除非你在设置中清除。")
         }
         .sheet(item: $activeSheet, onDismiss: handleSheetDismiss) { sheet in
             switch sheet {
@@ -97,76 +109,78 @@ struct GameView: View {
                 PiPCapabilityView()
             case .status:
                 PiPStatusSheet()
+            case .tabs:
+                TabsView()
+            case .bookmarks:
+                BookmarksView(canAddCurrentPage: true)
             case .popup(let popup):
                 PopupWebViewSheet(popup: popup)
             }
         }
     }
 
-    // MARK: - Toolbar
+    // MARK: - Address bar
 
-    private var toolbar: some View {
+    private var addressBar: some View {
         VStack(spacing: 6) {
-            HStack(spacing: 10) {
-                Button {
-                    coordinator.backToHome()
-                } label: {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 15, weight: .semibold))
-                        .frame(width: 34, height: 34)
-                        .background(Color.primary.opacity(0.08), in: Circle())
+            HStack(spacing: 8) {
+                navigationButton(
+                    systemName: "chevron.left",
+                    accessibilityLabel: "后退",
+                    disabled: !coordinator.browser.canGoBack
+                ) {
+                    coordinator.browser.goBack()
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel("返回首页，保留游戏会话")
+                navigationButton(
+                    systemName: "chevron.right",
+                    accessibilityLabel: "前进",
+                    disabled: !coordinator.browser.canGoForward
+                ) {
+                    coordinator.browser.goForward()
+                }
 
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(pageTitleText)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .lineLimit(1)
-                    Text(statusLine)
-                        .font(.system(size: 10, weight: .medium))
+                HStack(spacing: 6) {
+                    Image(systemName: securityIcon)
+                        .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    TextField(
+                        "搜索或输入网址",
+                        text: $addressText
+                    )
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .focused($addressFieldFocused)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .onSubmit {
+                        openAddress()
+                    }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 7)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(maxWidth: .infinity)
 
-                pipButton
-
-                Menu {
-                    Button {
-                        activeSheet = .status
-                    } label: {
-                        Label("会话状态", systemImage: "square.stack.3d.up")
+                navigationButton(
+                    systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise",
+                    accessibilityLabel: coordinator.browser.isLoading ? "停止加载" : "重新加载",
+                    disabled: false
+                ) {
+                    if coordinator.browser.isLoading {
+                        coordinator.browser.stop()
+                    } else {
+                        coordinator.browser.reload()
                     }
-                    Button {
-                        activeSheet = .capability
-                    } label: {
-                        Label("画中画能力检测", systemImage: "pip")
-                    }
-                    Button {
-                        activeSheet = .diagnostics
-                    } label: {
-                        Label("诊断", systemImage: "waveform.path.ecg")
-                    }
-                    Divider()
-                    Button {
-                        coordinator.requestUserReload()
-                    } label: {
-                        Label("重新加载页面", systemImage: "arrow.clockwise")
-                    }
-                    Button(role: .destructive) {
-                        showExitConfirmation = true
-                    } label: {
-                        Label("退出会话", systemImage: "xmark.circle")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.system(size: 17, weight: .semibold))
-                        .frame(width: 34, height: 34)
-                        .background(Color.primary.opacity(0.08), in: Circle())
                 }
-                .accessibilityLabel("更多操作")
+                navigationButton(
+                    systemName: "square.on.square",
+                    accessibilityLabel: "标签页",
+                    disabled: false
+                ) {
+                    activeSheet = .tabs
+                }
             }
 
             if !pipAvailability.isAvailable, !coordinator.session.pipVisible,
@@ -196,43 +210,113 @@ struct GameView: View {
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
     }
 
-    private var pipButton: some View {
-        Button {
-            if coordinator.session.pipVisible {
-                coordinator.exitPictureInPicture()
-            } else {
-                Task { @MainActor in
-                    await attemptPiP()
-                }
+    private var bottomBar: some View {
+        HStack(spacing: 20) {
+            Button {
+                guard let url = coordinator.browser.currentURL,
+                      url.absoluteString != "about:blank" else { return }
+                coordinator.bookmarks.add(
+                    title: coordinator.browser.pageTitle,
+                    url: url
+                )
+                coordinator.showToast("已添加书签", .info)
+            } label: {
+                Image(systemName: "bookmark")
+                    .font(.system(size: 16, weight: .semibold))
             }
-        } label: {
-            HStack(spacing: 4) {
-                if isPiPRequestInFlight {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(.primary)
-                } else {
-                    Image(systemName: coordinator.session.pipVisible ? "pip.fill" : "pip")
-                        .font(.system(size: 11, weight: .semibold))
-                }
-                Text(coordinator.session.pipVisible ? "退出" : "画中画")
-                    .font(.system(size: 10, weight: .semibold))
+            .buttonStyle(.plain)
+            .disabled(coordinator.browser.isShowingBlankPage)
+            .accessibilityLabel("添加书签")
+
+            pipButton
+
+            Spacer(minLength: 0)
+
+            Button {
+                activeSheet = .bookmarks
+            } label: {
+                Image(systemName: "book")
+                    .font(.system(size: 16, weight: .semibold))
             }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 7)
-            .background(
-                coordinator.session.pipVisible
-                    ? Color.green.opacity(0.20)
-                    : Color.accentColor.opacity(0.16),
-                in: Capsule()
-            )
+            .buttonStyle(.plain)
+            .accessibilityLabel("书签")
+
+            Button {
+                activeSheet = .tabs
+            } label: {
+                Image(systemName: "square.on.square")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("标签页")
+
+            Menu {
+                Button {
+                    activeSheet = .status
+                } label: {
+                    Label("会话状态", systemImage: "square.stack.3d.up")
+                }
+                Button {
+                    activeSheet = .capability
+                } label: {
+                    Label("画中画能力检测", systemImage: "pip")
+                }
+                Button {
+                    activeSheet = .diagnostics
+                } label: {
+                    Label("诊断", systemImage: "waveform.path.ecg")
+                }
+                Divider()
+                Button {
+                    coordinator.requestUserReload()
+                } label: {
+                    Label("重新加载页面", systemImage: "arrow.clockwise")
+                }
+                Button(role: .destructive) {
+                    showExitConfirmation = true
+                } label: {
+                    Label("退出会话", systemImage: "xmark.circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .accessibilityLabel("更多操作")
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+        .padding(.bottom, 2)
+    }
+
+    private var securityIcon: String {
+        if let url = coordinator.browser.currentURL, url.scheme?.lowercased() == "https" {
+            return "lock.fill"
+        }
+        return "globe"
+    }
+
+    private func navigationButton(
+        systemName: String,
+        accessibilityLabel: String,
+        disabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 14, weight: .semibold))
+                .frame(width: 32, height: 32)
+                .background(Color.primary.opacity(0.08), in: Circle())
         }
         .buttonStyle(.plain)
-        .disabled(!coordinator.session.pipVisible && (!pipAvailability.isAvailable || isPiPRequestInFlight))
-        .opacity(
-            !coordinator.session.pipVisible && !pipAvailability.isAvailable ? 0.45 : 1
-        )
-        .accessibilityLabel(coordinator.session.pipVisible ? "退出画中画" : "进入系统画中画")
+        .disabled(disabled)
+        .opacity(disabled ? 0.4 : 1)
+        .accessibilityLabel(accessibilityLabel)
     }
 
     private var toolbarHandle: some View {
@@ -305,10 +389,10 @@ struct GameView: View {
             ProgressView()
                 .controlSize(.large)
                 .tint(.white)
-            Text("正在加载游戏页面")
+            Text("正在加载页面")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("登录与游戏均在官方网页内完成\nCloudFloat 不接触账号密码或令牌")
+            Text("登录与网页内容均在官方网站内完成\nCloudFloat 不接触账号密码或令牌")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.72))
@@ -316,6 +400,47 @@ struct GameView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.black.opacity(0.55))
         .allowsHitTesting(false)
+    }
+
+    // MARK: - PiP
+
+    private var pipButton: some View {
+        Button {
+            if coordinator.session.pipVisible {
+                coordinator.exitPictureInPicture()
+            } else {
+                Task { @MainActor in
+                    await attemptPiP()
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                if isPiPRequestInFlight {
+                    ProgressView()
+                        .controlSize(.mini)
+                        .tint(.primary)
+                } else {
+                    Image(systemName: coordinator.session.pipVisible ? "pip.fill" : "pip")
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Text(coordinator.session.pipVisible ? "退出" : "PiP")
+                    .font(.system(size: 11, weight: .semibold))
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(
+                coordinator.session.pipVisible
+                    ? Color.green.opacity(0.20)
+                    : Color.accentColor.opacity(0.16),
+                in: Capsule()
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!coordinator.session.pipVisible && (!pipAvailability.isAvailable || isPiPRequestInFlight))
+        .opacity(
+            !coordinator.session.pipVisible && !pipAvailability.isAvailable ? 0.45 : 1
+        )
+        .accessibilityLabel(coordinator.session.pipVisible ? "退出画中画" : "进入系统画中画")
     }
 
     // MARK: - Actions
@@ -339,6 +464,17 @@ struct GameView: View {
             }
             activeAlert = .pipFailure(message)
         }
+    }
+
+    private func openAddress() {
+        addressFieldFocused = false
+        coordinator.openAddressText(addressText)
+        syncAddressText()
+    }
+
+    private func syncAddressText() {
+        guard !addressFieldFocused else { return }
+        addressText = coordinator.browser.currentURL?.absoluteString ?? ""
     }
 
     private func scheduleAutoHide() {
@@ -389,37 +525,22 @@ struct GameView: View {
         }
     }
 
+    private func handleSheetDismiss() {
+        if coordinator.browser.activePopup != nil {
+            coordinator.browser.closePopup()
+        }
+    }
+
     // MARK: - Derived state
 
     private var pipAvailability: PiPAvailability {
         coordinator.pip.availability
     }
 
-    /// Loading UI must disappear as soon as the probe sees the document, even if the cloud
-    /// game keeps a long-lived navigation/stream request pending. Otherwise a live game can
-    /// remain dimmed and blocked by the spinner indefinitely.
     private var shouldShowLoadingOverlay: Bool {
         coordinator.browser.isLoading
             && !coordinator.browser.hasCommittedPage
             && coordinator.media.lastSnapshotReceivedAt == nil
-    }
-
-    private var pageTitleText: String {
-        let title = coordinator.browser.pageTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !title.isEmpty {
-            return title
-        }
-        return coordinator.browser.currentHost ?? "官方云游戏"
-    }
-
-    private var statusLine: String {
-        "\(coordinator.session.state.displayName) · \(coordinator.media.aggregate.summaryText)"
-    }
-
-    private func handleSheetDismiss() {
-        if coordinator.browser.activePopup != nil {
-            coordinator.browser.closePopup()
-        }
     }
 }
 
@@ -427,6 +548,8 @@ private enum GameSheet: Identifiable {
     case diagnostics
     case capability
     case status
+    case tabs
+    case bookmarks
     case popup(ActivePopup)
 
     var id: String {
@@ -434,6 +557,8 @@ private enum GameSheet: Identifiable {
         case .diagnostics: return "diagnostics"
         case .capability: return "capability"
         case .status: return "status"
+        case .tabs: return "tabs"
+        case .bookmarks: return "bookmarks"
         case .popup(let popup): return "popup-\(popup.id.uuidString)"
         }
     }

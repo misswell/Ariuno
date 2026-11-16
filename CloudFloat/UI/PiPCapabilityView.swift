@@ -235,11 +235,11 @@ struct PiPCapabilityView: View {
     private func actions(_ report: PiPCapabilityReport) -> some View {
         VStack(spacing: 10) {
             Button {
-                coordinator.continueGame()
+                coordinator.continueBrowsing()
                 dismiss()
             } label: {
                 Label(
-                    coordinator.browser.isShowingBlankPage ? "打开官方云游戏页面" : "进入游戏页面",
+                    coordinator.browser.isShowingBlankPage ? "打开浏览器" : "继续浏览当前页面",
                     systemImage: "play.rectangle.fill"
                 )
                 .frame(maxWidth: .infinity)

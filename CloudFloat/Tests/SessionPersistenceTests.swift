@@ -102,7 +102,7 @@ final class SessionPersistenceTests: XCTestCase {
 
         coordinator.backToHome()
         try await Task.sleep(nanoseconds: 200_000_000)
-        coordinator.continueGame()
+        coordinator.continueBrowsing()
         try await Task.sleep(nanoseconds: 400_000_000)
 
         XCTAssertEqual(ObjectIdentifier(coordinator.browser.webView), webViewIdentifier)

@@ -29,7 +29,7 @@ xcodebuild \
   test
 ```
 
-结果：`Executed 113 tests, with 0 failures`，`** TEST SUCCEEDED **`。
+结果：`Executed 130 tests, with 0 failures`，`** TEST SUCCEEDED **`。
 
 覆盖（详见 [qa-matrix.md](qa-matrix.md)）：
 

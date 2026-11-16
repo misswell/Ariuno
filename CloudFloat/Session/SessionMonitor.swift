@@ -278,6 +278,20 @@ final class SessionMonitor: ObservableObject {
         }
     }
 
+    /// Resets accumulated media/session observations when the user switches browser tabs.
+    /// Navigation events still drive the state machine afterwards.
+    func resetForTabSwitch(hasLoadedPage: Bool) {
+        stopStallWatchdog()
+        machine = SessionStateMachine()
+        if hasLoadedPage {
+            _ = machine.handle(.loadFinished, at: now())
+        } else {
+            _ = machine.handle(.beginLoad, at: now())
+        }
+        syncFromMachine()
+        lastEventSummary = hasLoadedPage ? "切换到已加载标签页" : "切换到空白标签页"
+    }
+
     func setMediaProbePolling(_ polling: Bool) {
         mediaProbePolling = polling
     }

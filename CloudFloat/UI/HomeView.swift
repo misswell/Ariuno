@@ -3,14 +3,16 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var settings: AppSettings
+    @State private var addressText = ""
     @State private var showCapability = false
+    @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     header
-                    continueCard
+                    addressCard
                     VStack(spacing: 12) {
                         Button {
                             showCapability = true
@@ -103,77 +105,110 @@ struct HomeView: View {
         }
     }
 
-    private var continueCard: some View {
-        Button {
-            coordinator.continueGame()
-        } label: {
-            HStack(spacing: 16) {
-                ZStack {
-                    Circle()
-                        .fill(.white.opacity(0.18))
-                        .frame(width: 52, height: 52)
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 20, weight: .bold))
-                        .foregroundStyle(.white)
-                        .offset(x: 1)
+    private var addressCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "globe")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.tint)
+                TextField("搜索或输入网址", text: $addressText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .focused($addressFieldFocused)
+                    .font(.system(size: 15, weight: .medium))
+                    .onSubmit(openAddress)
+                Button {
+                    openAddress()
+                } label: {
+                    Image(systemName: "arrow.up.right")
+                        .font(.system(size: 14, weight: .semibold))
                 }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("继续游戏")
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(.white)
-                    Text(continueSubtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.white.opacity(0.82))
-                        .multilineTextAlignment(.leading)
-                }
-                Spacer()
-                Image(systemName: "arrow.up.right")
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.8))
+                .buttonStyle(.bordered)
+                .disabled(addressText.trimmingCharacters(in: .whitespaces).isEmpty)
             }
-            .padding(20)
-            .background(
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.16, green: 0.45, blue: 0.95),
-                        Color(red: 0.33, green: 0.22, blue: 0.85)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: RoundedRectangle(cornerRadius: 24, style: .continuous)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(.white.opacity(0.16), lineWidth: 1)
-            )
-            .shadow(color: Color(red: 0.18, green: 0.30, blue: 0.80).opacity(0.32), radius: 18, y: 10)
+            .padding(12)
+            .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            Button {
+                coordinator.continueBrowsing()
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .bold))
+                    Text(coordinator.hasStartedBrowser ? "继续浏览" : "开始浏览")
+                        .font(.subheadline.weight(.semibold))
+                    Spacer()
+                    if coordinator.session.pipVisible {
+                        Label("PiP", systemImage: "pip.fill")
+                            .font(.caption2.weight(.semibold))
+                    }
+                }
+                .padding(.vertical, 12)
+                .padding(.horizontal, 16)
+                .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            if !coordinator.bookmarks.bookmarks.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("书签")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                    ForEach(coordinator.bookmarks.bookmarks.prefix(5)) { bookmark in
+                        Button {
+                            if let url = bookmark.url {
+                                coordinator.openURL(url)
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "bookmark.fill")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.tint)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(bookmark.title)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                    Text(bookmark.urlString)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                            }
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(12)
+                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityHint("打开官方云游戏网页；已有会话时直接返回游戏")
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+        )
     }
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text("非官方客户端")
+            Text("非官方浏览器")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("登录、游玩与云游戏会话均在官方网页内完成。CloudFloat 不保存账号密码或令牌，也不宣称已经验证后台挂机成功。")
+            Text("任何网页都可浏览；云游戏画中画是可选能力，需由网页视频自身支持。CloudFloat 不保存账号密码或令牌，也不宣称已经验证后台挂机成功。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 6)
-    }
-
-    private var continueSubtitle: String {
-        if coordinator.hasStartedBrowser {
-            if coordinator.session.pipVisible {
-                return "画中画显示中，点击返回游戏页面"
-            }
-            return "\(coordinator.session.state.displayName) · 保留当前网页会话"
-        }
-        return "打开官方云游戏网页，登录后开始"
     }
 
     private var capabilityBadge: String? {
@@ -203,6 +238,11 @@ struct HomeView: View {
             startPoint: .top,
             endPoint: .bottomTrailing
         )
+    }
+
+    private func openAddress() {
+        addressFieldFocused = false
+        coordinator.openAddressText(addressText)
     }
 }
 

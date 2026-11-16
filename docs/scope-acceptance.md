@@ -14,7 +14,7 @@
 - 媒体/PiP 能力探测：每 frame 探测、HTML5 video/Canvas/iframe 分类、PiP 入口与失败原因反馈；
 - 真机已验证的能力：T01 本地网页视频 PiP 5 分钟；T02 官方登录/进入云游戏；T03 游戏实时 PiP（单次约 5 分钟）；T09 登录跨 App 升级保持；
 - 会话状态机、三层 UNVERIFIED 展示、诊断导出、用户确认恢复；
-- 113 项自动化测试与可构建的 Debug/Release 工程；
+- 130 项自动化测试与可构建的 Debug/Release 工程；
 - 完整文档与脱敏证据。
 
 ## 2. 明确记录为 FAIL 的项目

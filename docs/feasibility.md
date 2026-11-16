@@ -48,7 +48,7 @@ xcodebuild -project CloudFloat.xcodeproj -scheme CloudFloat -configuration Debug
   -derivedDataPath build/DerivedData test
 ```
 
-结果：**113 tests, 0 failures, TEST SUCCEEDED**（2026-11-16）。测试覆盖：
+结果：**130 tests, 0 failures, TEST SUCCEEDED**（2026-11-16）。测试覆盖：
 
 - `MediaProbeIntegrationTests`：本地 `native-video.html` 的 WKWebView 脚本消息、媒体播放事件、Canvas 分类、跨域 iframe 独立上报、禁用页面内控件；
 - `LoginPopupIntegrationTests`：本地登录弹窗样例能打开 Popup WKWebView，关闭弹窗不重建/刷新主 WebView；
@@ -350,4 +350,4 @@ curl -sS https://sr.mihoyo.com/cloud/ -o /tmp/cf_probe.html
 | 真机锁屏 | [idle-locked-30min.png](images/device/idle-locked-30min.png) | 30 分钟节点设备锁屏、无 PiP |
 | 真机登录保持 | [login-persisted-real-device.png](images/device/login-persisted-real-device.png) | 重装后未要求重新登录；已裁掉账号 ID |
 | 真机验证总记录 | [real-device-verification.md](real-device-verification.md) | 设备、步骤、T01/T02/T03/T09、T04/T05 FAIL |
-| 测试日志 | `build/test-final.log`（本地生成） | 113 tests, 0 failures |
+| 测试日志 | `build/test-final.log`（本地生成） | 130 tests, 0 failures |

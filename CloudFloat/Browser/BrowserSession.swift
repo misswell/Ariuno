@@ -1,3 +1,5 @@
+import AVKit
+import Combine
 import Foundation
 import UIKit
 import WebKit
@@ -44,15 +46,21 @@ struct ActivePopup: Identifiable {
 /// stable owner (AppCoordinator); SwiftUI view refreshes and PiP transitions must never
 /// recreate it. It is never reloaded merely because the app backgrounds.
 @MainActor
-final class BrowserSession: NSObject, ObservableObject {
-    static let gameURL = URL(string: FeatureFlags.gameURLString)!
-
+final class BrowserSession: NSObject, ObservableObject, Identifiable {
+    let id = UUID()
     let webView: WKWebView
     let configuration: WKWebViewConfiguration
     let mediaDetector: MediaDetector
     let cookieStore: CookieStore
+    let pipCoordinator: WebPictureInPictureCoordinator
     private(set) var navigationPolicy: NavigationPolicy
 
+    /// Lets tab managers and coordinators mirror session changes upward.
+    var onAnyChange: (() -> Void)?
+
+    @Published private(set) var currentURL: URL?
+    @Published private(set) var canGoBack = false
+    @Published private(set) var canGoForward = false
     @Published private(set) var isLoading = false
     @Published private(set) var hasCommittedPage = false
     @Published private(set) var currentHost: String?
@@ -71,6 +79,9 @@ final class BrowserSession: NSObject, ObservableObject {
     private var popupUIDelegate: PopupUIDelegate?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
+    private var navigationObservation: NSKeyValueObservation?
+    private var backForwardObservation: NSKeyValueObservation?
+    private var objectWillChangeObservation: AnyCancellable?
     private let now: () -> Date
     /// Suppresses delegate-driven session events while the page is being torn down with
     /// about:blank (user exit) or during explicit teardown.
@@ -105,6 +116,10 @@ final class BrowserSession: NSObject, ObservableObject {
         )
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         self.cookieStore = CookieStore(dataStore: configuration.websiteDataStore, now: now)
+        self.pipCoordinator = WebPictureInPictureCoordinator(
+            mediaDetector: mediaDetector,
+            configurationAllowsPiP: { configuration.allowsPictureInPictureMediaPlayback }
+        )
         self.navigationPolicy = navigationPolicy
 
         super.init()
@@ -128,6 +143,9 @@ final class BrowserSession: NSObject, ObservableObject {
         mediaDetector.attach(webView: webView)
         cookieStore.start()
         observeWebView()
+        objectWillChangeObservation = objectWillChange.sink { [weak self] _ in
+            self?.onAnyChange?()
+        }
     }
 
     var pictureInPictureAllowedByConfiguration: Bool {
@@ -163,54 +181,61 @@ final class BrowserSession: NSObject, ObservableObject {
         sessionEnded || webView.url == nil || webView.url?.absoluteString == "about:blank"
     }
 
-    // MARK: - Loading
+    // MARK: - Navigation
 
-    /// Loads the official entry point only when no page is currently loaded. Bit-for-bit the
-    /// same web view is reused for the lifetime of the session.
-    func loadGameIfNeeded() {
-        guard isShowingBlankPage else { return }
-        loadGame()
-    }
-
-    func loadGame() {
-        guard isShowingBlankPage, !hasRequestedInitialLoad else { return }
-        hasRequestedInitialLoad = true
+    /// Loads an arbitrary URL. NavigationPolicy still gates the navigation; no URL is
+    /// hard-coded into the browser session.
+    func loadURL(_ url: URL) {
         sessionEnded = false
         suppressNavigationEvents = false
+        hasRequestedInitialLoad = true
         webView.stopLoading()
+        closePopup()
+        pendingExternalURL = nil
         lastNavigationFailure = nil
         loadGeneration += 1
-        mediaDetector.clearFrames(reason: "initial-load")
+        mediaDetector.clearFrames(reason: "user-navigation")
         webView.load(URLRequest(
-            url: Self.gameURL,
+            url: url,
             cachePolicy: .useProtocolCachePolicy,
             timeoutInterval: 60
         ))
     }
 
-    /// User-confirmed recovery. Never called automatically by the app.
-    func reloadForRecovery() {
-        hasRequestedInitialLoad = true
+    func reload() {
+        guard let url = webView.url else { return }
         sessionEnded = false
         suppressNavigationEvents = false
+        hasRequestedInitialLoad = true
         closePopup()
         pendingExternalURL = nil
         lastNavigationFailure = nil
         loadGeneration += 1
-        mediaDetector.clearFrames(reason: "user-confirmed-reload")
-        if isShowingBlankPage {
-            webView.load(URLRequest(
-                url: Self.gameURL,
-                cachePolicy: .useProtocolCachePolicy,
-                timeoutInterval: 60
-            ))
-        } else {
-            webView.reload()
-        }
+        mediaDetector.clearFrames(reason: "user-reload")
+        webView.reload()
+        _ = url
     }
 
-    /// Ends the in-app game session but preserves WebKit website data (login cookies).
-    func endSession() {
+    func stop() {
+        webView.stopLoading()
+    }
+
+    @discardableResult
+    func goBack() -> Bool {
+        guard canGoBack else { return false }
+        suppressNavigationEvents = false
+        return webView.goBack() != nil
+    }
+
+    @discardableResult
+    func goForward() -> Bool {
+        guard canGoForward else { return false }
+        suppressNavigationEvents = false
+        return webView.goForward() != nil
+    }
+
+    /// Keeps the API surface browser-like while preserving WebKit website data.
+    func resetToBlank() {
         suppressNavigationEvents = true
         sessionEnded = true
         hasRequestedInitialLoad = false
@@ -220,6 +245,7 @@ final class BrowserSession: NSObject, ObservableObject {
         lastNavigationFailure = nil
         hasCommittedPage = false
         isLoading = false
+        currentURL = nil
         currentHost = nil
         pageTitle = ""
         loadGeneration += 1
@@ -393,6 +419,10 @@ final class BrowserSession: NSObject, ObservableObject {
         webView.uiDelegate = nil
         titleObservation = nil
         urlObservation = nil
+        navigationObservation = nil
+        backForwardObservation = nil
+        objectWillChangeObservation = nil
+        onAnyChange = nil
     }
 
     // MARK: - KVO
@@ -407,9 +437,24 @@ final class BrowserSession: NSObject, ObservableObject {
             }
         }
         urlObservation = webView.observe(\.url, options: [.new]) { [weak self] webView, _ in
-            let host = webView.url?.host
+            let url = webView.url
+            let host = url?.host
             Task { @MainActor in
-                self?.currentHost = host
+                guard let self else { return }
+                self.currentURL = url
+                self.currentHost = host
+            }
+        }
+        navigationObservation = webView.observe(\.canGoBack, options: [.new]) { [weak self] webView, _ in
+            let value = webView.canGoBack
+            Task { @MainActor in
+                self?.canGoBack = value
+            }
+        }
+        backForwardObservation = webView.observe(\.canGoForward, options: [.new]) { [weak self] webView, _ in
+            let value = webView.canGoForward
+            Task { @MainActor in
+                self?.canGoForward = value
             }
         }
     }

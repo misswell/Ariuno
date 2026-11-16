@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 113 tests, with 0 failures (0 unexpected)
+Executed 130 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -39,6 +39,9 @@ Executed 113 tests, with 0 failures (0 unexpected)
 |---|---:|---|
 | BrowserNavigationTests | 15 | 官方域名/子域/防伪后缀、第三方认证、外部 URL、危险 scheme、TLS 分类、子 frame |
 | BrowserSessionTests | 7 | M1 配置、UA 不伪造、探测脚本全 frame 注入、设置开关、单 WebView |
+| BrowserTabManagerTests | 6 | 多标签创建/切换/关闭、事件转发 |
+| BookmarkStoreTests | 5 | 书签持久化、去重、删除、URL 匹配 |
+| URLInputParserTests | 6 | 地址栏解析、HTTPS 补全、危险 scheme 拒绝 |
 | DiagnosticsStoreTests | 8 | 容量、脱敏写入、严重级、导出 JSON/文本/临时文件 |
 | GameSessionStateTests | 16 | 加载、PiP 开关、前后台、网络、停滞、崩溃、恢复、退出、三层验证 |
 | LocalHTTPServerTests | 7 | 回环、MIME、Range、404、路径穿越、双端口、解析器 |
@@ -50,7 +53,7 @@ Executed 113 tests, with 0 failures (0 unexpected)
 | SessionPersistenceTests | 2 | T09：跨 BrowserSession 的 WebKit Cookie 持久化；T11：SwiftUI host 重建后同一 WebView/JS 状态 |
 | SessionRecoveryTests | 12 | 无自动重载、用户确认、冷却、上限、窗口清理 |
 | WebPictureInPictureTests | 6 | 平台/配置/探测门控、enter/leave 状态、M4 不可行 |
-| **合计** | **113** | |
+| **合计** | **130** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
 
@@ -151,7 +154,7 @@ Executed 113 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：113/113 通过（当前）。
+- 自动化：130/130 通过（当前）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

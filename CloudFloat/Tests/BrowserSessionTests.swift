@@ -67,7 +67,7 @@ final class BrowserSessionTests: XCTestCase {
         defer { session.tearDown() }
         let identifier = ObjectIdentifier(session.webView)
 
-        session.endSession()
+        session.resetToBlank()
         XCTAssertTrue(session.isShowingBlankPage)
         XCTAssertFalse(session.hasLoadedPage)
         XCTAssertEqual(ObjectIdentifier(session.webView), identifier)

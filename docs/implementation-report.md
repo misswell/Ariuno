@@ -10,12 +10,12 @@
 | 里程碑 | 状态 | 证据 |
 |---|---|---|
 | M0 技术预研 | **真机部分通过 / 后台挂机 FAIL** | 真机登录、进入游戏、实时 PiP、自动战斗推进已验证；约 15 分钟无输入后服务器断开（-1022），T04/T05 FAIL。见 [feasibility.md](feasibility.md)、[real-device-verification.md](real-device-verification.md) |
-| M1 稳定浏览器内核 | **实现并自动化验证** | 单 WebView、M1 配置、UA 不伪造、Cookie 持久化、导航策略、外部 URL、弹窗、TLS 默认处理/拒绝弃用 TLS、崩溃/失败回调。`BrowserSessionTests`/`BrowserNavigationTests`/`LoginPopupIntegrationTests` |
+| M1 稳定浏览器内核 | **实现并自动化验证** | 多标签 WebView、M1 配置、UA 不伪造、Cookie 持久化、导航策略、外部 URL、弹窗、TLS 默认处理/拒绝弃用 TLS、崩溃/失败回调。`BrowserSessionTests`/`BrowserTabManagerTests`/`BrowserNavigationTests`/`LoginPopupIntegrationTests` |
 | M2 媒体探测与 HTML5 PiP | **实现；真机实时 PiP 单次通过** | 全 frame 注入 `MediaProbe.js`；video/canvas/iframe/readyState/PiP/事件；`MediaKind`；页面内 PiP 控件；原生触发失败映射；真机本地视频与游戏自动战斗 PiP 实测。`MediaProbeTests`/`MediaProbeIntegrationTests`/`WebPictureInPictureTests` |
 | M3 后台会话验证与状态机 | **实现；真机后台 FAIL（服务器空闲超时）** | 10 个状态、三层验证、前后台不重载、网络/崩溃事件、诊断、用户确认恢复；真机 15 分钟无输入被服务器断开（-1022），未绕过。`GameSessionStateTests`/`SessionMonitorTests`/`SessionRecoveryTests` |
 | M4 原生媒体扩展 | **Not Feasible（仅接口）** | `NativePictureInPictureCoordinator` 固定不可用；无私有 API/屏幕抓取/伪后台 |
-| M5 产品界面 | **实现；模拟器视觉检查** | 首页四入口、GameView、自动隐藏工具栏、PiP 原因、诊断/设置/能力检测、深浅色；截图见下 |
-| M6 测试与发布 | **自动化通过；真机 T04/T05 FAIL，发布前需按失败结论降级** | 113 项自动化测试通过；真机 T01/T02/T03/T09 PASS，T04/T05 FAIL（-1022）；30 分钟×3 未通过；不得按“后台挂机”上架。见 [qa-matrix.md](qa-matrix.md) |
+| M5 产品界面 | **实现；模拟器视觉检查** | 起始页地址栏/书签、GameView 地址栏、多标签页、书签、前进/后退/刷新、自动隐藏工具栏、PiP 原因、诊断/设置/能力检测、深浅色；截图见下 |
+| M6 测试与发布 | **自动化通过；真机 T04/T05 FAIL，发布前需按失败结论降级** | 130 项自动化测试通过；真机 T01/T02/T03/T09 PASS，T04/T05 FAIL（-1022）；30 分钟×3 未通过；不得按“后台挂机”上架。见 [qa-matrix.md](qa-matrix.md) |
 
 ## 2. 构建结果
 
@@ -60,7 +60,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 113 tests, with 0 failures (0 unexpected)
+Executed 130 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -70,6 +70,7 @@ Executed 113 tests, with 0 failures (0 unexpected)
 |---|---:|
 | BrowserNavigationTests | 15 |
 | BrowserSessionTests | 7 |
+| BrowserTabManagerTests | 6 |
 | DiagnosticsStoreTests | 8 |
 | GameSessionStateTests | 16 |
 | LocalHTTPServerTests | 7 |
@@ -78,10 +79,12 @@ Executed 113 tests, with 0 failures (0 unexpected)
 | MediaProbeTests | 14 |
 | PrivacyRedactorTests | 10 |
 | SessionMonitorTests | 9 |
+| BookmarkStoreTests | 5 |
+| URLInputParserTests | 6 |
 | SessionRecoveryTests | 12 |
 | SessionPersistenceTests | 2 |
 | WebPictureInPictureTests | 6 |
-| **合计** | **113** |
+| **合计** | **130** |
 
 高价值集成测试的实际覆盖：
 
@@ -126,7 +129,7 @@ Executed 113 tests, with 0 failures (0 unexpected)
 | 2. 模拟视频测试页与真机使用说明 | `CloudFloat/TestPages/`、[qa-matrix.md](qa-matrix.md)、[feasibility.md](feasibility.md) | ✅ 页面/说明已交付；真机 T01/T02/T03/T09 已执行 |
 | 3. `docs/feasibility.md`（真实设备、实际观察、失败截图/日志、结论） | [feasibility.md](feasibility.md)、[real-device-verification.md](real-device-verification.md) | ✅ 含 iPhone 15 Pro 真机登录/游戏/PiP、15 分钟空闲断开 -1022 失败截图与结论 |
 | 4. 浏览器入口、PiP 探测、状态机、异常恢复、诊断导出 | `Browser/`、`Media/`、`Session/`、`Diagnostics/`、`UI/` | ✅ 实现 + 自动化 |
-| 5. 测试矩阵、自动化结果、`known-limitations.md` | [qa-matrix.md](qa-matrix.md)、[known-limitations.md](known-limitations.md)、113 tests | ✅ 自动化 + 真机 T01/T02/T03/T09 PASS、T04/T05 FAIL 记录 |
+| 5. 测试矩阵、自动化结果、`known-limitations.md` | [qa-matrix.md](qa-matrix.md)、[known-limitations.md](known-limitations.md)、130 tests | ✅ 自动化 + 真机 T01/T02/T03/T09 PASS、T04/T05 FAIL 记录 |
 | 6. 隐私说明、后台音视频说明、审核风险清单 | [privacy.md](privacy.md)、[background-audio.md](background-audio.md)、[app-review-risk.md](app-review-risk.md) | ✅ 文档已交付；发布前确认待做 |
 
 ## 6. 关键设计决策
@@ -176,7 +179,7 @@ xcrun simctl launch booted com.cloudfloat.app -CFOpenTestLab
 
 ## 9. 证据与日志
 
-- `build/test-final.log`：最终 Debug 测试/构建输出（113 tests, 0 failures）。
+- `build/test-final.log`：最终 Debug 测试/构建输出（130 tests, 0 failures）。
 - `build/release-final.log`：最终 Release 构建输出（BUILD SUCCEEDED）。
 - `build/analyze.log`：静态分析输出（ANALYZE SUCCEEDED）。
 - `docs/images/`：打码/无凭证的模拟器与真机截图。
