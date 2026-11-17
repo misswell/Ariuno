@@ -322,7 +322,7 @@ struct BrowserView: View {
                 }
             }
 
-            if !pipAvailability.isAvailable, !coordinator.session.pipVisible,
+            if !isScreenshotMode, !pipAvailability.isAvailable, !coordinator.session.pipVisible,
                let reason = pipAvailability.reason {
                 HStack(spacing: 5) {
                     Image(systemName: "info.circle.fill")
@@ -476,6 +476,14 @@ struct BrowserView: View {
         )
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
         .padding(.bottom, 2)
+    }
+
+    private var isScreenshotMode: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-CFScreenshotMode")
+        #else
+        return false
+        #endif
     }
 
     private var contentInsets: EdgeInsets {

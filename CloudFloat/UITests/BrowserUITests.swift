@@ -21,6 +21,11 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(app.buttons["下载"].exists)
         XCTAssertTrue(app.staticTexts["常用网站"].exists)
         XCTAssertTrue(app.textFields["搜索或输入网址"].exists)
+
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "appstore-start"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     func testNewTabStaysOnStartPageAndTabSheetCountsIt() {
@@ -45,6 +50,11 @@ final class BrowserUITests: XCTestCase {
             NSPredicate(format: "label BEGINSWITH %@", "打开的标签页（")
         ).firstMatch
         XCTAssertTrue(header.waitForExistence(timeout: 10))
+
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "appstore-tabs"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 
     func testBookmarksAndHistorySheetsOpenFromStartPage() {
@@ -208,12 +218,17 @@ final class BrowserUITests: XCTestCase {
         let field = app.textFields["搜索或输入网址"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
-        field.typeText("example.com\n")
+        field.typeText("www.wikipedia.org\n")
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20))
         let tabsButton = app.buttons.matching(
             NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
         ).firstMatch
         XCTAssertTrue(tabsButton.waitForExistence(timeout: 15))
+
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        shot.name = "appstore-browser"
+        shot.lifetime = .keepAlways
+        add(shot)
     }
 }

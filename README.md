@@ -5,7 +5,8 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 > **发布状态（2026-11-17）**
 > - App Store Connect App 记录已创建：`Ariuno`（App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`）。
 > - TestFlight：版本 `1.0`、build `1` 已上传，处理状态 `VALID`，导出合规 `usesNonExemptEncryption=false`；内部组「内部测试」已创建，测试员待添加。
-> - App Store 版本 `1.0` 仅为记录，尚未提交审核；上架前仍需截图、隐私、审核信息等元数据。
+> - App Store 版本 `1.0` 元数据、分类、年龄分级、免费价格、175 地区供应、审核联系人/备注和 3 张截图已填写；build `1.0 (1)` 已附加。
+> - 提交审核尚差 App 隐私声明；App Store Connect 的 reviewSubmissions 接口当前返回 500/超时，Chrome 会话已过期，待恢复后提交。
 >
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；Debug/Release 构建、Release Archive 与 IPA 导出成功。

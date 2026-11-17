@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ariuno · 浏览与画中画</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: "PingFang SC", "Hiragino Sans GB", -apple-system, BlinkMacSystemFont, sans-serif; background: #f5f6fa; color: #111827; }
+    .hero { padding: 30px 22px 26px; color: #fff; background: radial-gradient(120% 130% at 10% 0%, #2563eb 0%, #172554 55%, #0b1020 100%); }
+    .badge { display: inline-block; font-size: 11px; letter-spacing: 2px; font-weight: 700; opacity: .85; border: 1px solid rgba(255,255,255,.35); border-radius: 999px; padding: 5px 10px; }
+    h1 { margin: 14px 0 8px; font-size: 34px; line-height: 1.08; letter-spacing: -0.8px; }
+    .hero p { margin: 0; font-size: 15px; line-height: 1.5; color: rgba(255,255,255,.78); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 18px 16px 6px; }
+    .card { background: #fff; border-radius: 16px; padding: 14px; box-shadow: 0 4px 14px rgba(15,23,42,.06); }
+    .card b { display: block; font-size: 15px; margin-bottom: 4px; }
+    .card span { font-size: 12px; line-height: 1.45; color: #6b7280; }
+    .video-wrap { margin: 14px 16px 24px; border-radius: 18px; overflow: hidden; background: #000; box-shadow: 0 10px 26px rgba(15,23,42,.18); }
+    video { width: 100%; display: block; aspect-ratio: 16 / 9; object-fit: cover; }
+    .foot { padding: 0 18px 28px; font-size: 12px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="badge">ARIUNO</div>
+    <h1>Browse Freely.<br>Play Along.</h1>
+    <p>轻量浏览器 · 多标签 · 书签 · 画中画<br>网页视频可以进入系统浮窗，切换标签也不中断。</p>
+  </header>
+  <main class="grid">
+    <div class="card"><b>多标签</b><span>每个标签独立保存页面状态，切换不重新加载。</span></div>
+    <div class="card"><b>画中画</b><span>支持 HTML5 PiP 的视频可在系统浮窗继续播放。</span></div>
+    <div class="card"><b>隐私浏览</b><span>隐私标签不记录历史，数据与普通标签隔离。</span></div>
+    <div class="card"><b>悬浮工具</b><span>工具栏可收起为可拖动悬浮球，四边吸附。</span></div>
+  </main>
+  <div class="video-wrap">
+    <video src="sample.mp4" controls playsinline muted autoplay loop></video>
+  </div>
+  <div class="foot">示例页面仅用于展示浏览与媒体能力。</div>
+</body>
+</html>

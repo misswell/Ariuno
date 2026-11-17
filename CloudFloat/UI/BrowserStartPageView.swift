@@ -97,24 +97,34 @@ struct BrowserStartPageView: View {
                 }
                 Spacer()
             }
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(coordinator.pip.platformSupportsPiP ? Color.green : Color.orange)
-                    .frame(width: 7, height: 7)
-                Text(coordinator.pip.platformSupportsPiP ? "系统支持画中画" : "当前环境不支持系统画中画")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                if coordinator.hasStartedBrowser {
+            if !isScreenshotMode {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(coordinator.pip.platformSupportsPiP ? Color.green : Color.orange)
+                        .frame(width: 7, height: 7)
+                    Text(coordinator.pip.platformSupportsPiP ? "系统支持画中画" : "当前环境不支持系统画中画")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    if coordinator.hasStartedBrowser {
                     Text(coordinator.session.state.displayName)
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
-                        .background(Color.secondary.opacity(0.12), in: Capsule())
+                            .background(Color.secondary.opacity(0.12), in: Capsule())
+                    }
                 }
+                .padding(.top, 2)
             }
-            .padding(.top, 2)
         }
+    }
+
+    private var isScreenshotMode: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.arguments.contains("-CFScreenshotMode")
+        #else
+        return false
+        #endif
     }
 
     // MARK: - Address
@@ -400,6 +410,7 @@ struct BrowserStartPageView: View {
     }
 
     private var capabilityBadge: String? {
+        if isScreenshotMode { return nil }
         if !coordinator.pip.platformSupportsPiP {
             return "不支持"
         }
@@ -410,6 +421,7 @@ struct BrowserStartPageView: View {
     }
 
     private var capabilitySubtitle: String {
+        if isScreenshotMode { return "平台、WebView 与网页视频三层能力检查" }
         if !coordinator.pip.platformSupportsPiP {
             return "此设备/模拟器不支持 PiP，检测仍会展示媒体结构"
         }

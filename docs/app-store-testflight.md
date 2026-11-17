@@ -15,7 +15,11 @@
 | App Store Connect App 记录 | **已创建**：Ariuno，App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`，主要语言简体中文 |
 | App Store 版本 | iOS `1.0`（准备提交，尚未提交审核） |
 | TestFlight 构建 | **已上传并处理完成**：版本 `1.0`，build `1`，`processingState=VALID`，`usesNonExemptEncryption=false` |
-| TestFlight 内部组 | 已创建「内部测试」（ID `7b5d82a6-8d28-4a24-9779-f83e999b29f0`），尚无测试员 |
+| TestFlight 内部组 | 已创建「内部测试」；`misswell@foxmail.com` 已加入并发送邀请 |
+| App Store 元数据 | 已填：副标题、描述、关键词、支持/营销/隐私 URL；分类 工具 + 效率；免费；175 个地区；内容权利声明；审核联系人/备注 |
+| App Store 截图 | 已上传 3 张 iPhone 6.5" 截图（起始页、浏览器、标签页） |
+| 年龄分级 | 已声明“无限制网页访问”；最终分级以 App Store Connect 计算为准 |
+| 待办 | App 隐私声明（需网页登录）与提交审核；当前 App Store Connect API 对 reviewSubmissions 返回 500，Chrome 会话已过期 |
 | Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
 
 ## 1. 创建 App Store Connect App 记录

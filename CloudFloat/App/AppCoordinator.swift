@@ -215,6 +215,11 @@ final class AppCoordinator: ObservableObject {
         if arguments.contains("-CFOpenBrowser") {
             continueBrowsing()
         }
+        if let flag = arguments.firstIndex(of: "-CFOpenURL"),
+           arguments.indices.contains(flag + 1),
+           let url = URL(string: arguments[flag + 1]) {
+            openURL(url)
+        }
         #endif
     }
 
