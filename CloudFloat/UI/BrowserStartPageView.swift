@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct HomeView: View {
+struct BrowserStartPageView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var settings: AppSettings
     @State private var addressText = ""

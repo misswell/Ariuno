@@ -96,7 +96,7 @@ Executed 142 tests, with 0 failures (0 unexpected)
 在 App 内打开 **设置 → 测试页实验室**（Debug 构建），或使用 Debug 启动参数：
 
 - `-CFOpenTestLab`：打开测试页实验室
-- `-CFOpenLocalGame`：把离线视频页加载进真实 GameView 外壳
+- `-CFOpenLocalGame`：把离线视频页加载进真实 BrowserView 外壳
 - `-CFOpenOfficialEntry`：加载官方入口（不登录）
 - `-CFOpenDiagnostics` / `-CFOpenSettings` / `-CFOpenCapability`：打开对应调试界面
 

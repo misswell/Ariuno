@@ -569,7 +569,7 @@ final class AppCoordinator: ObservableObject {
     // MARK: - Wiring
 
     #if DEBUG
-    /// Test/QA-only hook: load a local page through the real GameView/browser shell without
+    /// Test/QA-only hook: load a local page through the real BrowserView/browser shell without
     /// touching the official service. Used by session-retention integration tests.
     func loadDebugLocalPage(_ url: URL) {
         var policy = browser.navigationPolicy
@@ -587,7 +587,7 @@ final class AppCoordinator: ObservableObject {
         browser.webView.load(URLRequest(url: url))
     }
 
-    /// Loads the bundled offline video page through the real GameView/browser shell. This is
+    /// Loads the bundled offline video page through the real BrowserView/browser shell. This is
     /// a visual smoke test only; it never touches the official service.
     private func openDebugLocalPage() async {
         guard let directory = LocalHTTPServer.testPagesDirectory() else {

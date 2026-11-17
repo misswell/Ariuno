@@ -337,7 +337,7 @@ curl -sS https://sr.mihoyo.com/cloud/ -o /tmp/cf_probe.html
 | 测试页实验室 | [images/test-pages.png](images/test-pages.png) | 本地视频播放、探测计数、模拟器 PiP 不支持 |
 | 官方入口未登录 | [images/official-entry-wkwebview.png](images/official-entry-wkwebview.png) | WKWebView 模拟器登录面板；无凭证 |
 | [images/official-entry-safari-simulator.png](images/official-entry-safari-simulator.png) | 同模拟器 Safari 登录面板；仅壳对比，未登录 |
-| 游戏视图壳 | [images/game-view.png](images/game-view.png) | 真实 GameView 外壳 + 本地测试页；非官方游戏 |
+| 游戏视图壳 | [images/game-view.png](images/game-view.png) | 真实 BrowserView 外壳 + 本地测试页；非官方游戏 |
 | 能力检测 | [images/capability-check.png](images/capability-check.png) | 三层状态、平台/配置/探测门控 |
 | 诊断 | [images/diagnostics.png](images/diagnostics.png) | 会话/日志/导出入口 |
 | 设置 | [images/settings.png](images/settings.png) | 工具栏、PiP、音频、隐私设置 |

@@ -1,7 +1,7 @@
 import SwiftUI
 import WebKit
 
-struct GameView: View {
+struct BrowserView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
 
     @State private var toolbarVisible = true

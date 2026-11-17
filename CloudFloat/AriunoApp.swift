@@ -35,13 +35,13 @@ struct RootView: View {
             // The game view is kept mounted once a session starts, even while the user is on
             // the home screen, so SwiftUI state changes never recreate the WKWebView.
             if coordinator.hasStartedBrowser {
-                GameView()
+                BrowserView()
                     .opacity(coordinator.route == .game ? 1 : 0)
                     .allowsHitTesting(coordinator.route == .game)
                     .accessibilityHidden(coordinator.route != .game)
             }
             if coordinator.route == .home {
-                HomeView()
+                BrowserStartPageView()
                     .transition(.opacity)
             }
         }

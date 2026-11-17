@@ -9,8 +9,8 @@
 ```text
 AriunoApp (@main)
 └── RootView
-    ├── HomeView / SettingsView / DiagnosticsView / PiPCapabilityView
-    └── GameView (once a session starts, kept mounted)
+    ├── BrowserStartPageView / SettingsView / DiagnosticsView / PiPCapabilityView
+    └── BrowserView（启动后常驻，切换标签不销毁）
         └── CloudWebView → BrowserSession.webView (single WKWebView)
 
 AppCoordinator (@MainActor, composition root)
@@ -49,7 +49,7 @@ AppCoordinator (@MainActor, composition root)
 - `#if DEBUG webView.isInspectable = true`
 - `javaScriptCanOpenWindowsAutomatically = false`（生产默认；避免无手势脚本弹窗）
 
-`RootView` 在 `hasStartedBrowser` 之后始终保留 `GameView`（返回首页时用 `opacity(0)` 隐藏但仍在视图层级），`CloudWebView.makeUIView` 返回同一个 `WKWebView`，`BrowserSession` 由 `@StateObject AppCoordinator` 长期持有。因此 SwiftUI 刷新、PiP 切换、前后台切换不会重建 WebView 或页面。
+`RootView` 在 `hasStartedBrowser` 之后始终保留 `BrowserView`（返回首页时用 `opacity(0)` 隐藏但仍在视图层级），`CloudWebView.makeUIView` 返回同一个 `WKWebView`，`BrowserSession` 由 `@StateObject AppCoordinator` 长期持有。因此 SwiftUI 刷新、PiP 切换、前后台切换不会重建 WebView 或页面。
 
 ### 2.2 导航与外部 URL
 
@@ -223,7 +223,7 @@ ready/… → disconnected → reconnecting → ready
 ## 7. UI 关键点（M5）
 
 - 首页只有“继续游戏 / 画中画能力检测 / 诊断 / 设置”四个入口；非官方说明在页脚。
-- `GameView`：全屏 WebView；顶部工具栏自动隐藏（默认 4 秒，可设置 2–10 秒），顶部小把手唤出；工具栏在顶部避免遮挡底部游戏按键。
+- `BrowserView`：全屏 WebView；顶部工具栏自动隐藏（默认 4 秒，可设置 2–10 秒），顶部小把手唤出；工具栏在顶部避免遮挡底部游戏按键。
 - PiP 不可用时按钮禁用并在工具栏下显示具体原因；能力检测页提供逐项检查与建议。
 - 关闭 PiP 后文案明确“游戏会话保留”；退出会话需确认；返回首页保留会话；退出会话保留 Cookie/登录。
 - 三层状态卡始终显示服务器会话 UNVERIFIED，并解释人工验证要求。

@@ -14,7 +14,7 @@
 | M2 媒体探测与 HTML5 PiP | **实现；真机实时 PiP 单次通过** | 全 frame 注入 `MediaProbe.js`；video/canvas/iframe/readyState/PiP/事件；`MediaKind`；页面内 PiP 控件；原生触发失败映射；真机本地视频与游戏自动战斗 PiP 实测。`MediaProbeTests`/`MediaProbeIntegrationTests`/`WebPictureInPictureTests` |
 | M3 后台会话验证与状态机 | **实现；真机后台 FAIL（服务器空闲超时）** | 10 个状态、三层验证、前后台不重载、网络/崩溃事件、诊断、用户确认恢复；真机 15 分钟无输入被服务器断开（-1022），未绕过。`GameSessionStateTests`/`SessionMonitorTests`/`SessionRecoveryTests` |
 | M4 原生媒体扩展 | **Not Feasible（仅接口）** | `NativePictureInPictureCoordinator` 固定不可用；无私有 API/屏幕抓取/伪后台 |
-| M5 产品界面 | **实现；模拟器视觉检查** | 起始页地址栏/书签、GameView 地址栏、多标签页、书签、前进/后退/刷新、自动隐藏工具栏、PiP 原因、诊断/设置/能力检测、深浅色；截图见下 |
+| M5 产品界面 | **实现；模拟器视觉检查** | 起始页地址栏/书签、BrowserView 地址栏、多标签页、书签、前进/后退/刷新、自动隐藏工具栏、PiP 原因、诊断/设置/能力检测、深浅色；截图见下 |
 | M6 测试与发布 | **自动化通过；真机 T04/T05 FAIL，发布前需按失败结论降级** | 142 项自动化测试通过；真机 T01/T02/T03/T09 PASS，T04/T05 FAIL（-1022）；30 分钟×3 未通过；不得按“后台挂机”上架。见 [qa-matrix.md](qa-matrix.md) |
 
 ## 2. 构建结果
@@ -110,7 +110,7 @@ Executed 142 tests, with 0 failures (0 unexpected)
 | [home.png](images/home.png) | 首页四入口、非官方说明、模拟器 PiP 不支持提示 |
 | [test-pages.png](images/test-pages.png) | 测试页实验室：本地视频播放/时间码、探测计数、模拟器 PiP 不支持 |
 | [official-entry-wkwebview.png](images/official-entry-wkwebview.png) | 未登录官方入口在 WKWebView 中显示登录面板；未输入凭证 |
-| [game-view.png](images/game-view.png) | 真实 GameView 外壳 + 本地测试页（非官方游戏） |
+| [game-view.png](images/game-view.png) | 真实 BrowserView 外壳 + 本地测试页（非官方游戏） |
 | [capability-check.png](images/capability-check.png) | 平台/配置/探测门控与三层状态 |
 | [settings.png](images/settings.png) | 工具栏、PiP、音频、隐私设置 |
 | [diagnostics.png](images/diagnostics.png) | 会话快照、三层状态、日志入口 |
