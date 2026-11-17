@@ -9,3 +9,6 @@ artifacts/
 
 # macOS
 .DS_Store
+
+# asc local reports
+.asc/
