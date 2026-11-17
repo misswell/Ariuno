@@ -102,6 +102,42 @@ final class PiPSourceCloseTests: XCTestCase {
         XCTAssertNil(coordinator.pipManager.coordinator(for: source.id))
     }
 
+    func testPiPAuditEventsCoverSourceBindingSwitchBackgroundAndClose() {
+        let source = coordinator.tabs.activeSession
+        coordinator.tabs.onMediaEvent?(
+            source,
+            makeEvent(name: .enterpictureinpicture, mode: "picture-in-picture")
+        )
+        XCTAssertEqual(coordinator.pipManager.activePiPTabID, source.id)
+        XCTAssertTrue(codes.contains("pip.source_bound"))
+
+        coordinator.createTab(url: URL(string: "https://example.com/audit")!)
+        let other = coordinator.browser
+        XCTAssertTrue(codes.contains("pip.tab_created_while_active"))
+
+        coordinator.activateTab(source)
+        coordinator.activateTab(other)
+        XCTAssertTrue(codes.contains("pip.tab_switch_source_retained"))
+
+        coordinator.handleScenePhase(.background)
+        XCTAssertTrue(codes.contains("pip.background_retained"))
+        coordinator.handleScenePhase(.active)
+        XCTAssertTrue(codes.contains("pip.foreground_retained"))
+
+        _ = coordinator.closeTab(source, force: true)
+        XCTAssertTrue(codes.contains("pip.close_requested"))
+
+        coordinator.tabs.onMediaEvent?(
+            source,
+            makeEvent(name: .leavepictureinpicture, mode: "inline")
+        )
+        XCTAssertTrue(codes.contains("pip.close_completed"))
+    }
+
+    private var codes: [String] {
+        coordinator.diagnostics.events.map(\.code)
+    }
+
     private func enterPiP(on session: BrowserSession) {
         coordinator.pipManager.coordinator(for: session)
             .handle(event: makeEvent(name: .enterpictureinpicture, mode: "picture-in-picture"))

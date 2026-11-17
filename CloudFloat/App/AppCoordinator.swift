@@ -225,6 +225,14 @@ final class AppCoordinator: ObservableObject {
         case .background:
             diagnostics.info(.app, "scene.background", "进入后台；保留 WebView，不自动重载")
             session.appDidEnterBackground()
+            if let source = pipManager.activePiPTabID {
+                diagnostics.info(
+                    .pip,
+                    "pip.background_retained",
+                    "进入后台时 PiP 来源保持不变",
+                    ["source": Self.shortTabID(source)]
+                )
+            }
             // Persist tab metadata before suspension; PiP source tabs are left untouched.
             tabs.savePersistedStateNow()
             updateMediaScheduling()
@@ -232,6 +240,14 @@ final class AppCoordinator: ObservableObject {
         case .active:
             diagnostics.info(.app, "scene.active", "回到前台；继续使用现有页面")
             session.appDidBecomeActive()
+            if let source = pipManager.activePiPTabID {
+                diagnostics.info(
+                    .pip,
+                    "pip.foreground_retained",
+                    "回到前台时 PiP 来源保持不变",
+                    ["source": Self.shortTabID(source)]
+                )
+            }
             if hasStartedBrowser {
                 updateMediaScheduling()
                 browser.verifyExistingPageOnForeground()
@@ -289,12 +305,24 @@ final class AppCoordinator: ObservableObject {
     }
 
     func activateTab(_ tabSession: BrowserSession) {
+        let pipSourceBeforeSwitch = pipManager.activePiPTabID
         tabs.activateTab(tabSession)
         session.resetForTabSwitch(hasLoadedPage: tabSession.hasLoadedPage)
         route = .game
         hasStartedBrowser = true
         tabSession.resumeRestoredPageIfNeeded()
         updateMediaScheduling()
+        if let source = pipSourceBeforeSwitch, source != tabSession.id {
+            diagnostics.info(
+                .pip,
+                "pip.tab_switch_source_retained",
+                "切换标签后 PiP 来源保持不变",
+                [
+                    "source": Self.shortTabID(source),
+                    "active": Self.shortTabID(tabSession.id)
+                ]
+            )
+        }
     }
 
     enum TabCloseResult {
@@ -372,6 +400,12 @@ final class AppCoordinator: ObservableObject {
 
     private func beginDeferredPiPClose(_ tabSession: BrowserSession) {
         showToast("已请求结束画中画，正在安全关闭标签页", .info)
+        diagnostics.info(
+            .pip,
+            "pip.close_requested",
+            "请求先停止 PiP 再关闭来源标签",
+            ["source": Self.shortTabID(tabSession.id)]
+        )
         pipManager.beginStopBeforeClose(tabSession)
         pendingPiPCloseTasks.removeValue(forKey: tabSession.id)?.cancel()
         pendingPiPCloseTasks[tabSession.id] = Task { [weak self] in
@@ -391,15 +425,32 @@ final class AppCoordinator: ObservableObject {
         pipManager.clearActivePiP(for: tabSession)
         _ = tabs.closeTab(tabSession, force: true)
         finishTabClose(tabSession)
-        diagnostics.info(.navigation, "tab.close_after_pip", "PiP 停止后已关闭来源标签页")
+        diagnostics.info(
+            .pip,
+            "pip.close_completed",
+            "收到 PiP 停止事件后已安全关闭来源标签页",
+            ["source": Self.shortTabID(tabSession.id)]
+        )
     }
 
     func createTab(url: URL? = nil, isPrivate: Bool = false) {
-        tabs.createTab(url: url, isPrivate: isPrivate)
+        let pipSource = pipManager.activePiPTabID
+        let newTab = tabs.createTab(url: url, isPrivate: isPrivate)
         // A brand-new tab shows the browser start page; only explicit URLs open web content.
         route = url == nil ? .home : .game
         hasStartedBrowser = true
         updateMediaScheduling()
+        if let pipSource {
+            diagnostics.info(
+                .pip,
+                "pip.tab_created_while_active",
+                "PiP 播放期间新建标签；来源仍绑定原标签",
+                [
+                    "source": Self.shortTabID(pipSource),
+                    "newTab": Self.shortTabID(newTab.id)
+                ]
+            )
+        }
     }
 
     /// Returns to the start page without destroying any tab or WebView.
@@ -807,6 +858,14 @@ final class AppCoordinator: ObservableObject {
         }
         tabs.onMediaEvent = { [weak self] session, event in
             guard let self else { return }
+            if event.name == .enterpictureinpicture {
+                self.diagnostics.info(
+                    .pip,
+                    "pip.source_bound",
+                    "媒体进入 PiP，来源标签已绑定",
+                    ["source": Self.shortTabID(session.id)]
+                )
+            }
             pipManager.handle(event: event, from: session)
             if event.name == .leavepictureinpicture {
                 pipManager.clearActivePiP(for: session)
@@ -1194,6 +1253,10 @@ final class AppCoordinator: ObservableObject {
         let version = info["CFBundleShortVersionString"] as? String ?? "?"
         let build = info["CFBundleVersion"] as? String ?? "?"
         return "\(version) (\(build))"
+    }
+
+    private static func shortTabID(_ id: UUID) -> String {
+        String(id.uuidString.prefix(8))
     }
 
     private static var isSimulator: Bool {

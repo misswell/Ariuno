@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 202 tests, with 0 failures (0 unexpected)
+Executed 203 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -62,7 +62,7 @@ Executed 202 tests, with 0 failures (0 unexpected)
 | TabSessionStoreTests | 5 | 标签持久化：版本校验、去重、空白过滤、上限、清空 |
 | BrowserTabPersistenceTests | 8 | 冷启动恢复、ID 稳定、恢复页仅激活时加载、隐私不落盘、批量关闭 |
 | MediaSchedulingTests | 7 | 仅活动+PiP来源轮询、切后台全停、PiP全局状态、后台不停止 PiP |
-| PiPSourceCloseTests | 5 | 关闭来源需确认、先停PiP后销毁、超时兜底、批量关闭、协调器释放 |
+| PiPSourceCloseTests | 6 | 关闭来源需确认、先停PiP后销毁、超时兜底、批量关闭、协调器释放 |
 | TabThumbnailCacheTests | 4 | Caches PNG、过期、删除/清空、不写 UserDefaults |
 | BrowserContainerTests | 2 | WebView 容器切换不重建/不重载、10 标签稳定实例 |
 | BrowserPerformanceTests | 3 | 标签创建/切换/关闭耗时、10标签 footprint、历史写入 |
@@ -175,7 +175,7 @@ Executed 202 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：202/202 通过（当前）+ XCUITest 5/5 通过（模拟器真实点击）。
+- 自动化：203/203 通过（当前）+ XCUITest 5/5 通过（模拟器真实点击）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。
