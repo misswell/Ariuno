@@ -19,9 +19,18 @@ struct BrowserView: View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
-            BrowserTabHostView(sessions: coordinator.tabs.sessions,
-                                activeSessionID: coordinator.tabs.activeSessionID)
-                .ignoresSafeArea()
+            GeometryReader { proxy in
+                let insets = contentInsets
+                let width = max(1, proxy.size.width - insets.leading - insets.trailing)
+                let height = max(1, proxy.size.height - insets.top - insets.bottom)
+                BrowserTabHostView(
+                    sessions: coordinator.tabs.sessions,
+                    activeSessionID: coordinator.tabs.activeSessionID
+                )
+                .frame(width: width, height: height)
+                .position(x: insets.leading + width / 2, y: insets.top + height / 2)
+            }
+            .ignoresSafeArea()
 
             if shouldShowLoadingOverlay {
                 loadingOverlay
@@ -54,15 +63,18 @@ struct BrowserView: View {
 
             if isBallMode {
                 GeometryReader { proxy in
-                    FloatingToolbarBall(
+                    FloatingEdgeControl(
                         containerSize: proxy.size,
-                        safeArea: proxy.safeAreaInsets,
                         normalizedPosition: CGPoint(
                             x: coordinator.settings.floatingBallX,
                             y: coordinator.settings.floatingBallY
                         ),
                         diameter: CGFloat(coordinator.settings.floatingBallDiameter),
+                        tint: .accentColor,
+                        icon: nil,
+                        showsCenterDot: true,
                         showsPiPBadge: coordinator.isAnyPiPActive,
+                        accessibilityLabel: "展开工具栏",
                         onTap: { expandToolbarFromBall() },
                         onMoved: { normalized in
                             coordinator.settings.floatingBallX = Double(normalized.x)
@@ -71,6 +83,32 @@ struct BrowserView: View {
                     )
                 }
                 .transition(.scale.combined(with: .opacity))
+
+                if coordinator.settings.showFloatingPiPButton,
+                   coordinator.isAnyPiPActive || pipAvailability.isAvailable {
+                    GeometryReader { proxy in
+                        FloatingEdgeControl(
+                            containerSize: proxy.size,
+                            normalizedPosition: CGPoint(
+                                x: coordinator.settings.floatingPiPX,
+                                y: coordinator.settings.floatingPiPY
+                            ),
+                            diameter: CGFloat(coordinator.settings.floatingBallDiameter) * 0.84,
+                            tint: coordinator.isAnyPiPActive ? .green : .accentColor,
+                            icon: "pip",
+                            showsCenterDot: false,
+                            showsPiPBadge: false,
+                            accessibilityLabel: coordinator.isAnyPiPActive
+                                ? "退出画中画" : "进入画中画",
+                            onTap: { togglePiPFromFloatingControl() },
+                            onMoved: { normalized in
+                                coordinator.settings.floatingPiPX = Double(normalized.x)
+                                coordinator.settings.floatingPiPY = Double(normalized.y)
+                            }
+                        )
+                    }
+                    .transition(.scale.combined(with: .opacity))
+                }
             }
         }
         .statusBarHidden(coordinator.route == .game)
@@ -329,7 +367,9 @@ struct BrowserView: View {
             .disabled(coordinator.browser.isShowingBlankPage)
             .accessibilityLabel("添加书签")
 
-            pipButton
+            if coordinator.settings.showToolbarPiPButton {
+                pipButton
+            }
 
             if let url = coordinator.browser.currentURL,
                url.absoluteString != "about:blank" {
@@ -440,6 +480,15 @@ struct BrowserView: View {
         )
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
         .padding(.bottom, 2)
+    }
+
+    private var contentInsets: EdgeInsets {
+        EdgeInsets(
+            top: coordinator.settings.fullscreenInsetTop,
+            leading: coordinator.settings.fullscreenInsetLeft,
+            bottom: coordinator.settings.fullscreenInsetBottom,
+            trailing: coordinator.settings.fullscreenInsetRight
+        )
     }
 
     private var securityIcon: String {
@@ -630,6 +679,16 @@ struct BrowserView: View {
         autoHideWorkItem?.cancel()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true
+        }
+    }
+
+    private func togglePiPFromFloatingControl() {
+        if coordinator.isAnyPiPActive || coordinator.session.pipVisible {
+            coordinator.exitPictureInPicture()
+            return
+        }
+        Task { @MainActor in
+            await attemptPiP()
         }
     }
 

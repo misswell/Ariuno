@@ -50,6 +50,51 @@ final class AppSettingsToolbarTests: XCTestCase {
         XCTAssertEqual(reloaded.floatingBallY, 0.33, accuracy: 0.001)
     }
 
+    func testFullscreenInsetsDefaultPersistAndClamp() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.fullscreenInsetTop, 0, accuracy: 0.001)
+        XCTAssertEqual(settings.fullscreenInsetBottom, 0, accuracy: 0.001)
+        XCTAssertEqual(settings.fullscreenInsetLeft, 0, accuracy: 0.001)
+        XCTAssertEqual(settings.fullscreenInsetRight, 0, accuracy: 0.001)
+
+        settings.fullscreenInsetTop = 40
+        settings.fullscreenInsetBottom = 24
+        settings.fullscreenInsetLeft = 12
+        settings.fullscreenInsetRight = 80
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.fullscreenInsetTop, 40, accuracy: 0.001)
+        XCTAssertEqual(reloaded.fullscreenInsetBottom, 24, accuracy: 0.001)
+        XCTAssertEqual(reloaded.fullscreenInsetLeft, 12, accuracy: 0.001)
+        XCTAssertEqual(reloaded.fullscreenInsetRight, 80, accuracy: 0.001)
+    }
+
+    func testFullscreenInsetsAreClampedOnLoad() {
+        defaults.set(200.0, forKey: "cf.settings.fullscreenInsetTop")
+        defaults.set(-20.0, forKey: "cf.settings.fullscreenInsetLeft")
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.fullscreenInsetTop, 80, accuracy: 0.001)
+        XCTAssertEqual(settings.fullscreenInsetLeft, 0, accuracy: 0.001)
+    }
+
+    func testPiPButtonSettingsDefaultAndPersist() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertTrue(settings.showToolbarPiPButton)
+        XCTAssertTrue(settings.showFloatingPiPButton)
+        XCTAssertEqual(settings.floatingPiPX, 0.72, accuracy: 0.001)
+        XCTAssertEqual(settings.floatingPiPY, 0.42, accuracy: 0.001)
+
+        settings.showToolbarPiPButton = false
+        settings.showFloatingPiPButton = false
+        settings.floatingPiPX = 0.3
+        settings.floatingPiPY = 0.7
+
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertFalse(reloaded.showToolbarPiPButton)
+        XCTAssertFalse(reloaded.showFloatingPiPButton)
+        XCTAssertEqual(reloaded.floatingPiPX, 0.3, accuracy: 0.001)
+        XCTAssertEqual(reloaded.floatingPiPY, 0.7, accuracy: 0.001)
+    }
+
     func testFloatingBallDiameterDefaultsPersistsAndClamps() {
         let settings = AppSettings(defaults: defaults)
         XCTAssertEqual(settings.floatingBallDiameter, 56, accuracy: 0.001)

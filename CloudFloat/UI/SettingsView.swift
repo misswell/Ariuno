@@ -35,6 +35,25 @@ struct SettingsView: View {
             }
 
             Section {
+                insetRow("上边距", value: $settings.fullscreenInsetTop)
+                insetRow("下边距", value: $settings.fullscreenInsetBottom)
+                insetRow("左边距", value: $settings.fullscreenInsetLeft)
+                insetRow("右边距", value: $settings.fullscreenInsetRight)
+                Button("重置为 0") {
+                    settings.fullscreenInsetTop = 0
+                    settings.fullscreenInsetBottom = 0
+                    settings.fullscreenInsetLeft = 0
+                    settings.fullscreenInsetRight = 0
+                }
+            } header: {
+                Text("全屏安全边距")
+            } footer: {
+                Text("全屏时为网页内容保留的额外边距（0–80 pt）。圆角屏幕、刘海或动态岛可能遮住网页按钮；如果游戏按钮贴边不好点，可以给对应方向留出边距。0 表示铺满屏幕。")
+            }
+
+            Section {
+                Toggle("显示工具栏 PiP 按钮", isOn: $settings.showToolbarPiPButton)
+                Toggle("显示浮动 PiP 按钮（收起工具栏时）", isOn: $settings.showFloatingPiPButton)
                 Toggle("显示网页内 PiP 按钮", isOn: $settings.enableInPagePiPButton)
             } header: {
                 Text("画中画")
@@ -141,5 +160,17 @@ struct SettingsView: View {
     private var versionText: String {
         let environment = ExportDiagnostics.environment()
         return "\(environment.appVersion) (\(environment.appBuild))"
+    }
+
+    private func insetRow(_ title: String, value: Binding<Double>) -> some View {
+        HStack {
+            Text(title)
+                .frame(width: 56, alignment: .leading)
+            Slider(value: value, in: 0...80, step: 4)
+            Text("\(Int(value.wrappedValue)) pt")
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .frame(width: 44, alignment: .trailing)
+        }
     }
 }

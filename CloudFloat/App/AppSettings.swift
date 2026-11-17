@@ -11,6 +11,14 @@ final class AppSettings: ObservableObject {
         static let floatingBallX = "cf.settings.floatingBallX"
         static let floatingBallY = "cf.settings.floatingBallY"
         static let floatingBallDiameter = "cf.settings.floatingBallDiameter"
+        static let fullscreenInsetTop = "cf.settings.fullscreenInsetTop"
+        static let fullscreenInsetBottom = "cf.settings.fullscreenInsetBottom"
+        static let fullscreenInsetLeft = "cf.settings.fullscreenInsetLeft"
+        static let fullscreenInsetRight = "cf.settings.fullscreenInsetRight"
+        static let showToolbarPiPButton = "cf.settings.showToolbarPiPButton"
+        static let showFloatingPiPButton = "cf.settings.showFloatingPiPButton"
+        static let floatingPiPX = "cf.settings.floatingPiPX"
+        static let floatingPiPY = "cf.settings.floatingPiPY"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -66,6 +74,74 @@ final class AppSettings: ObservableObject {
         }
     }
 
+    /// Extra margins around the web content in fullscreen. Rounded corners and the notch can
+    /// cover page controls; these insets let the user keep a tappable border.
+    @Published var fullscreenInsetTop: Double {
+        didSet {
+            let clamped = Self.clampInset(fullscreenInsetTop)
+            if clamped != fullscreenInsetTop {
+                fullscreenInsetTop = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.fullscreenInsetTop)
+        }
+    }
+
+    @Published var fullscreenInsetBottom: Double {
+        didSet {
+            let clamped = Self.clampInset(fullscreenInsetBottom)
+            if clamped != fullscreenInsetBottom {
+                fullscreenInsetBottom = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.fullscreenInsetBottom)
+        }
+    }
+
+    @Published var fullscreenInsetLeft: Double {
+        didSet {
+            let clamped = Self.clampInset(fullscreenInsetLeft)
+            if clamped != fullscreenInsetLeft {
+                fullscreenInsetLeft = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.fullscreenInsetLeft)
+        }
+    }
+
+    @Published var fullscreenInsetRight: Double {
+        didSet {
+            let clamped = Self.clampInset(fullscreenInsetRight)
+            if clamped != fullscreenInsetRight {
+                fullscreenInsetRight = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.fullscreenInsetRight)
+        }
+    }
+
+    /// Whether the PiP action appears in the expanded bottom bar.
+    @Published var showToolbarPiPButton: Bool {
+        didSet { defaults.set(showToolbarPiPButton, forKey: Key.showToolbarPiPButton) }
+    }
+
+    /// Whether a draggable PiP control appears while the toolbar is collapsed to a ball.
+    @Published var showFloatingPiPButton: Bool {
+        didSet { defaults.set(showFloatingPiPButton, forKey: Key.showFloatingPiPButton) }
+    }
+
+    @Published var floatingPiPX: Double {
+        didSet { defaults.set(floatingPiPX, forKey: Key.floatingPiPX) }
+    }
+
+    @Published var floatingPiPY: Double {
+        didSet { defaults.set(floatingPiPY, forKey: Key.floatingPiPY) }
+    }
+
+    private static func clampInset(_ value: Double) -> Double {
+        min(max(value, 0), 80)
+    }
+
     /// Adds a small in-page picture-in-picture control. A real tap inside the web content is
     /// the only reliable way to satisfy WebKit's user-activation requirement.
     @Published var enableInPagePiPButton: Bool {
@@ -113,6 +189,14 @@ final class AppSettings: ObservableObject {
             min(max(defaults.object(forKey: Key.floatingBallY) as? Double ?? 0.62, 0.08), 0.92)
         self.floatingBallDiameter =
             min(max(defaults.object(forKey: Key.floatingBallDiameter) as? Double ?? 56, 40), 80)
+        self.fullscreenInsetTop = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetTop) as? Double ?? 0)
+        self.fullscreenInsetBottom = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetBottom) as? Double ?? 0)
+        self.fullscreenInsetLeft = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetLeft) as? Double ?? 0)
+        self.fullscreenInsetRight = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetRight) as? Double ?? 0)
+        self.showToolbarPiPButton = defaults.object(forKey: Key.showToolbarPiPButton) as? Bool ?? true
+        self.showFloatingPiPButton = defaults.object(forKey: Key.showFloatingPiPButton) as? Bool ?? true
+        self.floatingPiPX = min(max(defaults.object(forKey: Key.floatingPiPX) as? Double ?? 0.72, 0.05), 0.95)
+        self.floatingPiPY = min(max(defaults.object(forKey: Key.floatingPiPY) as? Double ?? 0.42, 0.08), 0.92)
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =
