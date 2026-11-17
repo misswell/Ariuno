@@ -129,6 +129,19 @@ final class BrowserTabPersistenceTests: XCTestCase {
         XCTAssertTrue(session.isClosed)
     }
 
+    func testClosedSessionIsDeallocated() {
+        let manager = makeManager(restore: false)
+        var session: BrowserSession? = manager.createTab()
+        weak var weakSession = session
+        XCTAssertNotNil(weakSession)
+
+        manager.closeTab(session!, force: true)
+        session = nil
+        autoreleasepool {}
+
+        XCTAssertNil(weakSession, "关闭标签后不得被管理器/观察者/消息处理器继续持有")
+    }
+
     func testTabManagerKeepsSingleSourceOfTruthForActiveTab() {
         let manager = makeManager(restore: false)
         let a = manager.activeSession
