@@ -157,6 +157,7 @@ CloudFloat/
 - [实施报告（构建/测试/交付物映射）](docs/implementation-report.md)
 - [重构验收报告（体积/依赖/性能/真机状态）](docs/acceptance-report.md)
 - [第三方依赖与开源参考说明](THIRD_PARTY.md)
+- [创建 App Store 记录并推送 TestFlight](docs/app-store-testflight.md)
 - [隐私说明](docs/privacy.md)
 - [后台音频能力使用说明](docs/background-audio.md)
 - [App Review / 服务条款风险清单](docs/app-review-risk.md)
