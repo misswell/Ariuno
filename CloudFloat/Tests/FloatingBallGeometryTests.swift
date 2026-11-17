@@ -26,6 +26,42 @@ final class FloatingBallGeometryTests: XCTestCase {
         XCTAssertEqual(bottomRight.y, 776, accuracy: 0.01)
     }
 
+    func testVisibleEdgePointSnapsToNearestEdge() {
+        let left = FloatingBallGeometry.visibleEdgePoint(
+            CGPoint(x: 80, y: 400),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(left.x, 34, accuracy: 0.01)
+
+        let right = FloatingBallGeometry.visibleEdgePoint(
+            CGPoint(x: 320, y: 400),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(right.x, 356, accuracy: 0.01)
+    }
+
+    func testIdleEdgePointTucksHalfOutside() {
+        let left = FloatingBallGeometry.idleEdgePoint(
+            CGPoint(x: 80, y: 400),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(left.x, safeArea.leading, accuracy: 0.01)
+
+        let right = FloatingBallGeometry.idleEdgePoint(
+            CGPoint(x: 320, y: 400),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(right.x, size.width - safeArea.trailing, accuracy: 0.01)
+    }
+
     func testNormalizationRoundTrip() {
         let point = CGPoint(x: 200, y: 400)
         let normalized = FloatingBallGeometry.normalized(point, in: size)

@@ -50,8 +50,6 @@
     <g id="aShape">
       <circle cx="470" cy="520" r="220"/>
       <rect x="600" y="300" width="170" height="440" rx="85"/>
-      <circle cx="600" cy="352" r="44"/>
-      <circle cx="600" cy="688" r="44"/>
     </g>
     <mask id="aMask"><use href="#aShape" fill="#FFFFFF"/></mask>
     <mask id="aHoleMask">
@@ -91,7 +89,7 @@
   <g mask="url(#aHoleMask)">
     <use href="#aShape" fill="url(#aFill)"/>
     <use href="#aShape" fill="#101A48" opacity="0.38" transform="translate(0,26)" filter="url(#blur22)"/>
-    <use href="#aShape" fill="#FFFFFF" opacity="0.38" transform="translate(-12,-24)" filter="url(#blur14)"/>
+    <use href="#aShape" fill="#FFFFFF" opacity="0.28" transform="translate(-10,-20)" filter="url(#blur14)"/>
     <ellipse cx="390" cy="330" rx="250" ry="80" fill="#FFFFFF" opacity="0.28" transform="rotate(-34 390 330)" filter="url(#blur34)"/>
   </g>
 

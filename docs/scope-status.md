@@ -32,7 +32,7 @@
 - 浏览器入口与官方登录（真机 T02 PASS）；
 - 本地/游戏实时 PiP 能力与原因反馈（T01/T03 PASS，单次）；
 - 会话状态机、UNVERIFIED 三层状态、诊断导出、用户确认恢复；
-- 212 项自动化测试通过；
+- 215 项自动化测试通过；
 - 完整失败证据与说明：[real-device-verification.md](real-device-verification.md)、[known-limitations.md](known-limitations.md)。
 
 **不交付**“可后台挂机”结论，不使用自动点击/伪造输入/私有 API 绕过 `-1022`。

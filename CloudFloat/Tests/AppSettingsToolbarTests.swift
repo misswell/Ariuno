@@ -50,6 +50,19 @@ final class AppSettingsToolbarTests: XCTestCase {
         XCTAssertEqual(reloaded.floatingBallY, 0.33, accuracy: 0.001)
     }
 
+    func testFloatingBallDiameterDefaultsPersistsAndClamps() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertEqual(settings.floatingBallDiameter, 56, accuracy: 0.001)
+
+        settings.floatingBallDiameter = 72
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertEqual(reloaded.floatingBallDiameter, 72, accuracy: 0.001)
+
+        defaults.set(200.0, forKey: "cf.settings.floatingBallDiameter")
+        let clamped = AppSettings(defaults: defaults)
+        XCTAssertEqual(clamped.floatingBallDiameter, 80, accuracy: 0.001)
+    }
+
     func testFloatingBallPositionIsClampedOnLoad() {
         defaults.set(9.0, forKey: "cf.settings.floatingBallX")
         defaults.set(-3.0, forKey: "cf.settings.floatingBallY")

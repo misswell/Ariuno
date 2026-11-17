@@ -143,12 +143,21 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(ball.waitForExistence(timeout: 5), "收起后应出现可点击的悬浮球")
         XCTAssertFalse(collapse.exists, "悬浮球模式下底部工具栏应隐藏")
 
+        // After 3 seconds of inactivity the ball should tuck into the right edge.
+        sleep(4)
+        XCTAssertTrue(ball.exists, "空闲后悬浮球应仍可找到")
+        XCTAssertGreaterThan(
+            ball.frame.midX,
+            app.frame.midX,
+            "悬浮球应吸附在右侧边缘"
+        )
+
         let collapsed = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         collapsed.name = "floating-ball-collapsed"
         collapsed.lifetime = .keepAlways
         add(collapsed)
 
-        ball.tap()
+        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).tap()
         XCTAssertTrue(collapse.waitForExistence(timeout: 5), "点击悬浮球应恢复工具栏")
 
         let expanded = XCTAttachment(screenshot: XCUIScreen.main.screenshot())

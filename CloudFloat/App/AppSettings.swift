@@ -10,6 +10,7 @@ final class AppSettings: ObservableObject {
         static let collapseToolbarToBallOnOpen = "cf.settings.collapseToolbarToBallOnOpen"
         static let floatingBallX = "cf.settings.floatingBallX"
         static let floatingBallY = "cf.settings.floatingBallY"
+        static let floatingBallDiameter = "cf.settings.floatingBallDiameter"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -51,6 +52,18 @@ final class AppSettings: ObservableObject {
 
     @Published var floatingBallY: Double {
         didSet { defaults.set(floatingBallY, forKey: Key.floatingBallY) }
+    }
+
+    /// Floating-ball diameter in points (40...80). Persisted so the chosen size survives launches.
+    @Published var floatingBallDiameter: Double {
+        didSet {
+            let clamped = min(max(floatingBallDiameter, 40), 80)
+            if clamped != floatingBallDiameter {
+                floatingBallDiameter = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.floatingBallDiameter)
+        }
     }
 
     /// Adds a small in-page picture-in-picture control. A real tap inside the web content is
@@ -98,6 +111,8 @@ final class AppSettings: ObservableObject {
             min(max(defaults.object(forKey: Key.floatingBallX) as? Double ?? 0.90, 0.05), 0.95)
         self.floatingBallY =
             min(max(defaults.object(forKey: Key.floatingBallY) as? Double ?? 0.62, 0.08), 0.92)
+        self.floatingBallDiameter =
+            min(max(defaults.object(forKey: Key.floatingBallDiameter) as? Double ?? 56, 40), 80)
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =

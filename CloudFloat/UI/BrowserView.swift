@@ -21,6 +21,7 @@ struct BrowserView: View {
 
             BrowserTabHostView(sessions: coordinator.tabs.sessions,
                                 activeSessionID: coordinator.tabs.activeSessionID)
+                .ignoresSafeArea()
 
             if shouldShowLoadingOverlay {
                 loadingOverlay
@@ -60,6 +61,7 @@ struct BrowserView: View {
                             x: coordinator.settings.floatingBallX,
                             y: coordinator.settings.floatingBallY
                         ),
+                        diameter: CGFloat(coordinator.settings.floatingBallDiameter),
                         showsPiPBadge: coordinator.isAnyPiPActive,
                         onTap: { expandToolbarFromBall() },
                         onMoved: { normalized in

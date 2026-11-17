@@ -10,6 +10,14 @@ struct SettingsView: View {
         Form {
             Section {
                 Toggle("进入网页时收起为悬浮球", isOn: $settings.collapseToolbarToBallOnOpen)
+                HStack {
+                    Text("悬浮球大小")
+                    Slider(value: $settings.floatingBallDiameter, in: 40...80, step: 4)
+                    Text("\(Int(settings.floatingBallDiameter)) pt")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, alignment: .trailing)
+                }
                 Toggle("自动隐藏工具栏", isOn: $settings.autoHideToolbar)
                 if settings.autoHideToolbar {
                     Picker("隐藏延迟", selection: $settings.toolbarAutoHideDelay) {
