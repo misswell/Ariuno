@@ -78,13 +78,6 @@ struct BrowserView: View {
                 activeAlert = .externalLink(coordinator.browser.pendingExternalHost)
             }
         }
-        .onChange(of: coordinator.browser.activePopup?.id) { _, _ in
-            if let popup = coordinator.browser.activePopup {
-                activeSheet = .popup(popup)
-            } else if case .popup = activeSheet {
-                activeSheet = nil
-            }
-        }
         .alert(item: $activeAlert) { alert in
             alertContent(for: alert)
         }
@@ -100,7 +93,7 @@ struct BrowserView: View {
         } message: {
             Text("将停止当前标签页并关闭画中画。登录 Cookie 与网站数据会保留，除非你在设置中清除。")
         }
-        .sheet(item: $activeSheet, onDismiss: handleSheetDismiss) { sheet in
+        .sheet(item: $activeSheet) { sheet in
             switch sheet {
             case .diagnostics:
                 NavigationStack {
@@ -118,8 +111,6 @@ struct BrowserView: View {
                 HistoryView()
             case .downloads:
                 DownloadsView()
-            case .popup(let popup):
-                PopupWebViewSheet(popup: popup)
             }
         }
     }
@@ -635,12 +626,6 @@ struct BrowserView: View {
         }
     }
 
-    private func handleSheetDismiss() {
-        if coordinator.browser.activePopup != nil {
-            coordinator.browser.closePopup()
-        }
-    }
-
     // MARK: - Derived state
 
     private var pipAvailability: PiPAvailability {
@@ -662,7 +647,6 @@ private enum GameSheet: Identifiable {
     case bookmarks
     case history
     case downloads
-    case popup(ActivePopup)
 
     var id: String {
         switch self {
@@ -673,7 +657,6 @@ private enum GameSheet: Identifiable {
         case .bookmarks: return "bookmarks"
         case .history: return "history"
         case .downloads: return "downloads"
-        case .popup(let popup): return "popup-\(popup.id.uuidString)"
         }
     }
 }
@@ -726,63 +709,5 @@ private struct GameBanner: View {
         .padding(12)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
         .padding(.horizontal, 12)
-    }
-}
-
-private struct PopupWebViewSheet: View {
-    let popup: ActivePopup
-    @EnvironmentObject private var coordinator: AppCoordinator
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var host: String = ""
-    @State private var urlObservation: NSKeyValueObservation?
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                if !host.isEmpty {
-                    HStack(spacing: 5) {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 9, weight: .semibold))
-                        Text(host)
-                            .font(.system(size: 10, weight: .medium, design: .monospaced))
-                            .lineLimit(1)
-                        Spacer()
-                    }
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial)
-                }
-                CloudWebView(webView: popup.webView)
-                    .ignoresSafeArea(edges: .bottom)
-            }
-            .navigationTitle("登录 / 授权")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("关闭") {
-                        coordinator.browser.closePopup()
-                        dismiss()
-                    }
-                }
-            }
-            .onAppear {
-                updateHost()
-                urlObservation = popup.webView.observe(\.url, options: [.new]) { _, _ in
-                    Task { @MainActor in
-                        updateHost()
-                    }
-                }
-            }
-            .onDisappear {
-                urlObservation?.invalidate()
-                urlObservation = nil
-            }
-        }
-    }
-
-    private func updateHost() {
-        host = popup.webView.url?.host ?? ""
     }
 }

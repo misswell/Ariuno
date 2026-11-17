@@ -9,13 +9,19 @@
 
 ---
 
+模拟器截图证据：
+
+![起始页](images/home.png)
+
+![浏览器壳](images/browser-shell.png)
+
 ## 0. 结论摘要
 
 - 浏览器底座为系统 `WKWebView`，**没有**打包 Chromium/Gecko/独立 JS 引擎/第三方浏览器 SDK。
 - 第三方运行时依赖 **0**；`project.yml` 无 dependencies，包内无 `.framework`/`.dylib`。
 - 浏览器核心 **17 个 Swift 文件 / 2,889 行 / 136 KB**（目标 10～20 个文件，达标）。
 - 自动化测试 **199 项全部通过**（0 failures），其中新增 39 项浏览器/标签/PiP 生命周期测试。
-- Release Archive + IPA 导出成功：**IPA 730,933 字节（0.70 MB）**，`.app` 1.7 MB，主可执行文件 1,674,016 字节，Assets.car 76 KB。
+- Release Archive + IPA 导出成功：**IPA 718,876 字节（0.70 MB）**，`.app` 1.7 MB，主可执行文件 1,640,736 字节，Assets.car 76 KB。
 - 真机：最新 Debug 包已安装到 iPhone 15 Pro；设备锁定，无法启动，故**新架构真机 PiP 标签切换矩阵 UNVERIFIED**。
 - 历史真机 PiP 证据（重构前构建）仍保留：T01/T02/T03/T09 PASS；T04/T05 FAIL（服务器 -1022 空闲断开，未绕过）。
 
@@ -37,16 +43,16 @@
 | 真机 PiP | **UNVERIFIED（本轮）**：包已安装，设备锁定无法启动；矩阵 A–J 未执行 | 见 §6；历史构建证据见 `real-device-verification.md` |
 | 后台行为 | 进入后台停止全部探测定时器，不停止 PiP、不销毁来源 WebView；音频按全局 PiP 保持 | `MediaSchedulingTests`（后台/前台/PiP 全局状态）；`handleScenePhase` |
 | 内存 | 10 标签常驻：**81.2 MB**（模拟器 Debug footprint）；关闭 10 标签：43.7 → 43.9 MB（WebKit 进程内存不计入 App footprint） | `BrowserPerformanceTests` 实测输出 |
-| IPA | **730,933 字节（0.70 MB）** | `build/ipa/Ariuno.ipa` |
+| IPA | **718,876 字节（0.70 MB）** | `build/ipa/Ariuno.ipa` |
 | Build | Release Archive **SUCCEEDED**，Export **SUCCEEDED** | `build/Ariuno.xcarchive`、`build/ipa` |
 
 ### 1.1 体积明细（Release）
 
 | 项目 | 大小 |
 |---|---:|
-| IPA 下载包 | 730,933 字节（0.70 MB） |
+| IPA 下载包 | 718,876 字节（0.70 MB） |
 | Ariuno.app | 1.7 MB（`du`） |
-| 主可执行文件 | 1,674,016 字节（1.60 MB） |
+| 主可执行文件 | 1,640,736 字节（1.56 MB） |
 | Assets.car | 76 KB |
 | MediaProbe.js | 24 KB |
 | 内嵌 framework / dylib | 0 |

@@ -1001,16 +1001,6 @@ final class AppCoordinator: ObservableObject {
         case .downloadStarted(let filename):
             diagnostics.info(.download, "download.started", "开始下载文件", ["filename": filename])
 
-        case .popupOpened:
-            diagnostics.info(.navigation, "popup.opened", "已打开登录/授权弹窗")
-
-        case .popupClosed:
-            diagnostics.info(.navigation, "popup.closed", "登录/授权弹窗已关闭")
-
-        case .popupNavigationFailed(let message):
-            diagnostics.warning(.navigation, "popup.failed", "登录/授权弹窗加载失败")
-            showToast("登录窗口加载失败：\(message)", .warning)
-
         case .titleChanged:
             break
         }

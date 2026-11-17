@@ -26,20 +26,7 @@ enum BrowserEvent: Equatable {
     case httpError(status: Int, host: String?)
     case mediaCaptureDenied(host: String?)
     case downloadStarted(filename: String)
-    case popupOpened
-    case popupClosed
-    case popupNavigationFailed(String)
     case titleChanged
-}
-
-struct ActivePopup: Identifiable {
-    let id: UUID
-    let webView: WKWebView
-
-    init(webView: WKWebView) {
-        self.id = UUID()
-        self.webView = webView
-    }
 }
 
 /// Long-lived browser session. The `WKWebView` is created exactly once and must be held by a
@@ -78,15 +65,12 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var lastNavigationFailure: BrowserNavigationFailure?
     @Published private(set) var webContentTerminatedCount = 0
     @Published private(set) var pendingExternalURL: URL?
-    @Published private(set) var activePopup: ActivePopup?
     @Published private(set) var loadGeneration = 0
 
     var onEvent: ((BrowserEvent) -> Void)?
 
     private(set) var navigationDelegate: BrowserNavigationDelegate!
     private(set) var uiDelegate: BrowserUIDelegate!
-    private var popupNavigationDelegate: PopupNavigationDelegate?
-    private var popupUIDelegate: PopupUIDelegate?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
     private var navigationObservation: NSKeyValueObservation?
@@ -252,7 +236,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         pendingRestoredURL = nil
         restoredTitle = ""
         webView.stopLoading()
-        closePopup()
         pendingExternalURL = nil
         lastNavigationFailure = nil
         loadGeneration += 1
@@ -269,7 +252,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         sessionEnded = false
         suppressNavigationEvents = false
         hasRequestedInitialLoad = true
-        closePopup()
         pendingExternalURL = nil
         lastNavigationFailure = nil
         loadGeneration += 1
@@ -302,7 +284,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         sessionEnded = true
         hasRequestedInitialLoad = false
         webView.stopLoading()
-        closePopup()
         pendingExternalURL = nil
         lastNavigationFailure = nil
         hasCommittedPage = false
@@ -409,15 +390,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         downloadManager.register(download: download)
     }
 
-    func recordPopupNavigationFailure(error: Error) {
-        onEvent?(.popupNavigationFailed(PrivacyRedactor.redact(error.localizedDescription)))
-    }
-
-    func handlePopupProcessTermination() {
-        onEvent?(.popupNavigationFailed("登录窗口的 WebContent 进程已终止"))
-        closePopup()
-    }
-
     // MARK: - External links
 
     /// External schemes are never executed inside WebKit. http(s)/mailto/tel are queued for
@@ -449,11 +421,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
 
     // MARK: - New windows / tabs
 
-    /// Called by BrowserUIDelegate for target=_blank and window.open. BrowserTabManager
-    /// supplies the handler and owns the resulting tab.
-    /// Compatibility no-op: target=_blank/window.open are routed to BrowserTabManager.
-    func closePopup() {}
-
     func handleCreateWindow(
         configuration: WKWebViewConfiguration,
         navigationAction: WKNavigationAction
@@ -472,7 +439,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         isClosed = true
         cookieStore.stop()
         mediaDetector.shutdown()
-        closePopup()
         webView.stopLoading()
         webView.navigationDelegate = nil
         webView.uiDelegate = nil
