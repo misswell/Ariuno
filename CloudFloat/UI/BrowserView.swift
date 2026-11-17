@@ -84,6 +84,32 @@ struct BrowserView: View {
                 }
                 .transition(.scale.combined(with: .opacity))
             }
+
+            if coordinator.settings.showFloatingPiPButton,
+               coordinator.isAnyPiPActive || pipAvailability.isAvailable {
+                GeometryReader { proxy in
+                    FloatingEdgeControl(
+                        containerSize: proxy.size,
+                        normalizedPosition: CGPoint(
+                            x: coordinator.settings.floatingPiPX,
+                            y: coordinator.settings.floatingPiPY
+                        ),
+                        diameter: CGFloat(coordinator.settings.floatingBallDiameter) * 0.84,
+                        tint: coordinator.isAnyPiPActive ? .green : .accentColor,
+                        icon: "pip",
+                        showsCenterDot: false,
+                        showsPiPBadge: false,
+                        accessibilityLabel: coordinator.isAnyPiPActive
+                            ? "退出画中画" : "进入画中画",
+                        onTap: { togglePiPFromFloatingControl() },
+                        onMoved: { normalized in
+                            coordinator.settings.floatingPiPX = Double(normalized.x)
+                            coordinator.settings.floatingPiPY = Double(normalized.y)
+                        }
+                    )
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
         }
         .statusBarHidden(coordinator.route == .game)
         .onAppear {
@@ -341,10 +367,6 @@ struct BrowserView: View {
             .disabled(coordinator.browser.isShowingBlankPage)
             .accessibilityLabel("添加书签")
 
-            if coordinator.settings.showToolbarPiPButton {
-                pipButton
-            }
-
             if let url = coordinator.browser.currentURL,
                url.absoluteString != "about:blank" {
                 ShareLink(item: url) {
@@ -575,45 +597,6 @@ struct BrowserView: View {
 
     // MARK: - PiP
 
-    private var pipButton: some View {
-        Button {
-            if coordinator.session.pipVisible {
-                coordinator.exitPictureInPicture()
-            } else {
-                Task { @MainActor in
-                    await attemptPiP()
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                if isPiPRequestInFlight {
-                    ProgressView()
-                        .controlSize(.mini)
-                        .tint(.primary)
-                } else {
-                    Image(systemName: coordinator.session.pipVisible ? "pip.fill" : "pip")
-                        .font(.system(size: 12, weight: .semibold))
-                }
-                Text(coordinator.session.pipVisible ? "退出" : "PiP")
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(
-                coordinator.session.pipVisible
-                    ? Color.green.opacity(0.20)
-                    : Color.accentColor.opacity(0.16),
-                in: Capsule()
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(!coordinator.session.pipVisible && (!pipAvailability.isAvailable || isPiPRequestInFlight))
-        .opacity(
-            !coordinator.session.pipVisible && !pipAvailability.isAvailable ? 0.45 : 1
-        )
-        .accessibilityLabel(coordinator.session.pipVisible ? "退出画中画" : "进入系统画中画")
-    }
-
     // MARK: - Actions
 
     private func attemptPiP() async {
@@ -653,6 +636,16 @@ struct BrowserView: View {
         autoHideWorkItem?.cancel()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true
+        }
+    }
+
+    private func togglePiPFromFloatingControl() {
+        if coordinator.isAnyPiPActive || coordinator.session.pipVisible {
+            coordinator.exitPictureInPicture()
+            return
+        }
+        Task { @MainActor in
+            await attemptPiP()
         }
     }
 

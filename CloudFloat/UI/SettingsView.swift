@@ -52,12 +52,12 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("显示工具栏 PiP 按钮", isOn: $settings.showToolbarPiPButton)
+                Toggle("显示 PiP 悬浮按钮（可拖动）", isOn: $settings.showFloatingPiPButton)
                 Toggle("显示网页内 PiP 按钮", isOn: $settings.enableInPagePiPButton)
             } header: {
                 Text("画中画")
             } footer: {
-                Text("WebKit 要求来自网页内容的真实点击才能进入 HTML5 PiP。启用后，正在播放且支持 PiP 的视频右上角会显示一个小按钮。关闭后，原生按钮可能只能提示“需要网页内点击”；已存在的子 frame 在下次导航后生效。")
+                Text("WebKit 要求来自网页内容的真实点击才能进入 HTML5 PiP。PiP 入口是一个可拖动的悬浮按钮（四边吸附、空闲半收），不会在工具栏重复出现；关闭上面的开关可完全隐藏它。网页内 PiP 控件开关控制视频右上角的小按钮。")
             }
 
             Section {
