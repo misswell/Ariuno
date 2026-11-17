@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 199 tests, with 0 failures (0 unexpected)
+Executed 201 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -41,7 +41,7 @@ Executed 199 tests, with 0 failures (0 unexpected)
 | BrowserPrivacyTests | 3 | 普通/隐私 WebView 数据隔离、隐私关闭不入最近关闭 |
 | BrowserSessionTests | 7 | M1 配置、UA 不伪造、探测脚本全 frame 注入、设置开关、通用会话 |
 | BrowserTabManagerTests | 7 | 多标签创建/切换/关闭/事件转发、10 标签生命周期 |
-| BookmarkStoreTests | 5 | 书签持久化、去重、删除、URL 匹配 |
+| BookmarkStoreTests | 7 | 书签持久化、去重、删除、URL 匹配、批量删除 |
 | DiagnosticsStoreTests | 8 | 容量、脱敏写入、严重级、导出 JSON/文本/临时文件 |
 | GameSessionStateTests | 16 | 加载、PiP 开关、前后台、网络、停滞、崩溃、恢复、退出、三层验证 |
 | HistoryStoreTests | 4 | 历史持久化、搜索、文件/空白跳过、上限/删除/清空 |
@@ -66,7 +66,7 @@ Executed 199 tests, with 0 failures (0 unexpected)
 | TabThumbnailCacheTests | 4 | Caches PNG、过期、删除/清空、不写 UserDefaults |
 | BrowserContainerTests | 2 | WebView 容器切换不重建/不重载、10 标签稳定实例 |
 | BrowserPerformanceTests | 3 | 标签创建/切换/关闭耗时、10标签 footprint、历史写入 |
-| **合计** | **199** | |
+| **合计** | **201** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
 
@@ -174,7 +174,7 @@ Executed 199 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：199/199 通过（当前）。
+- 自动化：201/201 通过（当前）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

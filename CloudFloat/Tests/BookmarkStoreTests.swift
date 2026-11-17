@@ -67,4 +67,30 @@ final class BookmarkStoreTests: XCTestCase {
         XCTAssertTrue(store.isBookmarked(url))
         XCTAssertFalse(store.isBookmarked(URL(string: "https://example.com/other")!))
     }
+
+    func testBatchRemoveUsesStableIDsAndPersistsOnce() {
+        let store = BookmarkStore(defaults: defaults)
+        for index in 0..<4 {
+            store.add(
+                title: "站点 \(index)",
+                url: URL(string: "https://example.com/\(index)")!
+            )
+        }
+        let ids = Set(store.bookmarks.prefix(2).map(\.id))
+        store.remove(ids)
+
+        XCTAssertEqual(store.bookmarks.count, 2)
+        XCTAssertFalse(store.bookmarks.contains { ids.contains($0.id) })
+
+        let reloaded = BookmarkStore(defaults: defaults)
+        XCTAssertEqual(reloaded.bookmarks.count, 2)
+        XCTAssertFalse(reloaded.bookmarks.contains { ids.contains($0.id) })
+    }
+
+    func testBatchRemoveEmptySetIsNoOp() {
+        let store = BookmarkStore(defaults: defaults)
+        store.add(title: "保留", url: URL(string: "https://example.com/keep")!)
+        store.remove(Set<UUID>())
+        XCTAssertEqual(store.bookmarks.count, 1)
+    }
 }

@@ -104,6 +104,13 @@ final class BookmarkStore: ObservableObject {
         persistBookmarks()
     }
 
+    /// Batch delete from a stable ID snapshot; persists once.
+    func remove(_ ids: Set<UUID>) {
+        guard !ids.isEmpty else { return }
+        bookmarks.removeAll { ids.contains($0.id) }
+        persistBookmarks()
+    }
+
     func move(_ id: UUID, to folderID: UUID) {
         guard let index = bookmarks.firstIndex(where: { $0.id == id }) else { return }
         let order = (bookmarks.filter { $0.folderID == folderID }.map(\.sortOrder).max() ?? -1) + 1

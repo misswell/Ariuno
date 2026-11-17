@@ -4,8 +4,8 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；Debug/Release 构建、Release Archive 与 IPA 导出成功。
-> - 自动化测试 **199 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。
-> - Release IPA **0.70 MB**（718,876 字节），`.app` 1.7 MB，主可执行文件 1.56 MB；无第三方依赖、无内嵌浏览器引擎/动态库。
+> - 自动化测试 **201 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - Release IPA **0.70 MB**（723,820 字节），`.app` 1.7 MB，主可执行文件 1.58 MB；无第三方依赖、无内嵌浏览器引擎/动态库。
 > - 重构后的 Ariuno Debug 包已安装到 iPhone 15 Pro；因设备处于锁定状态，本轮无法启动并完成“切换标签时 PiP 持续”的新架构真机矩阵，相关项标记 **UNVERIFIED**（不冒充通过）。
 > - 历史真机证据（重构前构建）：本地视频 PiP 5 分钟（T01 PASS）、官方登录并进入云游戏（T02 PASS）、登录跨升级保持（T09 PASS）、游戏自动战斗实时 PiP（T03 PASS，单次约 5 分钟）。
 > - **T04/T05 FAIL**：后台无输入约 15 分钟后，游戏自身提示“长时间未操作游戏，已中断连接，错误码 -1022”，PiP 结束。App 没有也不应绕过服务器空闲超时。
@@ -95,7 +95,7 @@ xcodebuild \
 最近一次结果（2026-11-17，iPhone 17 Pro / iOS 26.3.1 模拟器）：
 
 ```text
-Executed 199 tests, with 0 failures (0 unexpected)
+Executed 201 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -107,8 +107,8 @@ Executed 199 tests, with 0 failures (0 unexpected)
 
 - `-CFOpenTestLab`：打开测试页实验室
 - `-CFOpenLocalGame`：把离线视频页加载进真实 BrowserView 外壳
-- `-CFOpenOfficialEntry`：加载官方入口（不登录）
 - `-CFOpenDiagnostics` / `-CFOpenSettings` / `-CFOpenCapability`：打开对应调试界面
+- `-CFOpenBrowser`：进入浏览器界面（空白页）
 
 测试页由 App 内置回环服务器提供：
 
@@ -128,14 +128,14 @@ CloudFloat/
 ├── CloudFloat/                     # Swift 源码目录（保持历史路径）
 │   ├── AriunoApp.swift             # App / RootView / Toast
 │   ├── App/                        # AppCoordinator、设置、FeatureFlags
-│   ├── Browser/                    # BrowserSession、导航/UI delegate、Cookie、恢复
+│   ├── Browser/                    # BrowserSession、TabManager、TabSessionStore、PiPManager、下载、导航
 │   ├── Media/                      # MediaProbe.js、MediaDetector、PiP 协调器、M4 接口
 │   ├── Session/                    # 状态机、SessionMonitor、恢复策略、网络/音频
 │   ├── Diagnostics/                # 事件、脱敏、内存日志、导出
-│   ├── UI/                         # Home/Game/PiPStatus/Diagnostics/Settings/Capability
+│   ├── UI/                         # 起始页 / 浏览器壳 / 标签 / 书签 / 历史 / 下载 / 诊断 / 设置
 │   ├── Developer/                  # 回环测试服务器、测试页实验室
 │   ├── TestPages/                  # 离线 HTML/视频测试资源
-│   └── Tests/                      # 199 项自动化测试
+│   └── Tests/                      # 201 项自动化测试
 ├── docs/                           # 可行性、架构、QA、限制、报告、隐私与审核风险
 └── artifacts/                      # 构建/截图原始证据（非源码）
 ```

@@ -11,6 +11,9 @@ struct BookmarksView: View {
     @State private var newFolderName = ""
     @State private var editingFolder: BookmarkFolder?
     @State private var sortMode: BookmarkSortOrder = .title
+    @State private var isSelecting = false
+    @State private var selectedBookmarkIDs: Set<UUID> = []
+    @State private var showBatchDeleteConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -32,6 +35,18 @@ struct BookmarksView: View {
                     coordinator.bookmarks.renameFolder(updated.id, to: updated.name)
                 }
             }
+            .confirmationDialog(
+                "删除所选书签？",
+                isPresented: $showBatchDeleteConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("删除 \(selectedBookmarkIDs.count) 个书签", role: .destructive) {
+                    coordinator.bookmarks.remove(selectedBookmarkIDs)
+                    selectedBookmarkIDs.removeAll()
+                    isSelecting = false
+                }
+                Button("取消", role: .cancel) {}
+            }
             .onAppear {
                 selectedFolderID = coordinator.bookmarks.rootFolder?.id
                 if coordinator.bookmarks.bookmarks.isEmpty, coordinator.bookmarks.folders.count == 1 {
@@ -49,16 +64,40 @@ struct BookmarksView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .topBarLeading) {
-            Button("完成") { dismiss() }
+            if isSelecting {
+                Button("取消") {
+                    isSelecting = false
+                    selectedBookmarkIDs.removeAll()
+                }
+            } else {
+                Button("完成") { dismiss() }
+            }
         }
         ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                addCurrentPage()
-            } label: {
-                Image(systemName: "plus")
+            if isSelecting {
+                Button(role: .destructive) {
+                    showBatchDeleteConfirmation = true
+                } label: {
+                    Text("删除（\(selectedBookmarkIDs.count)）")
+                }
+                .disabled(selectedBookmarkIDs.isEmpty)
+            } else {
+                HStack(spacing: 14) {
+                    if !currentFolderBookmarks.isEmpty {
+                        Button("选择") {
+                            isSelecting = true
+                            selectedBookmarkIDs.removeAll()
+                        }
+                    }
+                    Button {
+                        addCurrentPage()
+                    } label: {
+                        Image(systemName: "plus")
+                    }
+                    .disabled(!canAddCurrentPage || !canBookmarkCurrentPage)
+                    .accessibilityLabel("添加当前页面到书签")
+                }
             }
-            .disabled(!canAddCurrentPage || !canBookmarkCurrentPage)
-            .accessibilityLabel("添加当前页面到书签")
         }
     }
 
@@ -116,20 +155,35 @@ struct BookmarksView: View {
             } else {
                 ForEach(bookmarks) { bookmark in
                     Button {
+                        if isSelecting {
+                            if selectedBookmarkIDs.contains(bookmark.id) {
+                                selectedBookmarkIDs.remove(bookmark.id)
+                            } else {
+                                selectedBookmarkIDs.insert(bookmark.id)
+                            }
+                            return
+                        }
                         if let url = bookmark.url {
                             coordinator.openURL(url)
                             dismiss()
                         }
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(bookmark.title)
-                                .font(.subheadline.weight(.medium))
-                                .lineLimit(2)
-                                .multilineTextAlignment(.leading)
-                            Text(bookmark.urlString)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+                        HStack(spacing: 10) {
+                            if isSelecting {
+                                Image(systemName: selectedBookmarkIDs.contains(bookmark.id)
+                                      ? "checkmark.circle.fill" : "circle")
+                                    .foregroundStyle(.tint)
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(bookmark.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(2)
+                                    .multilineTextAlignment(.leading)
+                                Text(bookmark.urlString)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
                         }
                     }
                     .buttonStyle(.plain)
