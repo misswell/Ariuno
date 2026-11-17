@@ -25,6 +25,7 @@
 		3FCC40D6DFF73DDDB59E9995 /* BrowserTabManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2776311C0313FDDC9AFDF3D9 /* BrowserTabManagerTests.swift */; };
 		404DBC8AF258396BBDDB79C6 /* TestPages in Resources */ = {isa = PBXBuildFile; fileRef = 76A4C3F63AEB6F86B4CC7F8E /* TestPages */; };
 		419139FD0A13933578013D40 /* TabsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2C72B00DB9428310D35D9E4 /* TabsView.swift */; };
+		46B3DFD2A6D9449E4B99800E /* BrowserUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 054C9BC76ECEE4D638C3DA19 /* BrowserUITests.swift */; };
 		47C6C0269DBEDC075497F267 /* SessionRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8474A8F8B14127B5718B85A /* SessionRecovery.swift */; };
 		48A6626A3587CF6C1A457919 /* DiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 94F8FC2FBE09BAC98DF6132F /* DiagnosticsStore.swift */; };
 		4BE91DA68E3AAEDFFA230E73 /* RecentlyClosedStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4CFA7A6A58BE2892D4EE646 /* RecentlyClosedStoreTests.swift */; };
@@ -88,6 +89,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		81F8E6361F8D5224C9F2E02E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 4D27922B0ECD5B258DB63D77 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A0C4B305B80D56C536246916;
+			remoteInfo = Ariuno;
+		};
 		CB93F58E84808157C9D7A34F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 4D27922B0ECD5B258DB63D77 /* Project object */;
@@ -99,6 +107,7 @@
 
 /* Begin PBXFileReference section */
 		03B6D2CCDC7A38FF66EC8B9E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		054C9BC76ECEE4D638C3DA19 /* BrowserUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserUITests.swift; sourceTree = "<group>"; };
 		06E104499D998DEFF27BAE93 /* DiagnosticEvent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticEvent.swift; sourceTree = "<group>"; };
 		0A739225B2A2B03CC60BB19D /* SearchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchEngine.swift; sourceTree = "<group>"; };
 		0F4E91BC1B7BF178FF9FF607 /* PiPSourceCloseTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiPSourceCloseTests.swift; sourceTree = "<group>"; };
@@ -148,6 +157,7 @@
 		9C42D14363FBD3DC3E3FAA61 /* LoginPopupIntegrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginPopupIntegrationTests.swift; sourceTree = "<group>"; };
 		9F04CF3E0F015F8F66B11293 /* TabSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSessionStore.swift; sourceTree = "<group>"; };
 		A0EE70E071BA2031ACEBB38D /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A1D045BB3526206D0473CF05 /* AriunoUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = AriunoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A2F21BD0B9EB47CE188A8FC6 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		A7F199E01B756A8600A130B0 /* TabSessionStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabSessionStoreTests.swift; sourceTree = "<group>"; };
 		A8474A8F8B14127B5718B85A /* SessionRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecovery.swift; sourceTree = "<group>"; };
@@ -223,6 +233,14 @@
 				F9BB9AF9C8EE47555B7F24B1 /* CloudFloat */,
 				B0073165A36DC80B740A1898 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		631540640BA95B37B876AB95 /* UITests */ = {
+			isa = PBXGroup;
+			children = (
+				054C9BC76ECEE4D638C3DA19 /* BrowserUITests.swift */,
+			);
+			path = UITests;
 			sourceTree = "<group>";
 		};
 		74312F09B3A5B9FFA50BF3EA /* Resources */ = {
@@ -311,6 +329,7 @@
 			children = (
 				C8ECC3E0BDB2C38C1995CC32 /* Ariuno.app */,
 				396940F6038B1F1B7FE4E2FE /* AriunoTests.xctest */,
+				A1D045BB3526206D0473CF05 /* AriunoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -349,6 +368,7 @@
 				CB4203C0CCF34FFC219A54C0 /* Session */,
 				97EADE57C50C753593E4CD0B /* Tests */,
 				7A360CF146C5E7BB265C6845 /* UI */,
+				631540640BA95B37B876AB95 /* UITests */,
 				17B47BF6523EB72325246D92 /* AriunoApp.swift */,
 				76A4C3F63AEB6F86B4CC7F8E /* TestPages */,
 			);
@@ -394,6 +414,24 @@
 			productReference = C8ECC3E0BDB2C38C1995CC32 /* Ariuno.app */;
 			productType = "com.apple.product-type.application";
 		};
+		B417124EDEA9BEDEF4EAA522 /* AriunoUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8B50F91A170EB737BC4C1C46 /* Build configuration list for PBXNativeTarget "AriunoUITests" */;
+			buildPhases = (
+				ED7F225196CEF2F5B5C2345A /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				F55F800D4569162A77C0ABD5 /* PBXTargetDependency */,
+			);
+			name = AriunoUITests;
+			packageProductDependencies = (
+			);
+			productName = AriunoUITests;
+			productReference = A1D045BB3526206D0473CF05 /* AriunoUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -408,6 +446,10 @@
 					};
 					A0C4B305B80D56C536246916 = {
 						ProvisioningStyle = Automatic;
+					};
+					B417124EDEA9BEDEF4EAA522 = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = A0C4B305B80D56C536246916;
 					};
 				};
 			};
@@ -426,6 +468,7 @@
 			projectRoot = "";
 			targets = (
 				A0C4B305B80D56C536246916 /* Ariuno */,
+				B417124EDEA9BEDEF4EAA522 /* AriunoUITests */,
 				906ABA596598FA6B6CBDBFA4 /* AriunoTests */,
 			);
 		};
@@ -499,6 +542,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		ED7F225196CEF2F5B5C2345A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				46B3DFD2A6D9449E4B99800E /* BrowserUITests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F3C149B68E8E82EE9C113E79 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -542,6 +593,11 @@
 			target = A0C4B305B80D56C536246916 /* Ariuno */;
 			targetProxy = CB93F58E84808157C9D7A34F /* PBXContainerItemProxy */;
 		};
+		F55F800D4569162A77C0ABD5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A0C4B305B80D56C536246916 /* Ariuno */;
+			targetProxy = 81F8E6361F8D5224C9F2E02E /* PBXContainerItemProxy */;
+		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
@@ -582,6 +638,23 @@
 				SUPPORTS_MACCATALYST = NO;
 				SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD = NO;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		79B8252ECF30ACA2E05FCC6D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.misswell.Ariuno.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Ariuno;
 			};
 			name = Debug;
 		};
@@ -761,6 +834,23 @@
 			};
 			name = Debug;
 		};
+		FEF77C1EC8A6E6E538BD12ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.misswell.Ariuno.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Ariuno;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -778,6 +868,15 @@
 			buildConfigurations = (
 				F23B3D7AC4252C9F8126C3E4 /* Debug */,
 				36CB39E6EC0E81D6D3A866C8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8B50F91A170EB737BC4C1C46 /* Build configuration list for PBXNativeTarget "AriunoUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				79B8252ECF30ACA2E05FCC6D /* Debug */,
+				FEF77C1EC8A6E6E538BD12ED /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

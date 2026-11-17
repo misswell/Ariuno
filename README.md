@@ -5,6 +5,7 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；Debug/Release 构建、Release Archive 与 IPA 导出成功。
 > - 自动化测试 **201 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - 另有 **4 项 XCUITest** 在模拟器上真实点击通过：起始页入口、新建标签、书签/历史面板、地址栏导航。
 > - Release IPA **0.70 MB**（723,820 字节），`.app` 1.7 MB，主可执行文件 1.58 MB；无第三方依赖、无内嵌浏览器引擎/动态库。
 > - 重构后的 Ariuno Debug 包已安装到 iPhone 15 Pro；因设备处于锁定状态，本轮无法启动并完成“切换标签时 PiP 持续”的新架构真机矩阵，相关项标记 **UNVERIFIED**（不冒充通过）。
 > - 历史真机证据（重构前构建）：本地视频 PiP 5 分钟（T01 PASS）、官方登录并进入云游戏（T02 PASS）、登录跨升级保持（T09 PASS）、游戏自动战斗实时 PiP（T03 PASS，单次约 5 分钟）。
@@ -96,6 +97,11 @@ xcodebuild \
 
 ```text
 Executed 201 tests, with 0 failures (0 unexpected)
+** TEST SUCCEEDED **
+
+# UI 测试（另运行）
+xcodebuild ... -scheme AriunoUITests test
+Executed 4 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 

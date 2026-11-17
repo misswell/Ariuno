@@ -21,6 +21,7 @@
 - 第三方运行时依赖 **0**；`project.yml` 无 dependencies，包内无 `.framework`/`.dylib`。
 - 浏览器核心 **17 个 Swift 文件 / 2,889 行 / 136 KB**（目标 10～20 个文件，达标）。
 - 自动化测试 **201 项全部通过**（0 failures），其中相对 159 项基线新增 42 项浏览器/标签/PiP 生命周期测试。
+- 另有 **4 项 XCUITest** 在模拟器上真实点击 UI 并通过：起始页入口、新建标签页/标签计数、书签/历史面板、地址栏输入 example.com 后出现真实 WKWebView。
 - Release Archive + IPA 导出成功：**IPA 723,820 字节（0.70 MB）**，`.app` 1.7 MB，主可执行文件 1,657,200 字节，Assets.car 76 KB。
 - 真机：最新 Debug 包已安装到 iPhone 15 Pro；设备锁定，无法启动，故**新架构真机 PiP 标签切换矩阵 UNVERIFIED**。
 - 历史真机 PiP 证据（重构前构建）仍保留：T01/T02/T03/T09 PASS；T04/T05 FAIL（服务器 -1022 空闲断开，未绕过）。
@@ -45,6 +46,7 @@
 | 内存 | 10 标签常驻：**81.2 MB**（模拟器 Debug footprint）；关闭 10 标签：43.7 → 43.9 MB（WebKit 进程内存不计入 App footprint） | `BrowserPerformanceTests` 实测输出 |
 | IPA | **723,820 字节（0.70 MB）** | `build/ipa/Ariuno.ipa` |
 | Build | Release Archive **SUCCEEDED**，Export **SUCCEEDED** | `build/Ariuno.xcarchive`、`build/ipa` |
+| UI 功能测试（模拟器） | **4/4 PASS**：起始页入口、新标签仍为首页、标签面板计数、地址栏导航 | `CloudFloat/UITests/BrowserUITests.swift`，scheme `AriunoUITests` |
 
 ### 1.1 体积明细（Release）
 
@@ -138,7 +140,7 @@
 |---|---|---|---|
 | 1 | 使用系统 WKWebView，不包含独立浏览器引擎 | PASS | 包内无 framework/dylib；仅 WebKit 系统框架 |
 | 2 | 没有大型第三方依赖 | PASS | 依赖数 0 |
-| 3 | 可以作为普通浏览器正常使用 | PASS（模拟器） | 模拟器安装启动、起始页/浏览器壳截图；11 项导航测试 |
+| 3 | 可以作为普通浏览器正常使用 | PASS（模拟器） | 模拟器安装启动、起始页/浏览器壳截图；11 项导航测试；4 项 XCUITest 真实点击 |
 | 4 | 没有固定云游戏网址 | PASS | 全仓无 mihoyo/hoyoverse 业务地址；无 `gameURL` |
 | 5 | 地址栏支持搜索和网址输入 | PASS | `URLInputParserTests` 10 项 + 搜索引擎设置 |
 | 6 | 多标签真实切换正常 | PASS（模拟器） | 10 标签容器测试；切换 200 次 0.3 ms |
@@ -231,10 +233,24 @@
 xcodebuild -project Ariuno.xcodeproj -scheme Ariuno \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/SimDerivedData test
-
 Executed 201 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
+
+xcodebuild -project Ariuno.xcodeproj -scheme AriunoUITests \
+  -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
+  -derivedDataPath build/SimDerivedData test
+Executed 4 tests, with 0 failures (0 unexpected)
+** TEST SUCCEEDED **
 ```
+
+### 5.1 XCUITest 明细（模拟器真实点击）
+
+| 测试 | 验证内容 | 结果 |
+|---|---|---|
+| testStartPageExposesBrowserEntryPoints | 首次启动显示 Ariuno 起始页、搜索框、新建标签/书签/历史/下载入口、常用网站 | PASS |
+| testNewTabStaysOnStartPageAndTabSheetCountsIt | 新建标签仍显示起始页（不自动打开游戏），标签面板显示数量 | PASS |
+| testBookmarksAndHistorySheetsOpenFromStartPage | 书签与历史入口可打开对应面板 | PASS |
+| testAddressBarNavigatesToTypedHost | 地址栏输入 `example.com` 后出现真实 WKWebView 且浏览器工具栏可见 | PASS |
 
 ---
 
