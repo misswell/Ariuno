@@ -95,8 +95,8 @@
 
   <ellipse cx="476" cy="520" rx="150" ry="150" fill="url(#core)" opacity="0.55" filter="url(#blur34)"/>
 
-  <path d="M448 460 L448 580 L566 520 Z" fill="url(#playFill)" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="7" stroke-linejoin="round"/>
-  <path d="M448 460 L448 580 L566 520 Z" fill="none" stroke="#8FF3FF" stroke-opacity="0.5" stroke-width="16" stroke-linejoin="round" filter="url(#blur14)"/>
+  <path d="M415 460 L415 580 L533 520 Z" fill="url(#playFill)" stroke="#FFFFFF" stroke-opacity="0.85" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M415 460 L415 580 L533 520 Z" fill="none" stroke="#8FF3FF" stroke-opacity="0.5" stroke-width="16" stroke-linejoin="round" filter="url(#blur14)"/>
 
   <g opacity="0.55">
     <circle cx="170" cy="300" r="4" fill="#FFFFFF" filter="url(#blur8)"/>

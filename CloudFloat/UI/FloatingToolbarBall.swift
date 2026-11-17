@@ -1,8 +1,12 @@
 import SwiftUI
 
 /// Pure geometry helpers for the draggable floating toolbar ball. Kept separate from the
-/// view so clamping, edge snapping and persistence can be unit-tested without UI.
+/// view so clamping, four-edge snapping and persistence can be unit-tested without UI.
 enum FloatingBallGeometry {
+    enum Edge: Equatable {
+        case left, right, top, bottom
+    }
+
     static func clamp(
         _ point: CGPoint,
         in size: CGSize,
@@ -11,32 +15,66 @@ enum FloatingBallGeometry {
         margin: CGFloat = 6
     ) -> CGPoint {
         let radius = diameter / 2
-        let minX = safeArea.leading + margin + radius
-        let maxX = size.width - safeArea.trailing - margin - radius
-        let minY = safeArea.top + margin + radius
-        let maxY = size.height - safeArea.bottom - margin - radius
+        let leading = max(0, safeArea.leading)
+        let trailing = max(0, safeArea.trailing)
+        let top = max(0, safeArea.top)
+        let bottom = max(0, safeArea.bottom)
+        let minX = leading + margin + radius
+        let maxX = size.width - trailing - margin - radius
+        let minY = top + margin + radius
+        let maxY = size.height - bottom - margin - radius
         let x = max(minX, min(maxX, point.x))
         let y = max(minY, min(maxY, point.y))
         return CGPoint(x: x, y: y)
     }
 
-    /// Snaps a point to the nearest left/right edge while keeping the whole ball visible.
+    /// Chooses the nearest of the four safe-area edges. Corner cases resolve deterministically
+    /// to the smaller distance (left/right before top/bottom on ties).
+    static func nearestEdge(
+        _ point: CGPoint,
+        in size: CGSize,
+        safeArea: EdgeInsets
+    ) -> Edge {
+        let left = max(0, point.x - max(0, safeArea.leading))
+        let right = max(0, size.width - max(0, safeArea.trailing) - point.x)
+        let top = max(0, point.y - max(0, safeArea.top))
+        let bottom = max(0, size.height - max(0, safeArea.bottom) - point.y)
+        let minimum = min(min(left, right), min(top, bottom))
+        if minimum == left { return .left }
+        if minimum == right { return .right }
+        if minimum == top { return .top }
+        return .bottom
+    }
+
+    /// Snaps to an edge while keeping the whole ball visible.
     static func visibleEdgePoint(
         _ point: CGPoint,
         in size: CGSize,
         safeArea: EdgeInsets,
         diameter: CGFloat,
+        edge: Edge? = nil,
         margin: CGFloat = 6
     ) -> CGPoint {
         let radius = diameter / 2
-        let leftX = safeArea.leading + margin + radius
-        let rightX = size.width - safeArea.trailing - margin - radius
-        let x = point.x < size.width / 2 ? leftX : rightX
-        let y = min(
-            max(point.y, safeArea.top + margin + radius),
-            size.height - safeArea.bottom - margin - radius
-        )
-        return CGPoint(x: x, y: y)
+        let leading = max(0, safeArea.leading)
+        let trailing = max(0, safeArea.trailing)
+        let top = max(0, safeArea.top)
+        let bottom = max(0, safeArea.bottom)
+        let minX = leading + margin + radius
+        let maxX = size.width - trailing - margin - radius
+        let minY = top + margin + radius
+        let maxY = size.height - bottom - margin - radius
+        let resolved = edge ?? nearestEdge(point, in: size, safeArea: safeArea)
+        switch resolved {
+        case .left:
+            return CGPoint(x: minX, y: max(minY, min(maxY, point.y)))
+        case .right:
+            return CGPoint(x: maxX, y: max(minY, min(maxY, point.y)))
+        case .top:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: minY)
+        case .bottom:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: maxY)
+        }
     }
 
     /// Idle state: half of the ball is tucked outside the nearest edge.
@@ -44,15 +82,29 @@ enum FloatingBallGeometry {
         _ point: CGPoint,
         in size: CGSize,
         safeArea: EdgeInsets,
-        diameter: CGFloat
+        diameter: CGFloat,
+        edge: Edge? = nil
     ) -> CGPoint {
         let radius = diameter / 2
-        let x = point.x < size.width / 2 ? safeArea.leading : size.width - safeArea.trailing
-        let y = min(
-            max(point.y, safeArea.top + radius),
-            size.height - safeArea.bottom - radius
-        )
-        return CGPoint(x: x, y: y)
+        let leading = max(0, safeArea.leading)
+        let trailing = max(0, safeArea.trailing)
+        let top = max(0, safeArea.top)
+        let bottom = max(0, safeArea.bottom)
+        let resolved = edge ?? nearestEdge(point, in: size, safeArea: safeArea)
+        let minX = leading + radius
+        let maxX = size.width - trailing - radius
+        let minY = top + radius
+        let maxY = size.height - bottom - radius
+        switch resolved {
+        case .left:
+            return CGPoint(x: leading, y: max(minY, min(maxY, point.y)))
+        case .right:
+            return CGPoint(x: size.width - trailing, y: max(minY, min(maxY, point.y)))
+        case .top:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: top)
+        case .bottom:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: size.height - bottom)
+        }
     }
 
     static func normalized(_ point: CGPoint, in size: CGSize) -> CGPoint {
@@ -73,9 +125,11 @@ enum FloatingBallGeometry {
 
 /// A draggable glass ball that replaces the browser chrome.
 ///
-/// - Drag anywhere; on release it snaps to the nearest edge.
-/// - After 3 seconds without interaction it tucks half outside the edge and fades.
+/// - Drag anywhere; on release it snaps to the nearest of the four safe-area edges.
+/// - After 3 seconds without interaction it tucks half outside that edge and fades.
 /// - Tap restores the full toolbar.
+/// - Position is kept as a normalized anchor so orientation/PiP layout changes remap it
+///   instead of leaving the ball at a stale absolute point.
 struct FloatingToolbarBall: View {
     let containerSize: CGSize
     let safeArea: EdgeInsets
@@ -86,7 +140,10 @@ struct FloatingToolbarBall: View {
     let onMoved: (CGPoint) -> Void
 
     @State private var position: CGPoint?
+    @State private var normalizedAnchor: CGPoint?
+    @State private var lastContainerSize: CGSize = .zero
     @State private var dragOrigin: CGPoint?
+    @State private var preferredEdge: FloatingBallGeometry.Edge?
     @State private var isIdleCollapsed = false
     @State private var idleTask: Task<Void, Never>?
 
@@ -131,16 +188,23 @@ struct FloatingToolbarBall: View {
                 }
                 .onEnded { _ in
                     dragOrigin = nil
+                    let edge = FloatingBallGeometry.nearestEdge(
+                        currentPoint,
+                        in: containerSize,
+                        safeArea: safeArea
+                    )
                     let snapped = FloatingBallGeometry.visibleEdgePoint(
                         currentPoint,
                         in: containerSize,
                         safeArea: safeArea,
-                        diameter: diameter
+                        diameter: diameter,
+                        edge: edge
                     )
+                    preferredEdge = edge
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                         position = snapped
                     }
-                    onMoved(FloatingBallGeometry.normalized(snapped, in: containerSize))
+                    persist(snapped)
                     scheduleIdleCollapse()
                 }
         )
@@ -150,38 +214,42 @@ struct FloatingToolbarBall: View {
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("展开工具栏")
+        .accessibilityValue(accessibilityEdgeValue)
         .accessibilityAddTraits(.isButton)
         .onAppear {
             if position == nil {
+                let anchor = normalizedPosition
+                normalizedAnchor = anchor
+                let mapped = FloatingBallGeometry.point(fromNormalized: anchor, in: containerSize)
+                let edge = FloatingBallGeometry.nearestEdge(
+                    mapped,
+                    in: containerSize,
+                    safeArea: safeArea
+                )
+                preferredEdge = edge
                 position = FloatingBallGeometry.visibleEdgePoint(
-                    FloatingBallGeometry.point(fromNormalized: normalizedPosition, in: containerSize),
+                    mapped,
                     in: containerSize,
                     safeArea: safeArea,
-                    diameter: diameter
+                    diameter: diameter,
+                    edge: edge
                 )
+                persist(position!)
             }
+            lastContainerSize = containerSize
             scheduleIdleCollapse()
         }
         .onDisappear {
             cancelIdleTask()
         }
-        .onChange(of: containerSize) { _, newSize in
-            guard let current = position else { return }
-            position = FloatingBallGeometry.visibleEdgePoint(
-                current,
-                in: newSize,
-                safeArea: safeArea,
-                diameter: diameter
-            )
+        .onChange(of: containerSize) { oldSize, newSize in
+            relayout(from: oldSize, to: newSize)
+        }
+        .onChange(of: safeArea) { _, _ in
+            relayout(from: containerSize, to: containerSize)
         }
         .onChange(of: diameter) { _, _ in
-            guard let current = position else { return }
-            position = FloatingBallGeometry.visibleEdgePoint(
-                current,
-                in: containerSize,
-                safeArea: safeArea,
-                diameter: diameter
-            )
+            relayout(from: containerSize, to: containerSize)
         }
     }
 
@@ -197,6 +265,22 @@ struct FloatingToolbarBall: View {
         }
     }
 
+    private var accessibilityEdgeValue: String {
+        let edge = preferredEdge ?? FloatingBallGeometry.nearestEdge(
+            currentPoint,
+            in: containerSize,
+            safeArea: safeArea
+        )
+        let name: String
+        switch edge {
+        case .left: name = "左侧"
+        case .right: name = "右侧"
+        case .top: name = "顶部"
+        case .bottom: name = "底部"
+        }
+        return isIdleCollapsed ? "\(name)，已半收" : name
+    }
+
     private var currentPoint: CGPoint {
         position ?? FloatingBallGeometry.visibleEdgePoint(
             FloatingBallGeometry.point(fromNormalized: normalizedPosition, in: containerSize),
@@ -206,18 +290,76 @@ struct FloatingToolbarBall: View {
         )
     }
 
+    /// Re-maps the normalized anchor into the new layout, then snaps it to the nearest edge
+    /// (or keeps the half-tucked idle position). This is what fixes portrait/landscape and
+    /// PiP-induced layout changes.
+    private func relayout(from oldSize: CGSize, to newSize: CGSize) {
+        guard newSize.width > 0, newSize.height > 0 else { return }
+        let anchor: CGPoint
+        if let stored = normalizedAnchor {
+            anchor = stored
+        } else if oldSize.width > 0, oldSize.height > 0 {
+            anchor = FloatingBallGeometry.normalized(currentPoint, in: oldSize)
+        } else {
+            anchor = normalizedPosition
+        }
+        let mapped = FloatingBallGeometry.point(fromNormalized: anchor, in: newSize)
+        let edge = preferredEdge ?? FloatingBallGeometry.nearestEdge(
+            mapped,
+            in: newSize,
+            safeArea: safeArea
+        )
+        let snapped = FloatingBallGeometry.visibleEdgePoint(
+            mapped,
+            in: newSize,
+            safeArea: safeArea,
+            diameter: diameter,
+            edge: edge
+        )
+        preferredEdge = edge
+        withAnimation(.easeInOut(duration: 0.2)) {
+            if isIdleCollapsed {
+                position = FloatingBallGeometry.idleEdgePoint(
+                    snapped,
+                    in: newSize,
+                    safeArea: safeArea,
+                    diameter: diameter,
+                    edge: edge
+                )
+            } else {
+                position = snapped
+            }
+        }
+        normalizedAnchor = FloatingBallGeometry.normalized(snapped, in: newSize)
+        lastContainerSize = newSize
+        persist(snapped)
+    }
+
+    private func persist(_ point: CGPoint) {
+        let normalized = FloatingBallGeometry.normalized(point, in: containerSize)
+        normalizedAnchor = normalized
+        onMoved(normalized)
+    }
+
     private func scheduleIdleCollapse() {
         cancelIdleTask()
         idleTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: idleDelay)
             guard !Task.isCancelled else { return }
+            let edge = preferredEdge ?? FloatingBallGeometry.nearestEdge(
+                currentPoint,
+                in: containerSize,
+                safeArea: safeArea
+            )
+            let snapped = FloatingBallGeometry.idleEdgePoint(
+                currentPoint,
+                in: containerSize,
+                safeArea: safeArea,
+                diameter: diameter,
+                edge: edge
+            )
             withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
-                position = FloatingBallGeometry.idleEdgePoint(
-                    currentPoint,
-                    in: containerSize,
-                    safeArea: safeArea,
-                    diameter: diameter
-                )
+                position = snapped
                 isIdleCollapsed = true
             }
         }

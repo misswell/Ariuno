@@ -16,10 +16,21 @@
     </radialGradient>
     <linearGradient id="cloud" gradientUnits="userSpaceOnUse" x1="300" y1="320" x2="720" y2="790">
       <stop offset="0" stop-color="#FFFFFF"/>
-      <stop offset="0.42" stop-color="#F1F8FF"/>
-      <stop offset="0.78" stop-color="#D8EAFF"/>
-      <stop offset="1" stop-color="#B9D6FA"/>
+      <stop offset="0.4" stop-color="#F3F9FF"/>
+      <stop offset="0.74" stop-color="#D5E7FF"/>
+      <stop offset="1" stop-color="#A9C8F2"/>
     </linearGradient>
+    <linearGradient id="gemTop" gradientUnits="userSpaceOnUse" x1="460" y1="470" x2="620" y2="560">
+      <stop offset="0" stop-color="#8FF6FF"/>
+      <stop offset="0.55" stop-color="#39C6FF"/>
+      <stop offset="1" stop-color="#2E7BFF"/>
+    </linearGradient>
+    <linearGradient id="gemBottom" gradientUnits="userSpaceOnUse" x1="450" y1="570" x2="620" y2="650">
+      <stop offset="0" stop-color="#2F6BFF"/>
+      <stop offset="0.6" stop-color="#1B3BFF"/>
+      <stop offset="1" stop-color="#3D5BFF"/>
+    </linearGradient>
+    <clipPath id="playClip"><path d="M450 470 L450 650 L640 560 Z"/></clipPath>
     <linearGradient id="playFill" gradientUnits="userSpaceOnUse" x1="420" y1="450" x2="620" y2="680">
       <stop offset="0" stop-color="#3557FF"/>
       <stop offset="0.5" stop-color="#2E9BFF"/>
@@ -80,8 +91,8 @@
     <g filter="url(#blur40)" opacity="0.4">
       <use href="#cloudShape" fill="#9FE6FF" transform="translate(18,24)"/>
     </g>
-    <g filter="url(#blur40)" opacity="0.16">
-      <use href="#cloudShape" fill="#FFFFFF" transform="translate(-16,-18)"/>
+    <g filter="url(#blur40)" opacity="0.2">
+      <use href="#cloudShape" fill="#FFFFFF" transform="translate(-14,-18)"/>
     </g>
   </g>
 
@@ -92,17 +103,26 @@
     <use href="#cloudShape" fill="#6F8FCF" opacity="0.38" transform="translate(0,34)" filter="url(#blur26)"/>
     <use href="#cloudShape" fill="#FFFFFF" opacity="0.6" transform="translate(-14,-26)" filter="url(#blur26)"/>
     <ellipse cx="400" cy="400" rx="230" ry="80" fill="#FFFFFF" opacity="0.6" transform="rotate(-24 400 400)" filter="url(#blur40)"/>
+    <ellipse cx="420" cy="420" rx="120" ry="30" fill="#FFFFFF" opacity="0.55" transform="rotate(-24 420 420)" filter="url(#blur14)"/>
     <ellipse cx="640" cy="700" rx="240" ry="60" fill="#8FE8FF" opacity="0.2" transform="rotate(-8 640 700)" filter="url(#blur40)"/>
   </g>
 
-  <g filter="url(#blur26)" opacity="0.4">
-    <path d="M450 470 L450 650 L640 560 Z" fill="#06203F" transform="translate(0,20)"/>
+  <g filter="url(#blur26)" opacity="0.5">
+    <path d="M450 470 L450 650 L640 560 Z" fill="#08213F" transform="translate(0,26)"/>
   </g>
-  <g filter="url(#blur16)" opacity="0.7">
+  <g filter="url(#blur8)" opacity="0.4">
+    <path d="M450 470 L450 650 L640 560 Z" fill="#08213F" transform="translate(0,8)"/>
+  </g>
+  <g filter="url(#blur16)" opacity="0.55">
     <path d="M450 470 L450 650 L640 560 Z" fill="url(#core)"/>
   </g>
-  <path d="M450 470 L450 650 L640 560 Z" fill="url(#playFill)" stroke="#FFFFFF" stroke-opacity="0.9" stroke-width="5" stroke-linejoin="round"/>
-  <path d="M450 470 L640 560 L450 650 Z" fill="none" stroke="#DFFBFF" stroke-opacity="0.3" stroke-width="2"/>
+  <path d="M450 470 L450 560 L640 560 Z" fill="url(#gemTop)"/>
+  <path d="M450 560 L450 650 L640 560 Z" fill="url(#gemBottom)"/>
+  <g clip-path="url(#playClip)">
+    <ellipse cx="490" cy="505" rx="90" ry="34" fill="#FFFFFF" opacity="0.4" transform="rotate(-24 490 505)" filter="url(#blur16)"/>
+  </g>
+  <path d="M450 560 L640 560" stroke="#DFFBFF" stroke-opacity="0.55" stroke-width="3"/>
+  <path d="M450 470 L450 650 L640 560 Z" fill="none" stroke="#FFFFFF" stroke-opacity="0.92" stroke-width="5" stroke-linejoin="round"/>
 
   <g opacity="0.8">
     <circle cx="238" cy="380" r="12" fill="#DFF6FF" opacity="0.55"/>

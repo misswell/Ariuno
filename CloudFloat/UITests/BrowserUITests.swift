@@ -166,6 +166,43 @@ final class BrowserUITests: XCTestCase {
         add(expanded)
     }
 
+    func testFloatingBallRemapsAfterOrientationChange() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let collapse = app.buttons["收起为悬浮球"]
+        XCTAssertTrue(collapse.waitForExistence(timeout: 15))
+        collapse.tap()
+
+        let ball = app.buttons["展开工具栏"]
+        XCTAssertTrue(ball.waitForExistence(timeout: 5))
+
+        XCUIDevice.shared.orientation = .landscapeLeft
+        defer { XCUIDevice.shared.orientation = .portrait }
+        let deadline = Date().addingTimeInterval(5)
+        while app.frame.width <= app.frame.height, Date() < deadline {
+            usleep(200_000)
+        }
+        XCTAssertGreaterThan(app.frame.width, app.frame.height, "设备应进入横屏")
+        sleep(1)
+
+        XCTAssertTrue(ball.waitForExistence(timeout: 5), "横屏后悬浮球仍应存在")
+        XCTAssertTrue(ball.exists, "横屏后悬浮球仍应存在")
+        XCTAssertFalse(collapse.exists, "横屏后工具栏应保持收起状态")
+        let edgeValue = ball.value as? String ?? ""
+        XCTAssertTrue(
+            edgeValue.contains("右侧"),
+            "横屏后应保持吸附在右侧，实际：\(edgeValue)"
+        )
+
+        let landscapeShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        landscapeShot.name = "floating-ball-landscape"
+        landscapeShot.lifetime = .keepAlways
+        add(landscapeShot)
+    }
+
     func testAddressBarNavigatesToTypedHost() {
         app.launch()
         let field = app.textFields["搜索或输入网址"]

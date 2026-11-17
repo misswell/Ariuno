@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #F4F6FF;
+    --muted: #8B93A8;
+    --line: rgba(255,255,255,.09);
+    --card: rgba(255,255,255,.035);
+    --accent: #7B6BFF;
+    --cyan: #5BE8FF;
+  }
+  body {
+    width: 1820px;
+    background: #090B11;
+    color: var(--ink);
+    font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { position: relative; padding: 64px 64px 56px; overflow: hidden; }
+  .glow-a {
+    position: absolute; left: -260px; top: -300px; width: 1100px; height: 900px;
+    background: radial-gradient(closest-side, rgba(123,75,255,.30), transparent 70%);
+    filter: blur(30px); pointer-events: none;
+  }
+  .glow-b {
+    position: absolute; right: -300px; top: 520px; width: 1100px; height: 900px;
+    background: radial-gradient(closest-side, rgba(31,184,255,.18), transparent 70%);
+    filter: blur(30px); pointer-events: none;
+  }
+  header { position: relative; display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 38px; border-bottom: 1px solid var(--line); }
+  .eyebrow { font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 18px; }
+  h1 { font-size: 92px; line-height: .92; letter-spacing: -.045em; font-weight: 650; }
+  h1 .dot { color: var(--cyan); }
+  .lede { margin-top: 20px; font-size: 19px; line-height: 1.65; color: var(--muted); max-width: 760px; }
+  .meta { text-align: right; font-size: 13px; color: var(--muted); letter-spacing: .06em; line-height: 1.8; }
+  .meta b { color: var(--ink); font-weight: 500; letter-spacing: .04em; }
+  .palette { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+  .sw { width: 30px; height: 30px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); }
+
+  .grid { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; margin-top: 44px; }
+  .card {
+    background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.018));
+    border: 1px solid var(--line); border-radius: 30px; padding: 36px 32px 30px;
+  }
+  .thumb { position: relative; width: 100%; aspect-ratio: 1; border-radius: 26px; overflow: hidden; margin-bottom: 28px; background: #070A14; }
+  .thumb img { width: 100%; height: 100%; display: block; border-radius: 22.37%; box-shadow: 0 26px 60px rgba(0,0,0,.55); }
+  .no { font-size: 12px; letter-spacing: .2em; color: var(--accent); font-weight: 700; }
+  .name { font-size: 25px; font-weight: 600; letter-spacing: -.01em; margin-top: 10px; }
+  .en { font-size: 11px; color: #6F7890; letter-spacing: .18em; margin-top: 6px; text-transform: uppercase; }
+  .desc { font-size: 15px; line-height: 1.7; color: var(--muted); margin-top: 14px; }
+
+  .testing { position: relative; margin-top: 30px; border: 1px solid var(--line); border-radius: 30px; padding: 34px 36px 30px; background: rgba(255,255,255,.02); }
+  .testing h2 { font-size: 22px; letter-spacing: -.01em; font-weight: 600; }
+  .testing .hint { font-size: 14px; color: var(--muted); margin-top: 8px; }
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-top: 24px; }
+  .panel { border-radius: 22px; padding: 24px 22px 20px; }
+  .panel.light { background: linear-gradient(135deg, #E9EEF7, #F8F4ED); }
+  .panel.dark { background: linear-gradient(135deg, #0B1020, #18233C); border: 1px solid rgba(255,255,255,.06); }
+  .panel .tag { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; font-weight: 600; margin-bottom: 18px; }
+  .panel.light .tag { color: #8A94A6; }
+  .panel.dark .tag { color: #8FA0C0; }
+  .row { display: flex; justify-content: space-between; }
+  .item { text-align: center; }
+  .item img { width: 100px; height: 100px; border-radius: 22.37%; display: block; box-shadow: 0 10px 26px rgba(0,0,0,.25); }
+  .panel.dark .item img { box-shadow: 0 10px 26px rgba(0,0,0,.55); }
+  .item span { display: block; margin-top: 10px; font-size: 11px; letter-spacing: .08em; }
+  .panel.light .item span { color: #7A8496; }
+  .panel.dark .item span { color: #93A3C4; }
+  .sizewrap { display: flex; gap: 54px; align-items: flex-start; margin-top: 22px; }
+  .sizes { display: flex; flex-direction: column; gap: 14px; flex: 0 0 auto; }
+  .note { flex: 1; border-left: 1px solid var(--line); padding-left: 40px; }
+  .note h3 { font-size: 15px; font-weight: 600; margin-bottom: 12px; }
+  .note ul { list-style: none; }
+  .note li { font-size: 14px; line-height: 1.7; color: var(--muted); margin-bottom: 8px; }
+  .note b { color: var(--ink); font-weight: 600; }
+  .size-row { display: flex; align-items: center; gap: 14px; }
+  .size-row .lbl { width: 48px; font-size: 12px; color: var(--muted); }
+  .size-row img { display: block; border-radius: 22.37%; }
+
+  footer { position: relative; display: flex; justify-content: space-between; align-items: center; margin-top: 34px; color: #5D6578; font-size: 12px; letter-spacing: .04em; }
+  footer .right { display: flex; align-items: center; gap: 10px; }
+  footer .dot { width: 8px; height: 8px; border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="glow-a"></div>
+  <div class="glow-b"></div>
+
+  <header>
+    <div>
+      <div class="eyebrow">Ariuno · App Icon Directions</div>
+      <h1>ariuno<span class="dot">.</span></h1>
+      <p class="lede">六款图标方向，从品牌字母到玻璃材质，再到产品本体。统一使用紫—蓝—青的极光色系，全部为 1024×1024 满版、无 alpha，可直接替换 AppIcon。</p>
+    </div>
+    <div class="meta">
+      <b>2026 · 11 · 17</b><br>
+      6 directions<br>
+      1024 × 1024 / sRGB
+      <div class="palette">
+        <span class="sw" style="background:#7B4BFF"></span>
+        <span class="sw" style="background:#327AFA"></span>
+        <span class="sw" style="background:#5BE8FF"></span>
+        <span class="sw" style="background:#090B11"></span>
+      </div>
+    </div>
+  </header>
+
+  <section class="grid">
+    <div class="card">
+      <div class="thumb"><img src="png/01-facet-play.png" alt="Facet Play"></div>
+      <div class="no">01</div>
+      <div class="name">折面播放</div>
+      <div class="en">Facet Play</div>
+      <p class="desc">三块玻璃折面拼成一个播放键，紫到青的渐变随折角变化。最像发布会主视觉，适合把“播放”做成品牌符号。</p>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><img src="png/02-aurora-a.png" alt="Aurora Monogram"></div>
+      <div class="no">02</div>
+      <div class="name">极光字母 A</div>
+      <div class="en">Aurora Monogram</div>
+      <p class="desc">厚重的 A 字标，横杠上开一个播放形孔洞，背后透出极光。品牌名和产品动作一次讲完，适合字母标路线。</p>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><img src="png/03-monogram-a.png" alt="Monogram Seal"></div>
+      <div class="no">03</div>
+      <div class="name">字母徽章 a</div>
+      <div class="en">Monogram Seal</div>
+      <p class="desc">小写 a 的圆腔里嵌一枚播放键，外圈是细密刻度的印章。最像“品牌资产”，适合做长期主标或周边。</p>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><img src="png/04-orbital-play.png" alt="Orbital Play"></div>
+      <div class="no">04</div>
+      <div class="name">轨道播放</div>
+      <div class="en">Orbital Play</div>
+      <p class="desc">玻璃球、轨道环和发光播放核心。把云端串流、全球节点和“漂浮”做成一个天体，最有科技感。</p>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><img src="png/05-floating-windows.png" alt="Floating Windows"></div>
+      <div class="no">05</div>
+      <div class="name">浮窗</div>
+      <div class="en">Floating Windows</div>
+      <p class="desc">浏览器窗 + 弹出的小窗，直接把产品本身画成图标。玻璃层次和景深最丰富，最像“工具”。</p>
+    </div>
+
+    <div class="card">
+      <div class="thumb"><img src="png/06-cloud-play.png" alt="Cloud Play"></div>
+      <div class="no">06</div>
+      <div class="name">云端播放</div>
+      <div class="en">Cloud Play</div>
+      <p class="desc">云朵里嵌一块折面播放宝石，最直白、最亲和，也最容易被非技术用户一眼看懂。</p>
+    </div>
+  </section>
+
+  <section class="testing">
+    <h2>尺寸与明暗检查</h2>
+    <p class="hint">按 iOS 主屏 100 pt 展示；浅色与深色壁纸各看一遍。编号对应上方方案。</p>
+    <div class="panels">
+      <div class="panel light">
+        <div class="tag">Light wallpaper</div>
+        <div class="row">
+          <div class="item"><img src="png/01-facet-play.png"><span>01</span></div>
+          <div class="item"><img src="png/02-aurora-a.png"><span>02</span></div>
+          <div class="item"><img src="png/03-monogram-a.png"><span>03</span></div>
+          <div class="item"><img src="png/04-orbital-play.png"><span>04</span></div>
+          <div class="item"><img src="png/05-floating-windows.png"><span>05</span></div>
+          <div class="item"><img src="png/06-cloud-play.png"><span>06</span></div>
+        </div>
+      </div>
+      <div class="panel dark">
+        <div class="tag">Dark wallpaper</div>
+        <div class="row">
+          <div class="item"><img src="png/01-facet-play.png"><span>01</span></div>
+          <div class="item"><img src="png/02-aurora-a.png"><span>02</span></div>
+          <div class="item"><img src="png/03-monogram-a.png"><span>03</span></div>
+          <div class="item"><img src="png/04-orbital-play.png"><span>04</span></div>
+          <div class="item"><img src="png/05-floating-windows.png"><span>05</span></div>
+          <div class="item"><img src="png/06-cloud-play.png"><span>06</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="sizewrap">
+    <div class="sizes">
+      <div class="size-row">
+        <span class="lbl">60 px</span>
+        <img src="png/01-facet-play.png" width="60" height="60"><img src="png/02-aurora-a.png" width="60" height="60"><img src="png/03-monogram-a.png" width="60" height="60"><img src="png/04-orbital-play.png" width="60" height="60"><img src="png/05-floating-windows.png" width="60" height="60"><img src="png/06-cloud-play.png" width="60" height="60">
+      </div>
+      <div class="size-row">
+        <span class="lbl">29 px</span>
+        <img src="png/01-facet-play.png" width="29" height="29"><img src="png/02-aurora-a.png" width="29" height="29"><img src="png/03-monogram-a.png" width="29" height="29"><img src="png/04-orbital-play.png" width="29" height="29"><img src="png/05-floating-windows.png" width="29" height="29"><img src="png/06-cloud-play.png" width="29" height="29">
+      </div>
+    </div>
+    <div class="note">
+      <h3>选择建议</h3>
+      <ul>
+        <li><b>要主视觉感 → 01 折面播放</b>：颜色和折面最抢眼，适合发布会、商店图。</li>
+        <li><b>要品牌字母 → 02 A / 03 a</b>：一个厚重硬朗，一个柔软亲和。</li>
+        <li><b>要最像产品 → 05 浮窗</b>：浏览器 + 画中画，看图标就知道在做什么。</li>
+        <li><b>要最好懂 → 06 云端播放</b>：云 + 播放，非技术用户也不会误解。</li>
+      </ul>
+    </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>ariuno · icon exploration · 源文件 design/icons/ariuno/svg（矢量） / png（1024 导出）</span>
+    <span class="right">
+      <span class="dot" style="background:#7B4BFF"></span>
+      <span class="dot" style="background:#327AFA"></span>
+      <span class="dot" style="background:#5BE8FF"></span>
+      <span class="dot" style="background:#FFFFFF"></span>
+    </span>
+  </footer>
+</div>
+</body>
+</html>
