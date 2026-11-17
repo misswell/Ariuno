@@ -1,7 +1,7 @@
 import UIKit
 import WebKit
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 @MainActor
 final class MediaProbeIntegrationTests: XCTestCase {

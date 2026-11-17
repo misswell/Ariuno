@@ -97,33 +97,14 @@ final class BrowserUIDelegate: NSObject, WKUIDelegate {
     ) -> WKWebView? {
         guard let session else { return nil }
 
-        if let url = navigationAction.request.url {
-            let decision = session.navigationPolicy.decision(
-                for: url,
-                context: .other,
-                isMainFrame: true
-            )
-            switch decision {
-            case .allow:
-                break
-            case .openExternally(let external):
-                session.requestExternalOpen(external)
-                return nil
-            case .block(let reason):
-                session.recordBlockedNavigation(url: url, reason: reason)
-                return nil
-            }
-        }
-
-        let popup = session.makePopupWebView(configuration: configuration)
-        if navigationAction.request.url == nil {
-            popup.loadHTMLString("", baseURL: nil)
-        }
-        return popup
+        return session.handleCreateWindow(
+            configuration: configuration,
+            navigationAction: navigationAction
+        )
     }
 
     func webViewDidClose(_ webView: WKWebView) {
-        session?.closePopup()
+        session?.requestClose()
     }
 
     func webView(
@@ -167,6 +148,21 @@ final class BrowserUIDelegate: NSObject, WKUIDelegate {
         )
     }
 
+    @available(iOS 18.4, *)
+    func webView(
+        _ webView: WKWebView,
+        runOpenPanelWith parameters: WKOpenPanelParameters,
+        initiatedByFrame frame: WKFrameInfo,
+        completionHandler: @escaping ([URL]?) -> Void
+    ) {
+        var picker: UIDocumentPickerViewController?
+        picker = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        picker?.allowsMultipleSelection = parameters.allowsMultipleSelection
+        picker?.delegate = FileUploadPickerDelegate.shared
+        FileUploadPickerDelegate.shared.completionHandler = completionHandler
+        ViewControllerLocator.topmost()?.present(picker!, animated: true)
+    }
+
     /// The cloud game does not need camera/microphone access. Deny by default so a page
     /// cannot silently request capture permission.
     func webView(
@@ -178,6 +174,22 @@ final class BrowserUIDelegate: NSObject, WKUIDelegate {
     ) {
         session?.recordMediaCaptureDenied(host: origin.host)
         decisionHandler(.deny)
+    }
+}
+
+@MainActor
+final class FileUploadPickerDelegate: NSObject, UIDocumentPickerDelegate {
+    static let shared = FileUploadPickerDelegate()
+    var completionHandler: (([URL]?) -> Void)?
+
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+        completionHandler?(urls)
+        completionHandler = nil
+    }
+
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        completionHandler?(nil)
+        completionHandler = nil
     }
 }
 

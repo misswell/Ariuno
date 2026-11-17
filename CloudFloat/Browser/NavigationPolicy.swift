@@ -10,7 +10,6 @@ enum NavigationContext: String, Equatable {
 
 enum NavigationBlockReason: String, Equatable {
     case noURL
-    case insecureHTTP
     case fileOutsideAllowedScope
     case unsafeScheme
     case untrustedCustomScheme
@@ -24,54 +23,16 @@ enum NavigationDecision: Equatable {
     case block(NavigationBlockReason)
 }
 
-/// Applies the browser's navigation allow-list and external-link handoff rules. Pure
-/// Foundation so every branch is unit-testable without WebKit.
+/// Ariuno is a general browser: all ordinary http/https navigations stay in-app. Only unsafe
+/// schemes and app-install/data URLs are blocked. External system schemes still require the
+/// existing user confirmation flow.
 struct NavigationPolicy: Equatable {
-    static let officialDomainSuffixes = [
-        "mihoyo.com",
-        "hoyoverse.com",
-        "hoyolab.com",
-        "yuanshen.com"
-    ]
-
-    /// Known authentication providers may legitimately redirect inside the web view.
-    static let partnerDomainSuffixes = [
-        "apple.com",
-        "icloud.com",
-        "google.com",
-        "googleapis.com",
-        "gstatic.com",
-        "facebook.com",
-        "twitter.com",
-        "x.com",
-        "taptap.com",
-        "taptap.cn",
-        "microsoftonline.com",
-        "live.com"
-    ]
-
     var allowsLocalTestPages: Bool = false
     var localTestHosts: Set<String> = ["127.0.0.1", "localhost", "::1"]
     var localTestPorts: Set<Int> = []
     var allowedFileDirectory: URL?
 
-    var isEmptyAllowList: Bool {
-        Self.officialDomainSuffixes.isEmpty
-    }
-
-    func isOfficial(host: String?) -> Bool {
-        guard let host = NavigationPolicy.normalisedHost(host) else { return false }
-        return Self.officialDomainSuffixes.contains { suffix in
-            host == suffix || host.hasSuffix("." + suffix)
-        }
-    }
-
-    func isAllowedPartner(host: String?) -> Bool {
-        guard let host = NavigationPolicy.normalisedHost(host) else { return false }
-        return Self.partnerDomainSuffixes.contains { suffix in
-            host == suffix || host.hasSuffix("." + suffix)
-        }
-    }
+    var isEmptyAllowList: Bool { true }
 
     func isLocalTestURL(_ url: URL) -> Bool {
         guard allowsLocalTestPages else { return false }
@@ -90,7 +51,7 @@ struct NavigationPolicy: Equatable {
         isMainFrame: Bool
     ) -> NavigationDecision {
         guard let url else {
-            // WebKit uses nil/empty requests for about:blank popups internally.
+            // WebKit uses nil/empty requests for about:blank popups/new windows internally.
             return .allow
         }
         let scheme = url.scheme?.lowercased() ?? ""
@@ -100,21 +61,8 @@ struct NavigationPolicy: Equatable {
             return .allow
 
         case "https", "http":
-            if scheme == "http" {
-                if isLocalTestURL(url) {
-                    return .allow
-                }
-                return .block(.insecureHTTP)
-            }
-            if isLocalTestURL(url) {
-                return .allow
-            }
-            if isMainFrame,
-               context == .linkActivated,
-               !isOfficial(host: url.host),
-               !isAllowedPartner(host: url.host) {
-                return .openExternally(url)
-            }
+            // Ariuno is a browser: both secure and ordinary HTTP pages stay in-app. The UI
+            // labels HTTP as not secure; ATS still applies to app-level networking.
             return .allow
 
         case "file":
@@ -140,7 +88,7 @@ struct NavigationPolicy: Equatable {
         case "itms-services", "itms-apps", "itms-appss":
             return .block(.appInstallScheme)
 
-        case "javascript", "data", "blob", "filesystem":
+        case "javascript", "data", "filesystem":
             return .block(.unsafeScheme)
 
         case "":

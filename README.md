@@ -1,10 +1,10 @@
-# CloudFloat
+# Ariuno
 
-CloudFloat 是一个 iOS 原生（Swift + SwiftUI + WKWebView）的云游戏画中画浏览器原型，优先面向《云·星穹铁道》网页版。登录、游玩和云游戏会话都发生在官方网页内；App 不接收账号密码，不保存令牌，也不宣称已经实现或验证“后台挂机”。
+Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原型，支持多标签、书签、历史、隐私浏览和任意网址访问；云游戏画中画只是内置的可选媒体能力。登录、游玩和云游戏会话都发生在官方网页内；App 不接收账号密码，不保存令牌，也不宣称已经实现或验证“后台挂机”。
 
-> **当前状态（2026-11-16）**
+> **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；模拟器构建成功。
-> - 自动化测试 **130 项全部通过**（状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、导航白名单、恢复策略、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - 自动化测试 **142 项全部通过**（多标签、书签、地址栏、历史、隐私浏览、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、下载、隐私脱敏、诊断导出、本地 HTTP 服务）。
 > - 真机 iPhone 15 Pro 已完成：本地视频 PiP 5 分钟（T01 PASS）、官方登录并进入云游戏（T02 PASS）、登录跨升级保持（T09 PASS）、游戏自动战斗实时 PiP（T03 PASS，单次约 5 分钟）。
 > - **T04/T05 FAIL**：后台无输入约 15 分钟后，游戏自身提示“长时间未操作游戏，已中断连接，错误码 -1022”，PiP 结束。App 没有也不应绕过服务器空闲超时。
 > - 因此，本仓库**不能**作为“可后台挂机”的交付结论，只能交付浏览器 + 画中画能力探测 + 会话诊断原型。
@@ -12,11 +12,11 @@ CloudFloat 是一个 iOS 原生（Swift + SwiftUI + WKWebView）的云游戏画�
 > - **用户已于 2026-11-16 明确接受该缩小交付范围**（[接受记录](docs/scope-acceptance.md)）；T04/T05 保持 FAIL，不宣称后台挂机。
 > - M4 原生媒体管线标记为 **Not Feasible**：缺少官方授权、文档化的独立实时媒体流与输入/会话一致性保证。
 
-![CloudFloat 首页](docs/images/home.png)
+![Ariuno 首页](docs/images/home.png)
 
 深色模式：
 
-![CloudFloat 首页（深色）](docs/images/home-dark.png)
+![Ariuno 首页（深色）](docs/images/home-dark.png)
 
 ## 它做什么
 
@@ -50,17 +50,17 @@ CloudFloat 是一个 iOS 原生（Swift + SwiftUI + WKWebView）的云游戏画�
 ## 构建
 
 ```bash
-cd CloudFloat
+cd Ariuno
 xcodegen generate
-open CloudFloat.xcodeproj
+open Ariuno.xcodeproj
 ```
 
 命令行构建（模拟器，示例设备名以 `xcodebuild -showdestinations` 为准）：
 
 ```bash
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.3.1' \
   -derivedDataPath build/DerivedData \
@@ -74,8 +74,8 @@ xcodebuild \
 
 ```bash
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.3.1' \
   -derivedDataPath build/DerivedData \
@@ -85,7 +85,7 @@ xcodebuild \
 最近一次结果（2026-11-16，iPhone 17 Pro / iOS 26.3.1 模拟器）：
 
 ```text
-Executed 130 tests, with 0 failures (0 unexpected)
+Executed 142 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -114,9 +114,9 @@ Executed 130 tests, with 0 failures (0 unexpected)
 ```text
 CloudFloat/
 ├── project.yml                     # XcodeGen 工程源文件
-├── CloudFloat.xcodeproj            # 生成的 Xcode 工程
-├── CloudFloat/
-│   ├── CloudFloatApp.swift         # App / RootView / Toast
+├── Ariuno.xcodeproj            # 生成的 Xcode 工程
+├── CloudFloat/                     # Swift 源码目录（保持历史路径）
+│   ├── AriunoApp.swift             # App / RootView / Toast
 │   ├── App/                        # AppCoordinator、设置、FeatureFlags
 │   ├── Browser/                    # BrowserSession、导航/UI delegate、Cookie、恢复
 │   ├── Media/                      # MediaProbe.js、MediaDetector、PiP 协调器、M4 接口
@@ -125,7 +125,7 @@ CloudFloat/
 │   ├── UI/                         # Home/Game/PiPStatus/Diagnostics/Settings/Capability
 │   ├── Developer/                  # 回环测试服务器、测试页实验室
 │   ├── TestPages/                  # 离线 HTML/视频测试资源
-│   └── Tests/                      # 130 项自动化测试
+│   └── Tests/                      # 142 项自动化测试
 ├── docs/                           # 可行性、架构、QA、限制、报告、隐私与审核风险
 └── artifacts/                      # 构建/截图原始证据（非源码）
 ```
@@ -155,7 +155,7 @@ CloudFloat/
 - 后台模式仅声明 `audio`，并且只在真实媒体播放或 PiP 可见时配置 `AVAudioSession`；不播放静音音频。
 - 本地测试服务器只绑定 `127.0.0.1`，只读取 `TestPages`，仅 Debug/开发者工具使用，不承载官方游戏会话。
 
-CloudFloat 是非官方浏览器工具，不使用游戏官方 Logo 冒充官方客户端。上架前请自行确认米哈游服务条款、品牌/内容授权、App Review 2.5.4 等合规要求。
+Ariuno 是非官方浏览器工具，不使用游戏官方 Logo 冒充官方客户端。上架前请自行确认米哈游服务条款、品牌/内容授权、App Review 2.5.4 等合规要求。
 
 ## 重要结论
 

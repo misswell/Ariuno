@@ -17,23 +17,23 @@ struct GameView: View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
-            CloudWebView(webView: coordinator.browser.webView)
-                .ignoresSafeArea()
+            BrowserTabHostView(sessions: coordinator.tabs.sessions,
+                                activeSessionID: coordinator.tabs.activeSessionID)
 
             if shouldShowLoadingOverlay {
                 loadingOverlay
             }
 
             VStack(spacing: 8) {
+                Spacer(minLength: 0)
+                sessionBanner
                 if toolbarVisible {
                     addressBar
                         .padding(.horizontal, 12)
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
                     toolbarHandle
                 }
-                Spacer(minLength: 0)
-                sessionBanner
                 bottomBar
                     .padding(.horizontal, 12)
             }
@@ -113,6 +113,10 @@ struct GameView: View {
                 TabsView()
             case .bookmarks:
                 BookmarksView(canAddCurrentPage: true)
+            case .history:
+                HistoryView()
+            case .downloads:
+                DownloadsView()
             case .popup(let popup):
                 PopupWebViewSheet(popup: popup)
             }
@@ -123,7 +127,23 @@ struct GameView: View {
 
     private var addressBar: some View {
         VStack(spacing: 6) {
+            if coordinator.browser.estimatedProgress < 0.995 {
+                ProgressView(value: coordinator.browser.estimatedProgress)
+                    .progressViewStyle(.linear)
+                    .tint(.accentColor)
+                    .padding(.horizontal, 2)
+            }
+
             HStack(spacing: 8) {
+                if coordinator.browser.isPrivate {
+                    Label("隐私", systemImage: "mask")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 6)
+                        .background(Color.primary.opacity(0.06), in: Capsule())
+                }
+
                 navigationButton(
                     systemName: "chevron.left",
                     accessibilityLabel: "后退",
@@ -142,7 +162,13 @@ struct GameView: View {
                 HStack(spacing: 6) {
                     Image(systemName: securityIcon)
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(securityIcon == "globe" ? .orange : .secondary)
+                    if let url = coordinator.browser.currentURL,
+                       url.scheme?.lowercased() == "http" {
+                        Text("不安全")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(.orange)
+                    }
                     TextField(
                         "搜索或输入网址",
                         text: $addressText
@@ -230,6 +256,15 @@ struct GameView: View {
 
             pipButton
 
+            if let url = coordinator.browser.currentURL,
+               url.absoluteString != "about:blank" {
+                ShareLink(item: url) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 16, weight: .semibold))
+                }
+                .accessibilityLabel("分享当前网页")
+            }
+
             Spacer(minLength: 0)
 
             Button {
@@ -260,6 +295,16 @@ struct GameView: View {
                     activeSheet = .capability
                 } label: {
                     Label("画中画能力检测", systemImage: "pip")
+                }
+                Button {
+                    activeSheet = .bookmarks
+                } label: {
+                    Label("书签", systemImage: "book")
+                }
+                Button {
+                    activeSheet = .history
+                } label: {
+                    Label("历史记录", systemImage: "clock")
                 }
                 Button {
                     activeSheet = .diagnostics
@@ -550,6 +595,8 @@ private enum GameSheet: Identifiable {
     case status
     case tabs
     case bookmarks
+    case history
+    case downloads
     case popup(ActivePopup)
 
     var id: String {
@@ -559,6 +606,8 @@ private enum GameSheet: Identifiable {
         case .status: return "status"
         case .tabs: return "tabs"
         case .bookmarks: return "bookmarks"
+        case .history: return "history"
+        case .downloads: return "downloads"
         case .popup(let popup): return "popup-\(popup.id.uuidString)"
         }
     }

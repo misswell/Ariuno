@@ -1,5 +1,5 @@
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 final class PrivacyRedactorTests: XCTestCase {
     func testURLsAreReducedToOrigin() {

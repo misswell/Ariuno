@@ -5,6 +5,7 @@ struct HomeView: View {
     @EnvironmentObject private var settings: AppSettings
     @State private var addressText = ""
     @State private var showCapability = false
+    @State private var showHistory = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -23,6 +24,19 @@ struct HomeView: View {
                                 systemImage: "pip",
                                 tint: .blue,
                                 badge: capabilityBadge
+                            )
+                        }
+                        .buttonStyle(.plain)
+
+                        Button {
+                            showHistory = true
+                        } label: {
+                            HomeActionCard(
+                                title: "历史记录",
+                                subtitle: "按时间排列，可搜索、删除和清空",
+                                systemImage: "clock",
+                                tint: .orange,
+                                badge: nil
                             )
                         }
                         .buttonStyle(.plain)
@@ -63,6 +77,10 @@ struct HomeView: View {
             .background(background.ignoresSafeArea())
             .toolbar(.hidden, for: .navigationBar)
         }
+        .sheet(isPresented: $showHistory) {
+            HistoryView()
+                .environmentObject(coordinator)
+        }
         .sheet(isPresented: $showCapability) {
             PiPCapabilityView()
                 .environmentObject(coordinator)
@@ -79,7 +97,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("CloudFloat")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
-                    Text("云游戏画中画浏览器")
+                    Text("现代浏览器 · 内置画中画")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

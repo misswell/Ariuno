@@ -1,27 +1,26 @@
 import UIKit
 import WebKit
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 @MainActor
 final class LoginPopupIntegrationTests: XCTestCase {
-    private var session: BrowserSession?
+    private var manager: BrowserTabManager?
     private var server: LocalHTTPServer?
     private var window: UIWindow?
 
     override func tearDown() {
-        session?.closePopup()
-        session?.tearDown()
+        manager?.shutdown()
         window?.isHidden = true
         window?.rootViewController = nil
         server?.stop()
-        session = nil
+        manager = nil
         server = nil
         window = nil
         super.tearDown()
     }
 
-    func testLoginPopupSampleOpensAndClosingDoesNotReloadMainPage() async throws {
+    func testTargetBlankCreatesNewTabAndClosingDoesNotReloadMainPage() async throws {
         guard let directory = LocalHTTPServer.testPagesDirectory() else {
             throw PopupTestError.missingTestPages
         }
@@ -32,12 +31,12 @@ final class LoginPopupIntegrationTests: XCTestCase {
         var policy = NavigationPolicy()
         policy.allowsLocalTestPages = true
         policy.localTestPorts = [Int(port)]
-        let session = BrowserSession(
+        let manager = BrowserTabManager(
             navigationPolicy: policy,
             inPageControlEnabled: false,
             javaScriptCanOpenWindowsAutomatically: true
         )
-        self.session = session
+        self.manager = manager
 
         guard let scene = UIApplication.shared.connectedScenes
             .compactMap({ $0 as? UIWindowScene })
@@ -50,45 +49,44 @@ final class LoginPopupIntegrationTests: XCTestCase {
         root.view.backgroundColor = .black
         window.rootViewController = root
         window.makeKeyAndVisible()
-        root.view.addSubview(session.webView)
-        session.webView.frame = root.view.bounds
+        root.view.addSubview(manager.activeSession.webView)
+        manager.activeSession.webView.frame = root.view.bounds
         self.window = window
 
-        let popupOpened = expectation(description: "popup opened")
         let mainLoaded = expectation(description: "main page loaded")
-        popupOpened.assertForOverFulfill = false
         mainLoaded.assertForOverFulfill = false
-        session.onEvent = { event in
-            switch event {
-            case .loadFinished:
+
+        manager.onSessionEvent = { session, event in
+            if case .loadFinished = event {
                 mainLoaded.fulfill()
-            case .popupOpened:
-                popupOpened.fulfill()
-            default:
-                break
             }
         }
 
-        let mainWebViewIdentifier = ObjectIdentifier(session.webView)
+        let mainSession = manager.activeSession
+        let mainWebViewIdentifier = ObjectIdentifier(mainSession.webView)
         let url = try XCTUnwrap(
             URL(string: "http://127.0.0.1:\(port)/login-popup.html?auto=1")
         )
-        session.webView.load(URLRequest(url: url))
-        await fulfillment(of: [mainLoaded, popupOpened], timeout: 25)
+        manager.activeSession.webView.load(URLRequest(url: url))
+        await fulfillment(of: [mainLoaded], timeout: 25)
+        try await waitUntil(timeout: 10) {
+            manager.sessions.count == 2
+        }
 
-        XCTAssertNotNil(session.activePopup)
-        XCTAssertEqual(ObjectIdentifier(session.webView), mainWebViewIdentifier)
-        XCTAssertTrue(session.hasLoadedPage)
+        XCTAssertEqual(manager.sessions.count, 2)
+        XCTAssertEqual(manager.sessions.first.map { ObjectIdentifier($0.webView) }, mainWebViewIdentifier)
+        XCTAssertTrue(mainSession.hasLoadedPage)
+        XCTAssertFalse(mainSession.webView.url?.absoluteString.contains("popup-target") == true)
 
         try await waitUntil(timeout: 10) {
-            session.activePopup?.webView.url?.path == "/popup-target.html"
+            manager.sessions.last?.webView.url?.path == "/popup-target.html"
         }
-        XCTAssertEqual(session.activePopup?.webView.url?.host, "127.0.0.1")
+        XCTAssertEqual(manager.sessions.last?.webView.url?.host, "127.0.0.1")
 
-        session.closePopup()
-        XCTAssertNil(session.activePopup)
-        XCTAssertEqual(ObjectIdentifier(session.webView), mainWebViewIdentifier)
-        XCTAssertTrue(session.hasLoadedPage)
+        manager.closeTab(manager.sessions.last!)
+        XCTAssertEqual(manager.sessions.count, 1)
+        XCTAssertEqual(ObjectIdentifier(manager.activeSession.webView), mainWebViewIdentifier)
+        XCTAssertTrue(manager.activeSession.hasLoadedPage)
     }
 
     private func waitUntil(
@@ -99,7 +97,7 @@ final class LoginPopupIntegrationTests: XCTestCase {
         let deadline = Date().addingTimeInterval(timeout)
         while !condition() {
             if Date() >= deadline {
-                XCTFail("Timed out waiting for popup navigation")
+                XCTFail("Timed out waiting for new tab navigation")
                 return
             }
             try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))

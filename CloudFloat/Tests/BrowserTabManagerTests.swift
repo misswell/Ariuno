@@ -1,5 +1,5 @@
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 @MainActor
 final class BrowserTabManagerTests: XCTestCase {
@@ -59,6 +59,20 @@ final class BrowserTabManagerTests: XCTestCase {
 
         manager.activatePreviousTab()
         XCTAssertEqual(manager.activeSession.id, first.id)
+    }
+
+    func testTenTabsKeepDistinctWebViewsAndPersistStates() {
+        let manager = BrowserTabManager()
+        var sessions: [BrowserSession] = [manager.activeSession]
+        for index in 1..<10 {
+            sessions.append(manager.createTab(url: URL(string: "https://example.com/tab\(index)")!))
+        }
+        XCTAssertEqual(sessions.count, 10)
+        XCTAssertEqual(Set(sessions.map(\.id)).count, 10)
+        XCTAssertEqual(Set(sessions.map { ObjectIdentifier($0.webView) }).count, 10)
+        for session in sessions.dropFirst() {
+            session.tearDown()
+        }
     }
 
     func testSessionEventsForwardThroughManager() {

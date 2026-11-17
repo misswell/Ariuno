@@ -1,4 +1,4 @@
-# CloudFloat 架构说明
+# Ariuno 架构说明
 
 - 平台：iOS 17.0+，Swift 5 语言模式，SwiftUI + WebKit + AVKit/AVFoundation。
 - 目标：在官方网页内完成登录/游玩，通过网页 HTML5 PiP 提供系统浮窗，并如实观测/诊断“PiP、媒体实时性、服务器会话”三层状态。
@@ -7,7 +7,7 @@
 ## 1. 总览
 
 ```text
-CloudFloatApp (@main)
+AriunoApp (@main)
 └── RootView
     ├── HomeView / SettingsView / DiagnosticsView / PiPCapabilityView
     └── GameView (once a session starts, kept mounted)
@@ -33,17 +33,19 @@ AppCoordinator (@MainActor, composition root)
 
 ## 2. 浏览器内核（M1）
 
-### 2.1 单实例 WebView
+### 2.1 多实例 WebView
 
-[`BrowserSession`](../CloudFloat/Browser/BrowserSession.swift) 在 `AppCoordinator` 初始化时创建一次：
+每个标签页由 [`BrowserSession`](../CloudFloat/Browser/BrowserSession.swift) 持有一个独立 `WKWebView`；[`BrowserTabManager`](../CloudFloat/Browser/BrowserTabManager.swift) 负责创建、切换、关闭和转发事件：
 
 - `allowsInlineMediaPlayback = true`
 - `allowsPictureInPictureMediaPlayback = true`
-- `websiteDataStore = .default()`（WebKit 持久化 Cookie/本地存储）
+- 普通标签共享 `.default()` 网站数据存储（Cookie/本地存储）；
+- 隐私标签共享同一个 `.nonPersistent()` 网站数据存储，且不进入历史/最近关闭；
 - `mediaTypesRequiringUserActionForPlayback = .audio`（保留正常用户播放语义）
 - `preferences.isElementFullscreenEnabled = true`
 - `defaultWebpagePreferences.allowsContentJavaScript = true`
 - `webView.customUserAgent = nil`（保留系统移动 UA，不伪造桌面浏览器）
+- `estimatedProgress`、`hasOnlySecureContent`、`canGoBack/canGoForward`、`currentURL` 均 KVO 观察并发布；
 - `#if DEBUG webView.isInspectable = true`
 - `javaScriptCanOpenWindowsAutomatically = false`（生产默认；避免无手势脚本弹窗）
 
@@ -72,11 +74,11 @@ AppCoordinator (@MainActor, composition root)
 
 [`BrowserUIDelegate`](../CloudFloat/Browser/BrowserUIDelegate.swift)：
 
-- 承载 `window.open`/`target=_blank` 登录弹窗，弹窗使用隔离的 content controller，避免登录页媒体污染游戏探测；
+- 将 `target=_blank` / `window.open` 转成新标签页；新标签使用隔离 content controller，避免媒体探测冲突；
 - 实现 JS alert/confirm/prompt（所有 completion 都保证调用，避免页面卡死）；
 - 拒绝摄像头/麦克风权限；
 - 已弃用 TLS 拒绝；弹窗导航同样有 scheme 策略；
-- 弹窗关闭（JS `window.close` 或用户下滑关闭）只关闭弹窗，不刷新主页面；集成测试验证主 WebView 实例不变。
+- 新标签关闭（JS `window.close` 或用户关闭）只关闭该标签，不刷新主页面；集成测试验证主 WebView 实例不变。
 
 ### 2.3 Cookie 与登录状态
 
@@ -118,6 +120,7 @@ AppCoordinator (@MainActor, composition root)
 
 [`WebPictureInPictureCoordinator`](../CloudFloat/Media/WebPictureInPictureCoordinator.swift)：
 
+0. 来源绑定：PiP 属于发起标签；切换到其他标签不会把 PiP 控制器重绑到当前标签。
 1. 平台门控：`AVPictureInPictureController.isPictureInPictureSupported()`。
 2. 配置门控：`allowsPictureInPictureMediaPlayback`。
 3. 探测门控：有快照、有 video、有播放中的视频、video 支持 HTML5 PiP、Permissions Policy 不禁止。

@@ -1,7 +1,7 @@
-# CloudFloat 实施报告
+# Ariuno 实施报告
 
 - 报告日期：2026-11-16
-- 工程：当前仓库根目录（`CloudFloat`）
+- 工程：当前仓库根目录（Ariuno，源码目录保留 `CloudFloat/`）
 - 版本：0.1.0（Build 1）
 - 结论：**M0–M6 的工程与自动化部分已完成；真机 iPhone 15 Pro 已验证 T01/T02/T03/T09（本地视频 PiP、官方登录/进入游戏、游戏实时 PiP、登录保持），但 T04/T05 因服务器空闲超时（错误码 -1022）FAIL。不得声称后台挂机；交付为浏览器 + 诊断原型。**
 
@@ -15,7 +15,7 @@
 | M3 后台会话验证与状态机 | **实现；真机后台 FAIL（服务器空闲超时）** | 10 个状态、三层验证、前后台不重载、网络/崩溃事件、诊断、用户确认恢复；真机 15 分钟无输入被服务器断开（-1022），未绕过。`GameSessionStateTests`/`SessionMonitorTests`/`SessionRecoveryTests` |
 | M4 原生媒体扩展 | **Not Feasible（仅接口）** | `NativePictureInPictureCoordinator` 固定不可用；无私有 API/屏幕抓取/伪后台 |
 | M5 产品界面 | **实现；模拟器视觉检查** | 起始页地址栏/书签、GameView 地址栏、多标签页、书签、前进/后退/刷新、自动隐藏工具栏、PiP 原因、诊断/设置/能力检测、深浅色；截图见下 |
-| M6 测试与发布 | **自动化通过；真机 T04/T05 FAIL，发布前需按失败结论降级** | 130 项自动化测试通过；真机 T01/T02/T03/T09 PASS，T04/T05 FAIL（-1022）；30 分钟×3 未通过；不得按“后台挂机”上架。见 [qa-matrix.md](qa-matrix.md) |
+| M6 测试与发布 | **自动化通过；真机 T04/T05 FAIL，发布前需按失败结论降级** | 142 项自动化测试通过；真机 T01/T02/T03/T09 PASS，T04/T05 FAIL（-1022）；30 分钟×3 未通过；不得按“后台挂机”上架。见 [qa-matrix.md](qa-matrix.md) |
 
 ## 2. 构建结果
 
@@ -25,8 +25,8 @@
 cd <repo-root>
 xcodegen generate
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/DerivedData \
@@ -38,8 +38,8 @@ xcodebuild \
 
 构建产物检查：
 
-- `CloudFloat.app/MediaProbe.js` 存在；
-- `CloudFloat.app/TestPages/` 包含 `native-video.html`、`canvas-only.html`、`nested-iframe.html`、`login-popup.html`、`popup-target.html`、`index.html`、`sample.mp4`；
+- `Ariuno.app/MediaProbe.js` 存在；
+- `Ariuno.app/TestPages/` 包含 `native-video.html`、`canvas-only.html`、`nested-iframe.html`、`login-popup.html`、`popup-target.html`、`index.html`、`sample.mp4`；
 - `PrivacyInfo.xcprivacy` 存在；
 - 资源目录/图标编译成功。
 
@@ -49,8 +49,8 @@ xcodebuild \
 
 ```bash
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/DerivedData \
@@ -60,7 +60,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 130 tests, with 0 failures (0 unexpected)
+Executed 142 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -68,23 +68,26 @@ Executed 130 tests, with 0 failures (0 unexpected)
 
 | 套件 | 数量 |
 |---|---:|
-| BrowserNavigationTests | 15 |
+| BrowserNavigationTests | 11 |
+| BrowserPrivacyTests | 3 |
 | BrowserSessionTests | 7 |
-| BrowserTabManagerTests | 6 |
+| BrowserTabManagerTests | 7 |
 | DiagnosticsStoreTests | 8 |
 | GameSessionStateTests | 16 |
+| HistoryStoreTests | 4 |
 | LocalHTTPServerTests | 7 |
 | LoginPopupIntegrationTests | 1 |
 | MediaProbeIntegrationTests | 6 |
 | MediaProbeTests | 14 |
 | PrivacyRedactorTests | 10 |
+| RecentlyClosedStoreTests | 3 |
 | SessionMonitorTests | 9 |
-| BookmarkStoreTests | 5 |
-| URLInputParserTests | 6 |
-| SessionRecoveryTests | 12 |
 | SessionPersistenceTests | 2 |
+| SessionRecoveryTests | 12 |
+| URLInputParserTests | 6 |
+| BrowserFeatureTests | 5 |
 | WebPictureInPictureTests | 6 |
-| **合计** | **130** |
+| **合计** | **142** |
 
 高价值集成测试的实际覆盖：
 
@@ -93,7 +96,7 @@ Executed 130 tests, with 0 failures (0 unexpected)
 - Canvas 页面被分类为 `.canvas`，无 video；
 - 两个不同端口回环服务器的跨域 iframe：父/子 frame 分别上报，视频在子 frame 被发现；
 - 页面内 PiP 控件禁用时不创建 DOM 控件；
-- 登录弹窗样例通过真实 `WKNavigationAction`/`WKUIDelegate` 打开 Popup，关闭 Popup 后主 `WKWebView` 实例不变、主页面不刷新；
+- target=_blank/window.open 样例通过真实 `WKUIDelegate` 创建新标签；关闭该标签后主 `WKWebView` 实例不变、主页面不刷新；
 - 跨 `BrowserSession` 实例的 WebKit Cookie 持久化；SwiftUI `RootView` host 重建、首页/游戏往返后同一 `WKWebView` 且页面 JS 标记保留（`SessionPersistenceTests`）；
 - 本地 HTTP Range（206）、404、路径穿越不被 200 服务；
 - 所有非用户触发的恢复策略都不会返回自动 reload。
@@ -125,11 +128,11 @@ Executed 130 tests, with 0 failures (0 unexpected)
 
 | 交付物 | 位置/证据 | 状态 |
 |---|---|---|
-| 1. 可通过 Xcode 构建的完整源码与工程配置 | `project.yml`、`CloudFloat.xcodeproj`、`CloudFloat/`；构建日志 `build/test-final.log` / `build/release-final.log` | ✅ 已验证构建 |
+| 1. 可通过 Xcode 构建的完整源码与工程配置 | `project.yml`、`Ariuno.xcodeproj`、`CloudFloat/`；构建日志 `build/test-final.log` / `build/release-final.log` | ✅ 已验证构建 |
 | 2. 模拟视频测试页与真机使用说明 | `CloudFloat/TestPages/`、[qa-matrix.md](qa-matrix.md)、[feasibility.md](feasibility.md) | ✅ 页面/说明已交付；真机 T01/T02/T03/T09 已执行 |
 | 3. `docs/feasibility.md`（真实设备、实际观察、失败截图/日志、结论） | [feasibility.md](feasibility.md)、[real-device-verification.md](real-device-verification.md) | ✅ 含 iPhone 15 Pro 真机登录/游戏/PiP、15 分钟空闲断开 -1022 失败截图与结论 |
 | 4. 浏览器入口、PiP 探测、状态机、异常恢复、诊断导出 | `Browser/`、`Media/`、`Session/`、`Diagnostics/`、`UI/` | ✅ 实现 + 自动化 |
-| 5. 测试矩阵、自动化结果、`known-limitations.md` | [qa-matrix.md](qa-matrix.md)、[known-limitations.md](known-limitations.md)、130 tests | ✅ 自动化 + 真机 T01/T02/T03/T09 PASS、T04/T05 FAIL 记录 |
+| 5. 测试矩阵、自动化结果、`known-limitations.md` | [qa-matrix.md](qa-matrix.md)、[known-limitations.md](known-limitations.md)、142 tests | ✅ 自动化 + 真机 T01/T02/T03/T09 PASS、T04/T05 FAIL 记录 |
 | 6. 隐私说明、后台音视频说明、审核风险清单 | [privacy.md](privacy.md)、[background-audio.md](background-audio.md)、[app-review-risk.md](app-review-risk.md) | ✅ 文档已交付；发布前确认待做 |
 
 ## 6. 关键设计决策
@@ -137,7 +140,7 @@ Executed 130 tests, with 0 failures (0 unexpected)
 1. **HTML5 Web PiP 优先，不做 M4 私有替代**：网页没有 video/PiP 时如实禁用并解释；M4 标记 Not Feasible。
 2. **不自动 reload**：会话/崩溃/断网恢复全部需要用户确认，避免重复启动云游戏与额外计费；策略有冷却/上限。
 3. **三层验证分离**：PiP 浮窗、媒体实时观测、服务器会话分别展示；服务器会话恒为 UNVERIFIED，避免把 JS/最后一帧当挂机证据。
-4. **单 WebView 生命周期**：由 `AppCoordinator` 持有，RootView 在首页时保持 GameView 挂载但透明，PiP 返回不重建。
+4. **多标签生命周期**：`BrowserTabManager` 持有各标签 `WKWebView`；切换标签只切换可见性，不重建 WebView/不重载页面。
 5. **每 frame 探测 + origin 脱敏**：父页面不越权读跨域 DOM；media URL/path/query 永不进入原生日志。
 6. **前台低频轮询、后台停止**：事件驱动为主，3 秒主 frame 兜底；不依赖 JS 心跳。
 7. **登录弹窗隔离**：Popup 使用独立 content controller，共享网站数据；关闭不刷新主页面。
@@ -164,13 +167,13 @@ Executed 130 tests, with 0 failures (0 unexpected)
 xcodegen generate
 
 # 2. 构建
-xcodebuild -project CloudFloat.xcodeproj -scheme CloudFloat -configuration Debug \
+xcodebuild -project Ariuno.xcodeproj -scheme Ariuno -configuration Debug \
   -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.3.1' \
   -derivedDataPath build/DerivedData test
 
 # 3. 模拟器手动检查
 xcrun simctl boot 'iPhone 17 Pro'
-xcrun simctl install booted build/DerivedData/Build/Products/Debug-iphonesimulator/CloudFloat.app
+xcrun simctl install booted build/DerivedData/Build/Products/Debug-iphonesimulator/Ariuno.app
 xcrun simctl launch booted com.cloudfloat.app -CFOpenTestLab
 # 或 -CFOpenLocalGame / -CFOpenOfficialEntry / -CFOpenCapability
 ```
@@ -179,7 +182,7 @@ xcrun simctl launch booted com.cloudfloat.app -CFOpenTestLab
 
 ## 9. 证据与日志
 
-- `build/test-final.log`：最终 Debug 测试/构建输出（130 tests, 0 failures）。
+- `build/test-final.log`：最终 Debug 测试/构建输出（142 tests, 0 failures）。
 - `build/release-final.log`：最终 Release 构建输出（BUILD SUCCEEDED）。
 - `build/analyze.log`：静态分析输出（ANALYZE SUCCEEDED）。
 - `docs/images/`：打码/无凭证的模拟器与真机截图。
@@ -190,7 +193,7 @@ xcrun simctl launch booted com.cloudfloat.app -CFOpenTestLab
 
 ## 10. 最终声明
 
-CloudFloat 当前交付的是**可构建、可测试、隐私优先的浏览器与 PiP 能力/会话诊断原型**：
+Ariuno 当前交付的是**可构建、可测试、隐私优先的浏览器与 PiP 能力/会话诊断原型**：
 
 - 真机已验证本地网页视频 PiP 5 分钟、官方登录/进入游戏、游戏自动战斗实时 PiP、登录跨升级保持；
 - 真机后台约 15 分钟无输入后被服务器主动断开（-1022），因此 T04/T05 FAIL；

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct CloudFloatApp: App {
+struct AriunoApp: App {
     @StateObject private var coordinator: AppCoordinator
     @Environment(\.scenePhase) private var scenePhase
 

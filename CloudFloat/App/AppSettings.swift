@@ -11,6 +11,7 @@ final class AppSettings: ObservableObject {
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
         static let allowLocalTestPages = "cf.settings.allowLocalTestPages"
         static let hasCompletedFirstRun = "cf.settings.hasCompletedFirstRun"
+        static let searchEngine = "cf.settings.searchEngine"
     }
 
     private let defaults: UserDefaults
@@ -55,6 +56,10 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(hasCompletedFirstRun, forKey: Key.hasCompletedFirstRun) }
     }
 
+    @Published var searchEngine: SearchEngine {
+        didSet { defaults.set(searchEngine.rawValue, forKey: Key.searchEngine) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         self.autoHideToolbar = defaults.object(forKey: Key.autoHideToolbar) as? Bool ?? true
@@ -71,6 +76,9 @@ final class AppSettings: ObservableObject {
             ?? FeatureFlags.localTestServerEnabled
         self.hasCompletedFirstRun =
             defaults.object(forKey: Key.hasCompletedFirstRun) as? Bool ?? false
+        self.searchEngine = SearchEngine(
+            rawValue: defaults.string(forKey: Key.searchEngine) ?? ""
+        ) ?? .duckduckgo
     }
 
     func markFirstRunCompleted() {

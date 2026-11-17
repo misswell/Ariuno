@@ -134,10 +134,13 @@ final class AppCoordinator: ObservableObject {
     let network: NetworkObserver
     let recovery: WebContentRecovery
     let audioSession: AudioSessionManager
+    let pipManager: PiPManager
+    let library: BrowserLibraryStore
+    let downloadManager = DownloadManager()
 
     var browser: BrowserSession { tabs.activeSession }
     var media: MediaDetector { browser.mediaDetector }
-    var pip: WebPictureInPictureCoordinator { browser.pipCoordinator }
+    var pip: WebPictureInPictureCoordinator { pipManager.coordinator(for: browser) }
     var cookieStore: CookieStore { browser.cookieStore }
 
     @Published var route: AppRoute = .home
@@ -177,6 +180,8 @@ final class AppCoordinator: ObservableObject {
         self.network = NetworkObserver()
         self.recovery = WebContentRecovery()
         self.audioSession = AudioSessionManager()
+        self.pipManager = PiPManager()
+        self.library = BrowserLibraryStore()
 
         wire()
         configure(tabs.activeSession)
@@ -263,7 +268,11 @@ final class AppCoordinator: ObservableObject {
     }
 
     func openAddressText(_ text: String) {
-        guard let url = URLInputParser.url(from: text) else {
+        if let url = URLInputParser.url(from: text) {
+            openURL(url)
+            return
+        }
+        guard let url = settings.searchEngine.searchURL(for: text) else {
             showToast("请输入有效的网址", .warning)
             return
         }
@@ -279,12 +288,25 @@ final class AppCoordinator: ObservableObject {
         session.setMediaProbePolling(media.isPolling)
     }
 
-    func closeTab(_ tabSession: BrowserSession) {
-        tabs.closeTab(tabSession)
+    enum TabCloseResult {
+        case closed
+        case requiresPiPConfirmation
     }
 
-    func createTab(url: URL? = nil) {
-        tabs.createTab(url: url)
+    @discardableResult
+    func closeTab(_ tabSession: BrowserSession, force: Bool = false) -> TabCloseResult {
+        let outcome = tabs.closeTab(tabSession, force: force)
+        switch outcome {
+        case .closed:
+            return .closed
+        case .requiresPiPConfirmation:
+            showToast("该标签页正在画中画。请先退出 PiP，或确认关闭以结束浮窗。", .warning)
+            return .requiresPiPConfirmation
+        }
+    }
+
+    func createTab(url: URL? = nil, isPrivate: Bool = false) {
+        tabs.createTab(url: url, isPrivate: isPrivate)
         route = .game
         hasStartedBrowser = true
         media.startPolling()
@@ -297,7 +319,9 @@ final class AppCoordinator: ObservableObject {
 
     func exitSession() {
         if session.pipVisible {
-            pip.exitPiP()
+            if pipManager.isPiPActive(for: browser) {
+                pipManager.exitPiP(for: browser)
+            }
         }
         browser.resetToBlank()
         session.userExited()
@@ -314,7 +338,7 @@ final class AppCoordinator: ObservableObject {
 
     func requestPictureInPicture() async -> PiPRequestOutcome {
         session.pipRequestStarted()
-        let outcome = await pip.requestPiP()
+        let outcome = await pipManager.requestPiP(for: browser)
         if case .failure(let reason, _) = outcome {
             session.pipRequestFailed(reason: reason)
         }
@@ -322,7 +346,7 @@ final class AppCoordinator: ObservableObject {
     }
 
     func exitPictureInPicture() {
-        pip.exitPiP()
+        pipManager.exitPiP(for: browser)
     }
 
     func makePiPCapabilityReport(refresh: Bool = true) -> PiPCapabilityReport {
@@ -448,7 +472,9 @@ final class AppCoordinator: ObservableObject {
         switch decision.action {
         case .reloadNow:
             if session.pipVisible {
-                pip.exitPiP()
+                if pipManager.isPiPActive(for: browser) {
+                    pipManager.exitPiP(for: browser)
+                }
             }
             recovery.noteReloadAttempt()
             session.recoveryStarted()
@@ -477,7 +503,9 @@ final class AppCoordinator: ObservableObject {
         defer { isClearingWebsiteData = false }
 
         if session.pipVisible {
-            pip.exitPiP()
+            if pipManager.isPiPActive(for: browser) {
+                pipManager.exitPiP(for: browser)
+            }
         }
         browser.resetToBlank()
         session.userExited()
@@ -632,18 +660,36 @@ final class AppCoordinator: ObservableObject {
             self?.handleBrowserEvent(event)
         }
         tabs.onMediaSnapshot = { [weak self] session, aggregate, snapshot in
-            guard session === self?.browser else { return }
-            self?.handleMediaSnapshot(aggregate, snapshot: snapshot)
+            guard let self else { return }
+            // PiP must stay bound to its source tab, even when another tab is selected.
+            pipManager.handle(aggregate: aggregate, snapshot: snapshot, from: session)
+            guard session === self.browser else { return }
+            self.handleMediaSnapshot(aggregate, snapshot: snapshot)
         }
         tabs.onMediaEvent = { [weak self] session, event in
-            guard session === self?.browser else { return }
-            self?.handleMediaEvent(event)
+            guard let self else { return }
+            pipManager.handle(event: event, from: session)
+            if event.name == .leavepictureinpicture {
+                pipManager.clearActivePiP(for: session)
+            }
+            guard session === self.browser else { return }
+            self.handleMediaEvent(event)
         }
         tabs.onProbeError = { [weak self] session, message in
             guard session === self?.browser else { return }
             self?.diagnostics.warning(.media, "media.probe_error", message)
         }
+        tabs.pipProtection = { [weak self] session in
+            guard let self else { return false }
+            return pipManager.isPiPActive(for: session)
+        }
         tabs.onAnyChange = { [weak self] in
+            self?.objectWillChange.send()
+        }
+        library.history.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+        pipManager.onAnyChange = { [weak self] in
             self?.objectWillChange.send()
         }
         session.onDiagnostic = { [weak self] severity, code, message, metadata in
@@ -684,6 +730,13 @@ final class AppCoordinator: ObservableObject {
             }
             .store(in: &cancellables)
 
+        settings.$searchEngine
+            .dropFirst()
+            .sink { [weak self] engine in
+                self?.diagnostics.info(.app, "settings.search_engine", engine.displayName)
+            }
+            .store(in: &cancellables)
+
         settings.$allowLocalTestPages
             .dropFirst()
             .sink { [weak self] enabled in
@@ -693,14 +746,7 @@ final class AppCoordinator: ObservableObject {
     }
 
     private func configure(_ session: BrowserSession) {
-        session.pipCoordinator.onStateChanged = { [weak self] state in
-            guard session === self?.browser else { return }
-            self?.handlePiPState(state)
-        }
-        session.pipCoordinator.onOutcome = { [weak self] outcome, availability in
-            guard session === self?.browser else { return }
-            self?.logPiPOutcome(outcome, availability: availability)
-        }
+        pipManager.coordinator(for: session)
     }
 
     private func handleBrowserEvent(_ event: BrowserEvent) {
@@ -725,6 +771,9 @@ final class AppCoordinator: ObservableObject {
             session.setMediaProbePolling(media.isPolling)
             media.refreshNow()
             pip.refreshAvailability()
+            if let url = browser.currentURL, !browser.isPrivate {
+                library.history.record(title: browser.pageTitle, url: url)
+            }
             diagnostics.info(
                 .navigation,
                 "nav.finish",
@@ -802,6 +851,9 @@ final class AppCoordinator: ObservableObject {
                 ["host": host ?? ""]
             )
 
+        case .downloadStarted(let filename):
+            diagnostics.info(.download, "download.started", "开始下载文件", ["filename": filename])
+
         case .popupOpened:
             diagnostics.info(.navigation, "popup.opened", "已打开登录/授权弹窗")
 
@@ -820,7 +872,6 @@ final class AppCoordinator: ObservableObject {
 
     private func handleMediaSnapshot(_ aggregate: MediaAggregate, snapshot: MediaFrameSnapshot) {
         session.handle(mediaAggregate: aggregate, snapshotReceivedAt: snapshot.receivedAt)
-        pip.handle(aggregate: aggregate, snapshotReceivedAt: snapshot.receivedAt)
         pip.refreshAvailability()
         updateAudioSession()
 
@@ -852,7 +903,9 @@ final class AppCoordinator: ObservableObject {
 
     private func handleMediaEvent(_ event: MediaPlaybackEvent) {
         session.handle(mediaEvent: event)
-        pip.handle(event: event)
+        if event.name == .leavepictureinpicture {
+            pipManager.clearActivePiP(for: browser)
+        }
         updateAudioSession()
 
         switch event.name {

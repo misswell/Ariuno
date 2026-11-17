@@ -1,4 +1,4 @@
-name: CloudFloat
+name: Ariuno
 
 options:
   minimumXcodeGenVersion: 2.38.0
@@ -23,7 +23,7 @@ settings:
     CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: YES
 
 targets:
-  CloudFloat:
+  Ariuno:
     type: application
     platform: iOS
     sources:
@@ -37,8 +37,8 @@ targets:
         buildPhase: resources
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cloudfloat.app
-        PRODUCT_NAME: CloudFloat
+        PRODUCT_BUNDLE_IDENTIFIER: com.misswell.Ariuno
+        PRODUCT_NAME: Ariuno
         INFOPLIST_FILE: CloudFloat/Resources/Info.plist
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -51,34 +51,34 @@ targets:
     dependencies: []
     preBuildScripts: []
 
-  CloudFloatTests:
+  AriunoTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: CloudFloat/Tests
     dependencies:
-      - target: CloudFloat
+      - target: Ariuno
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.cloudfloat.app.tests
+        PRODUCT_BUNDLE_IDENTIFIER: com.misswell.Ariuno.tests
         GENERATE_INFOPLIST_FILE: YES
-        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CloudFloat.app/CloudFloat"
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Ariuno.app/Ariuno"
         BUNDLE_LOADER: "$(TEST_HOST)"
         TARGETED_DEVICE_FAMILY: "1,2"
 
 schemes:
-  CloudFloat:
+  Ariuno:
     build:
       targets:
-        CloudFloat: all
-        CloudFloatTests: [test]
+        Ariuno: all
+        AriunoTests: [test]
     run:
       config: Debug
     test:
       config: Debug
       gatherCoverageData: false
       targets:
-        - CloudFloatTests
+        - AriunoTests
     profile:
       config: Release
     analyze:

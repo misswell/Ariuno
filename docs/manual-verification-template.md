@@ -1,4 +1,4 @@
-# CloudFloat 真机手工验证记录模板
+# Ariuno 真机手工验证记录模板
 
 > 复制本文件为 `manual-verification-YYYYMMDD-<设备>.md` 填写。证据只能放在受控目录；**禁止**保存账号、密码、验证码、Cookie、完整 token URL、UID/手机号未打码截图。没有证据的项一律记为 `UNVERIFIED`，不得口头补写 PASS。
 

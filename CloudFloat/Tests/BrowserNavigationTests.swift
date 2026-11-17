@@ -1,9 +1,9 @@
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 final class BrowserNavigationTests: XCTestCase {
-    private let official = NavigationPolicy()
-    private let testDirectory = URL(fileURLWithPath: "/tmp/CloudFloatTestPages")
+    private let policy = NavigationPolicy()
+    private let testDirectory = URL(fileURLWithPath: "/tmp/AriunoTestPages")
     private var localPolicy: NavigationPolicy {
         NavigationPolicy(
             allowsLocalTestPages: true,
@@ -13,106 +13,58 @@ final class BrowserNavigationTests: XCTestCase {
         )
     }
 
-    func testOfficialDomainClassification() {
-        XCTAssertTrue(official.isOfficial(host: "sr.mihoyo.com"))
-        XCTAssertTrue(official.isOfficial(host: "mihoyo.com"))
-        XCTAssertTrue(official.isOfficial(host: "sub.mihoyo.com"))
-        XCTAssertTrue(official.isOfficial(host: "SR.MIHOYO.COM."))
-        XCTAssertTrue(official.isOfficial(host: "user.hoyoverse.com"))
-        XCTAssertTrue(official.isOfficial(host: "hoyolab.com"))
-
-        XCTAssertFalse(official.isOfficial(host: "evilmihoyo.com"))
-        XCTAssertFalse(official.isOfficial(host: "mihoyo.com.evil.example"))
-        XCTAssertFalse(official.isOfficial(host: "example.com"))
-        XCTAssertFalse(official.isOfficial(host: "mihoyo.com@evil.example"))
-        XCTAssertFalse(official.isOfficial(host: nil))
-        XCTAssertFalse(official.isOfficial(host: "mihoyo.com/path"))
+    func testHTTPAndHTTPSStayInApp() throws {
+        let https = try XCTUnwrap(URL(string: "https://example.com/article?token=abc"))
+        let http = try XCTUnwrap(URL(string: "http://example.com/insecure"))
+        for url in [https, http] {
+            for context in [NavigationContext.linkActivated, .formSubmitted, .other] {
+                XCTAssertEqual(
+                    policy.decision(for: url, context: context, isMainFrame: true),
+                    .allow,
+                    "\(url) \(context) should stay in-app"
+                )
+            }
+        }
     }
 
-    func testPartnerAuthDomainsAreAllowedInsideWebView() {
-        XCTAssertTrue(official.isAllowedPartner(host: "appleid.apple.com"))
-        XCTAssertTrue(official.isAllowedPartner(host: "accounts.google.com"))
-        XCTAssertTrue(official.isAllowedPartner(host: "login.microsoftonline.com"))
-        XCTAssertFalse(official.isAllowedPartner(host: "apple.com.evil.example"))
-    }
-
-    func testOfficialNavigationAllowed() throws {
+    func testCloudGameURLIsNotSpecial() throws {
         let url = try XCTUnwrap(URL(string: "https://sr.mihoyo.com/cloud/"))
-        XCTAssertEqual(
-            official.decision(for: url, context: .linkActivated, isMainFrame: true),
-            .allow
-        )
-        XCTAssertEqual(
-            official.decision(for: url, context: .other, isMainFrame: true),
-            .allow
-        )
+        for context in [NavigationContext.linkActivated, .formSubmitted, .other] {
+            XCTAssertEqual(
+                policy.decision(for: url, context: context, isMainFrame: true),
+                .allow
+            )
+        }
     }
 
-    func testUserClickedExternalHTTPSOpensExternally() throws {
-        let url = try XCTUnwrap(URL(string: "https://example.com/article?token=abc"))
+    func testSubframeNavigationStaysInApp() throws {
+        let url = try XCTUnwrap(URL(string: "https://ads.example.com/embed"))
         XCTAssertEqual(
-            official.decision(for: url, context: .linkActivated, isMainFrame: true),
-            .openExternally(url)
-        )
-    }
-
-    func testAuthRedirectsOutsideOfficialDomainsStayInsideWebView() throws {
-        let url = try XCTUnwrap(URL(string: "https://accounts.google.com/o/oauth2/auth"))
-        XCTAssertEqual(
-            official.decision(for: url, context: .linkActivated, isMainFrame: true),
+            policy.decision(for: url, context: .linkActivated, isMainFrame: false),
             .allow
-        )
-        let redirect = try XCTUnwrap(URL(string: "https://third-party.example/callback"))
-        XCTAssertEqual(
-            official.decision(for: redirect, context: .formSubmitted, isMainFrame: true),
-            .allow
-        )
-        XCTAssertEqual(
-            official.decision(for: redirect, context: .other, isMainFrame: true),
-            .allow
-        )
-    }
-
-    func testSubframeExternalNavigationAllowed() throws {
-        let url = try XCTUnwrap(URL(string: "https://example.com/embed"))
-        XCTAssertEqual(
-            official.decision(for: url, context: .linkActivated, isMainFrame: false),
-            .allow
-        )
-    }
-
-    func testInsecureHTTPBlockedExceptLocalTestServers() throws {
-        let http = try XCTUnwrap(URL(string: "http://sr.mihoyo.com/cloud/"))
-        XCTAssertEqual(
-            official.decision(for: http, context: .other, isMainFrame: true),
-            .block(.insecureHTTP)
-        )
-        let local = try XCTUnwrap(URL(string: "http://127.0.0.1:8080/native-video.html"))
-        XCTAssertEqual(
-            localPolicy.decision(for: local, context: .other, isMainFrame: true),
-            .allow
-        )
-        XCTAssertEqual(
-            official.decision(for: local, context: .other, isMainFrame: true),
-            .block(.insecureHTTP)
         )
     }
 
     func testLocalTestServerPortMustMatch() throws {
+        let right = try XCTUnwrap(URL(string: "http://127.0.0.1:8080/native-video.html"))
+        XCTAssertEqual(
+            localPolicy.decision(for: right, context: .other, isMainFrame: true),
+            .allow
+        )
         let wrongPort = try XCTUnwrap(URL(string: "http://127.0.0.1:9090/index.html"))
         XCTAssertEqual(
             localPolicy.decision(for: wrongPort, context: .other, isMainFrame: true),
-            .block(.insecureHTTP)
+            .allow
         )
         let wrongHost = try XCTUnwrap(URL(string: "http://192.168.1.5:8080/index.html"))
         XCTAssertEqual(
             localPolicy.decision(for: wrongHost, context: .other, isMainFrame: true),
-            .block(.insecureHTTP)
+            .allow
         )
     }
 
     func testFileURLOnlyAllowedInsideTestDirectory() throws {
-        let inside = try XCTUnwrap(URL(string: "file:///tmp/CloudFloatTestPages/native-video.html"))
+        let inside = try XCTUnwrap(URL(string: "file:///tmp/AriunoTestPages/native-video.html"))
         XCTAssertEqual(
             localPolicy.decision(for: inside, context: .other, isMainFrame: true),
             .allow
@@ -123,8 +75,25 @@ final class BrowserNavigationTests: XCTestCase {
             .block(.fileOutsideAllowedScope)
         )
         XCTAssertEqual(
-            official.decision(for: inside, context: .other, isMainFrame: true),
+            policy.decision(for: inside, context: .other, isMainFrame: true),
             .block(.localTestPagesDisabled)
+        )
+    }
+
+    func testSystemSchemesOpenExternally() throws {
+        let mail = try XCTUnwrap(URL(string: "mailto:support@example.com"))
+        let tel = try XCTUnwrap(URL(string: "tel:10086"))
+        XCTAssertEqual(
+            policy.decision(for: mail, context: .linkActivated, isMainFrame: true),
+            .openExternally(mail)
+        )
+        XCTAssertEqual(
+            policy.decision(for: tel, context: .linkActivated, isMainFrame: true),
+            .openExternally(tel)
+        )
+        XCTAssertEqual(
+            policy.decision(for: mail, context: .linkActivated, isMainFrame: false),
+            .block(.unsafeScheme)
         )
     }
 
@@ -135,7 +104,7 @@ final class BrowserNavigationTests: XCTestCase {
         let install = try XCTUnwrap(URL(string: "itms-services://?action=download-manifest&url=evil"))
         let custom = try XCTUnwrap(URL(string: "myapp://do-something"))
         for url in [javascript, data, blob, install, custom] {
-            let decision = official.decision(for: url, context: .linkActivated, isMainFrame: true)
+            let decision = policy.decision(for: url, context: .linkActivated, isMainFrame: true)
             if case .allow = decision {
                 XCTFail("unsafe scheme should not be allowed: \(url.scheme ?? "")")
             }
@@ -144,28 +113,15 @@ final class BrowserNavigationTests: XCTestCase {
             }
         }
         XCTAssertEqual(
-            official.decision(for: install, context: .linkActivated, isMainFrame: true),
+            policy.decision(for: install, context: .linkActivated, isMainFrame: true),
             .block(.appInstallScheme)
         )
     }
 
-    func testMailAndTelephoneOpenExternally() throws {
-        let mail = try XCTUnwrap(URL(string: "mailto:support@example.com"))
-        XCTAssertEqual(
-            official.decision(for: mail, context: .linkActivated, isMainFrame: true),
-            .openExternally(mail)
-        )
-        let tel = try XCTUnwrap(URL(string: "tel:10086"))
-        XCTAssertEqual(
-            official.decision(for: tel, context: .linkActivated, isMainFrame: true),
-            .openExternally(tel)
-        )
-    }
-
     func testNilAndAboutBlankAreAllowed() throws {
-        XCTAssertEqual(official.decision(for: nil, context: .other, isMainFrame: true), .allow)
+        XCTAssertEqual(policy.decision(for: nil, context: .other, isMainFrame: true), .allow)
         let blank = try XCTUnwrap(URL(string: "about:blank"))
-        XCTAssertEqual(official.decision(for: blank, context: .other, isMainFrame: true), .allow)
+        XCTAssertEqual(policy.decision(for: blank, context: .other, isMainFrame: true), .allow)
     }
 
     func testTLSErrorClassification() {
@@ -179,12 +135,6 @@ final class BrowserNavigationTests: XCTestCase {
             TLSErrorClassifier.isTLSFailure(
                 domain: NSURLErrorDomain,
                 code: NSURLErrorSecureConnectionFailed
-            )
-        )
-        XCTAssertTrue(
-            TLSErrorClassifier.isTLSFailure(
-                domain: NSURLErrorDomain,
-                code: NSURLErrorAppTransportSecurityRequiresSecureConnection
             )
         )
         XCTAssertFalse(
@@ -205,7 +155,7 @@ final class BrowserNavigationTests: XCTestCase {
         let failure = BrowserNavigationFailure(
             code: NSURLErrorServerCertificateUntrusted,
             message: "untrusted",
-            host: "sr.mihoyo.com",
+            host: "example.com",
             isTLSError: true,
             isCancelled: false,
             isProvisional: true

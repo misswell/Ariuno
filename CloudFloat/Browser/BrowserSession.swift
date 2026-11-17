@@ -1,4 +1,3 @@
-import AVKit
 import Combine
 import Foundation
 import UIKit
@@ -26,6 +25,7 @@ enum BrowserEvent: Equatable {
     case externalOpenFailed
     case httpError(status: Int, host: String?)
     case mediaCaptureDenied(host: String?)
+    case downloadStarted(filename: String)
     case popupOpened
     case popupClosed
     case popupNavigationFailed(String)
@@ -48,13 +48,18 @@ struct ActivePopup: Identifiable {
 @MainActor
 final class BrowserSession: NSObject, ObservableObject, Identifiable {
     let id = UUID()
+    let isPrivate: Bool
     let webView: WKWebView
     let configuration: WKWebViewConfiguration
     let mediaDetector: MediaDetector
     let cookieStore: CookieStore
-    let pipCoordinator: WebPictureInPictureCoordinator
+    let downloadManager = DownloadManager()
     private(set) var navigationPolicy: NavigationPolicy
 
+    /// New-window and close-window routing. BrowserTabManager installs these so target=_blank
+    /// and window.open become real tabs, while window.close closes the source tab.
+    var onCreateWindow: ((WKWebViewConfiguration, WKNavigationAction) -> WKWebView?)?
+    var onCloseWindow: ((BrowserSession) -> Void)?
     /// Lets tab managers and coordinators mirror session changes upward.
     var onAnyChange: (() -> Void)?
 
@@ -62,6 +67,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var canGoBack = false
     @Published private(set) var canGoForward = false
     @Published private(set) var isLoading = false
+    @Published private(set) var estimatedProgress = 0.0
+    @Published private(set) var hasOnlySecureContent = false
     @Published private(set) var hasCommittedPage = false
     @Published private(set) var currentHost: String?
     @Published private(set) var pageTitle: String = ""
@@ -81,6 +88,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var urlObservation: NSKeyValueObservation?
     private var navigationObservation: NSKeyValueObservation?
     private var backForwardObservation: NSKeyValueObservation?
+    private var progressObservation: NSKeyValueObservation?
+    private var securityObservation: NSKeyValueObservation?
     private var objectWillChangeObservation: AnyCancellable?
     private let now: () -> Date
     /// Suppresses delegate-driven session events while the page is being torn down with
@@ -93,13 +102,19 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         navigationPolicy: NavigationPolicy = NavigationPolicy(),
         inPageControlEnabled: Bool = true,
         javaScriptCanOpenWindowsAutomatically: Bool = false,
+        websiteDataStore: WKWebsiteDataStore = .default(),
+        isPrivate: Bool = false,
+        injectedConfiguration: WKWebViewConfiguration? = nil,
         now: @escaping () -> Date = Date.init
     ) {
         self.now = now
-        let configuration = WKWebViewConfiguration()
+        self.isPrivate = isPrivate || (injectedConfiguration?.websiteDataStore.isPersistent == false)
+        let configuration = injectedConfiguration ?? WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
         configuration.allowsPictureInPictureMediaPlayback = true
-        configuration.websiteDataStore = .default()
+        if injectedConfiguration == nil {
+            configuration.websiteDataStore = websiteDataStore
+        }
         configuration.mediaTypesRequiringUserActionForPlayback = .audio
         configuration.preferences.isElementFullscreenEnabled = true
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
@@ -116,10 +131,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         )
         self.webView = WKWebView(frame: .zero, configuration: configuration)
         self.cookieStore = CookieStore(dataStore: configuration.websiteDataStore, now: now)
-        self.pipCoordinator = WebPictureInPictureCoordinator(
-            mediaDetector: mediaDetector,
-            configurationAllowsPiP: { configuration.allowsPictureInPictureMediaPlayback }
-        )
         self.navigationPolicy = navigationPolicy
 
         super.init()
@@ -338,6 +349,14 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         onEvent?(.mediaCaptureDenied(host: host))
     }
 
+    func recordDownloadStarted(response: URLResponse) {
+        onEvent?(.downloadStarted(filename: response.suggestedFilename ?? "download"))
+    }
+
+    func registerDownload(_ download: WKDownload) {
+        downloadManager.register(download: download)
+    }
+
     func recordPopupNavigationFailure(error: Error) {
         onEvent?(.popupNavigationFailed(PrivacyRedactor.redact(error.localizedDescription)))
     }
@@ -376,36 +395,22 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         pendingExternalURL = nil
     }
 
-    // MARK: - Popups
+    // MARK: - New windows / tabs
 
-    /// Creates a popup web view with an isolated content controller so login popups cannot
-    /// pollute the game media probe. Website data (cookies) is shared intentionally.
-    func makePopupWebView(configuration: WKWebViewConfiguration) -> WKWebView {
-        configuration.userContentController = WKUserContentController()
-        let popup = WKWebView(frame: .zero, configuration: configuration)
-        popup.allowsBackForwardNavigationGestures = true
-        popup.allowsLinkPreview = true
-        popup.scrollView.contentInsetAdjustmentBehavior = .automatic
-        let navigation = PopupNavigationDelegate(session: self)
-        let ui = PopupUIDelegate(session: self)
-        popup.navigationDelegate = navigation
-        popup.uiDelegate = ui
-        popupNavigationDelegate = navigation
-        popupUIDelegate = ui
-        activePopup = ActivePopup(webView: popup)
-        onEvent?(.popupOpened)
-        return popup
+    /// Called by BrowserUIDelegate for target=_blank and window.open. BrowserTabManager
+    /// supplies the handler and owns the resulting tab.
+    /// Compatibility no-op: target=_blank/window.open are routed to BrowserTabManager.
+    func closePopup() {}
+
+    func handleCreateWindow(
+        configuration: WKWebViewConfiguration,
+        navigationAction: WKNavigationAction
+    ) -> WKWebView? {
+        onCreateWindow?(configuration, navigationAction)
     }
 
-    func closePopup() {
-        guard activePopup != nil else { return }
-        activePopup?.webView.stopLoading()
-        activePopup?.webView.navigationDelegate = nil
-        activePopup?.webView.uiDelegate = nil
-        activePopup = nil
-        popupNavigationDelegate = nil
-        popupUIDelegate = nil
-        onEvent?(.popupClosed)
+    func requestClose() {
+        onCloseWindow?(self)
     }
 
     // MARK: - Teardown (tests / explicit exit)
@@ -421,6 +426,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         urlObservation = nil
         navigationObservation = nil
         backForwardObservation = nil
+        progressObservation = nil
+        securityObservation = nil
         objectWillChangeObservation = nil
         onAnyChange = nil
     }
@@ -455,6 +462,18 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
             let value = webView.canGoForward
             Task { @MainActor in
                 self?.canGoForward = value
+            }
+        }
+        progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self] webView, _ in
+            let value = webView.estimatedProgress
+            Task { @MainActor in
+                self?.estimatedProgress = value
+            }
+        }
+        securityObservation = webView.observe(\.hasOnlySecureContent, options: [.new]) { [weak self] webView, _ in
+            let value = webView.hasOnlySecureContent
+            Task { @MainActor in
+                self?.hasOnlySecureContent = value
             }
         }
     }

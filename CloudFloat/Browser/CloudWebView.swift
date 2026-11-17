@@ -19,3 +19,24 @@ struct CloudWebView: UIViewRepresentable {
         // No-op. BrowserSession owns the web view lifetime.
     }
 }
+
+
+/// Keeps every tab's WKWebView mounted so switching tabs neither recreates the WebView nor
+/// reloads the page. Inactive tabs are hidden and non-interactive but remain alive.
+struct BrowserTabHostView: View {
+    let sessions: [BrowserSession]
+    let activeSessionID: UUID
+
+    var body: some View {
+        ZStack {
+            ForEach(sessions) { session in
+                let isActive = session.id == activeSessionID
+                CloudWebView(webView: session.webView)
+                    .opacity(isActive ? 1 : 0)
+                    .allowsHitTesting(isActive)
+                    .disabled(!isActive)
+                    .accessibilityHidden(!isActive)
+            }
+        }
+    }
+}

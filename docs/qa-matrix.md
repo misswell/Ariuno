@@ -1,4 +1,4 @@
-# CloudFloat 测试矩阵与验收记录
+# Ariuno 测试矩阵与验收记录
 
 - 版本：0.1.0（Build 1）
 - 最近自动化执行：2026-11-16
@@ -20,8 +20,8 @@
 ```bash
 xcodegen generate
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/DerivedData \
@@ -31,29 +31,33 @@ xcodebuild \
 结果：
 
 ```text
-Executed 130 tests, with 0 failures (0 unexpected)
+Executed 142 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
 | 测试套件 | 数量 | 覆盖重点 |
 |---|---:|---|
-| BrowserNavigationTests | 15 | 官方域名/子域/防伪后缀、第三方认证、外部 URL、危险 scheme、TLS 分类、子 frame |
-| BrowserSessionTests | 7 | M1 配置、UA 不伪造、探测脚本全 frame 注入、设置开关、单 WebView |
-| BrowserTabManagerTests | 6 | 多标签创建/切换/关闭、事件转发 |
+| BrowserNavigationTests | 11 | 通用 HTTP/HTTPS 站内导航、本地测试页、外部系统 scheme、危险 scheme、TLS 分类 |
+| BrowserPrivacyTests | 3 | 普通/隐私 WebView 数据隔离、隐私关闭不入最近关闭 |
+| BrowserSessionTests | 7 | M1 配置、UA 不伪造、探测脚本全 frame 注入、设置开关、通用会话 |
+| BrowserTabManagerTests | 7 | 多标签创建/切换/关闭/事件转发、10 标签生命周期 |
 | BookmarkStoreTests | 5 | 书签持久化、去重、删除、URL 匹配 |
-| URLInputParserTests | 6 | 地址栏解析、HTTPS 补全、危险 scheme 拒绝 |
 | DiagnosticsStoreTests | 8 | 容量、脱敏写入、严重级、导出 JSON/文本/临时文件 |
 | GameSessionStateTests | 16 | 加载、PiP 开关、前后台、网络、停滞、崩溃、恢复、退出、三层验证 |
+| HistoryStoreTests | 4 | 历史持久化、搜索、文件/空白跳过、上限/删除/清空 |
 | LocalHTTPServerTests | 7 | 回环、MIME、Range、404、路径穿越、双端口、解析器 |
-| LoginPopupIntegrationTests | 1 | 登录弹窗承载体、关闭弹窗不重建/刷新主页面 |
+| LoginPopupIntegrationTests | 1 | target=_blank/window.open 转标签、关闭弹窗标签不刷新主页面 |
 | MediaProbeIntegrationTests | 6 | 本地视频快照/事件、Canvas、跨域 iframe、控件禁用、UTF-8 文本 |
 | MediaProbeTests | 14 | 快照/事件解码、origin 清洗、聚合分类、上限、PiP 原因映射、脚本资源 |
 | PrivacyRedactorTests | 10 | URL/Cookie/Authorization/token/邮箱/手机/JWT/UUID/长密钥/元数据 |
+| RecentlyClosedStoreTests | 3 | 最近关闭记录/跳过空白/恢复/清空 |
 | SessionMonitorTests | 9 | 加载、媒体、前后台、网络、失败、恢复计数、诊断快照 |
 | SessionPersistenceTests | 2 | T09：跨 BrowserSession 的 WebKit Cookie 持久化；T11：SwiftUI host 重建后同一 WebView/JS 状态 |
 | SessionRecoveryTests | 12 | 无自动重载、用户确认、冷却、上限、窗口清理 |
+| URLInputParserTests | 6 | 地址栏解析、HTTPS 补全、危险 scheme 拒绝 |
+| BrowserFeatureTests | 5 | PiP 跨标签绑定/来源保护、书签文件夹排序、搜索引擎、10 标签生命周期 |
 | WebPictureInPictureTests | 6 | 平台/配置/探测门控、enter/leave 状态、M4 不可行 |
-| **合计** | **130** | |
+| **合计** | **142** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
 
@@ -138,7 +142,7 @@ Executed 130 tests, with 0 failures (0 unexpected)
 
 | 检查 | 方法 | 当前自动证据 | 真机结果 |
 |---|---|---|---|
-| SwiftUI 重建不丢会话 | 首页 ↔ 游戏、旋转、PiP 开关、前后台 | 单 WebView 架构 + `SessionPersistenceTests`（host 重建后 JS 标记仍存在） | |
+| SwiftUI 重建不丢会话 | 首页 ↔ 浏览器、旋转、PiP 开关、前后台 | 多标签架构 + `SessionPersistenceTests`（host 重建后 JS 标记仍存在） | |
 | 不重复登录 | 返回前台、PiP 返回、关闭/打开工具栏 | 不 reload；`SessionPersistenceTests` 验证 WebKit Cookie 跨实例持久化；官方登录待真机 | |
 | 不恶意重连/重复计费 | 断网恢复、崩溃、停滞 | `SessionRecoveryTests` 验证无自动 reload、冷却/上限 | |
 | 退出会话保留登录 | 菜单“退出会话”后重进 | `endSession()` 只加载 about:blank，不清理网站数据 | |
@@ -154,7 +158,7 @@ Executed 130 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：130/130 通过（当前）。
+- 自动化：142/142 通过（当前）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

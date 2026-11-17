@@ -1,6 +1,6 @@
 import WebKit
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 @MainActor
 final class BrowserSessionTests: XCTestCase {
@@ -58,7 +58,7 @@ final class BrowserSessionTests: XCTestCase {
         session.updateLocalTestAccess(enabled: false)
         XCTAssertEqual(
             session.navigationPolicy.decision(for: localURL, context: .other, isMainFrame: true),
-            .block(.insecureHTTP)
+            .allow
         )
     }
 

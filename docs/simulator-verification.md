@@ -21,15 +21,15 @@
 
 ```bash
 xcodebuild \
-  -project CloudFloat.xcodeproj \
-  -scheme CloudFloat \
+  -project Ariuno.xcodeproj \
+  -scheme Ariuno \
   -configuration Debug \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/DerivedData \
   test
 ```
 
-结果：`Executed 130 tests, with 0 failures`，`** TEST SUCCEEDED **`。
+结果：`Executed 142 tests, with 0 failures`，`** TEST SUCCEEDED **`。
 
 覆盖（详见 [qa-matrix.md](qa-matrix.md)）：
 
@@ -73,9 +73,9 @@ xcodebuild \
 
 1. 启动 App，`-CFOpenLocalGame` 加载本地视频页；
 2. 等待页面播放，记录 PID 与截图；
-3. 启动系统 Settings 把 CloudFloat 切到后台；
+3. 启动系统 Settings 把 Ariuno 切到后台；
 4. 等待 **60 秒**；
-5. 通过 `simctl launch` 把 CloudFloat 唤回前台（不 terminate）；
+5. 通过 `simctl launch` 把 Ariuno 唤回前台（不 terminate）；
 6. 截图/记录 PID、页面、视频当前时间。
 
 | 指标 | 后台前 | 后台 60 秒后回前台 |

@@ -10,6 +10,7 @@ enum DiagnosticCategory: String, Codable, CaseIterable, Identifiable {
     case network
     case recovery
     case security
+    case download
     case privacy
     case test
 
@@ -25,6 +26,7 @@ enum DiagnosticCategory: String, Codable, CaseIterable, Identifiable {
         case .network: return "网络"
         case .recovery: return "恢复"
         case .security: return "安全"
+        case .download: return "下载"
         case .privacy: return "隐私"
         case .test: return "测试"
         }

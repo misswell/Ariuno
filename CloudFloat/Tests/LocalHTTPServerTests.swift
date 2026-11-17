@@ -1,5 +1,5 @@
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 @MainActor
 final class LocalHTTPServerTests: XCTestCase {

@@ -1,4 +1,4 @@
-# M0 可行性验证报告（CloudFloat）
+# M0 可行性验证报告（Ariuno）
 
 - 报告日期：2026-11-16
 - 结论先行：**真机已能官方登录、进入云游戏、出现游戏实时 PiP，并观察到自动战斗推进；但后台无输入约 15 分钟后，游戏服务器主动断开（“长时间未操作游戏，已中断连接”，错误码 -1022），T04/T05 FAIL。因此不得宣称后台挂机，最终交付应为浏览器 + 诊断原型。**
@@ -43,12 +43,12 @@
 
 ```bash
 xcodegen generate
-xcodebuild -project CloudFloat.xcodeproj -scheme CloudFloat -configuration Debug \
+xcodebuild -project Ariuno.xcodeproj -scheme Ariuno -configuration Debug \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/DerivedData test
 ```
 
-结果：**130 tests, 0 failures, TEST SUCCEEDED**（2026-11-16）。测试覆盖：
+结果：**142 tests, 0 failures, TEST SUCCEEDED**（2026-11-16）。测试覆盖：
 
 - `MediaProbeIntegrationTests`：本地 `native-video.html` 的 WKWebView 脚本消息、媒体播放事件、Canvas 分类、跨域 iframe 独立上报、禁用页面内控件；
 - `LoginPopupIntegrationTests`：本地登录弹窗样例能打开 Popup WKWebView，关闭弹窗不重建/刷新主 WebView；
@@ -123,7 +123,7 @@ curl -sS https://sr.mihoyo.com/cloud/ -o /tmp/cf_probe.html
 按用户指示在模拟器做了实际的后台/前台检查：
 
 1. `-CFOpenLocalGame` 加载本地视频页；
-2. 启动系统 Settings 将 CloudFloat 切后台 60 秒；
+2. 启动系统 Settings 将 Ariuno 切后台 60 秒；
 3. `simctl launch` 唤回前台（不 terminate）；
 4. 记录 PID、页面与视频当前时间。
 
@@ -204,7 +204,7 @@ curl -sS https://sr.mihoyo.com/cloud/ -o /tmp/cf_probe.html
 1. 用 Xcode 将本工程安装到同一台 iPhone（设置自己的 Team，Debug）。
 2. 打开 App → “继续游戏” → 官方入口；正常登录（账号只输入官方网页）。
 3. 观察是否出现“不支持/被拒绝/设备异常”等网页提示；记录页面主机与错误码，不记录 token URL。
-4. 通过 Mac Safari 的“开发 → [设备] → CloudFloat”检查 `isInspectable` 的 WKWebView；重复 7.2 的字段观察，并多看每个子 frame。
+4. 通过 Mac Safari 的“开发 → [设备] → Ariuno”检查 `isInspectable` 的 WKWebView；重复 7.2 的字段观察，并多看每个子 frame。
 5. 在“画中画能力检测”与“诊断”中记录：`MediaKind`、video 数量、readyState、PiP 支持、PiP Permissions Policy、frame origins（仅 host）、最近媒体事件。
 6. 点击顶部 PiP 按钮：
    - 若成功：确认系统 PiP 浮窗出现、画面时间码/进度继续变化；
@@ -350,4 +350,4 @@ curl -sS https://sr.mihoyo.com/cloud/ -o /tmp/cf_probe.html
 | 真机锁屏 | [idle-locked-30min.png](images/device/idle-locked-30min.png) | 30 分钟节点设备锁屏、无 PiP |
 | 真机登录保持 | [login-persisted-real-device.png](images/device/login-persisted-real-device.png) | 重装后未要求重新登录；已裁掉账号 ID |
 | 真机验证总记录 | [real-device-verification.md](real-device-verification.md) | 设备、步骤、T01/T02/T03/T09、T04/T05 FAIL |
-| 测试日志 | `build/test-final.log`（本地生成） | 130 tests, 0 failures |
+| 测试日志 | `build/test-final.log`（本地生成） | 142 tests, 0 failures |

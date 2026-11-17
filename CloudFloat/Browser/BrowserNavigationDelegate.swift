@@ -47,7 +47,28 @@ final class BrowserNavigationDelegate: NSObject, WKNavigationDelegate {
            response.statusCode >= 400 {
             session?.recordHTTPError(status: response.statusCode, host: response.url?.host)
         }
+        if !navigationResponse.canShowMIMEType {
+            session?.recordDownloadStarted(response: navigationResponse.response)
+            decisionHandler(.download)
+            return
+        }
         decisionHandler(.allow)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        navigationResponse: WKNavigationResponse,
+        didBecome download: WKDownload
+    ) {
+        session?.registerDownload(download)
+    }
+
+    func webView(
+        _ webView: WKWebView,
+        navigationAction: WKNavigationAction,
+        didBecome download: WKDownload
+    ) {
+        session?.registerDownload(download)
     }
 
     func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {

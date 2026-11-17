@@ -1,5 +1,5 @@
 import XCTest
-@testable import CloudFloat
+@testable import Ariuno
 
 final class MediaProbeTests: XCTestCase {
     private let receivedAt = Date(timeIntervalSince1970: 1_700_000_100)

@@ -63,6 +63,11 @@ struct SettingsView: View {
             }
 
             Section {
+                Picker("搜索引擎", selection: $settings.searchEngine) {
+                    ForEach(SearchEngine.allCases) { engine in
+                        Text(engine.displayName).tag(engine)
+                    }
+                }
                 Toggle("详细诊断日志", isOn: $settings.verboseDiagnostics)
                 LabeledContent("当前事件数", value: "\(diagnostics.events.count) / \(diagnostics.capacity)")
                 if let highest = diagnostics.highestSeverity {
