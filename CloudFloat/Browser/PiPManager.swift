@@ -10,6 +10,9 @@ import Foundation
 final class PiPManager: ObservableObject {
     @Published private(set) var activePiPTabID: UUID?
     @Published private(set) var coordinators: [UUID: WebPictureInPictureCoordinator] = [:]
+    /// Tabs the user asked to close while they were the PiP source. They stay alive until the
+    /// system reports PiP has stopped (or a timeout fallback fires).
+    @Published private(set) var pendingCloseTabIDs: Set<UUID> = []
 
     var onAnyChange: (() -> Void)?
     var onStateChanged: ((UUID, WebPictureInPictureCoordinator.State) -> Void)?
@@ -84,6 +87,19 @@ final class PiPManager: ObservableObject {
         coordinator(for: session).exitPiP()
     }
 
+    /// Two-phase close: stop PiP now, keep the WebView alive, then let the caller finish the
+    /// teardown when `leavepictureinpicture` arrives.
+    func beginStopBeforeClose(_ session: BrowserSession) {
+        pendingCloseTabIDs.insert(session.id)
+        coordinator(for: session).exitPiP()
+        onAnyChange?()
+    }
+
+    func cancelStopBeforeClose(_ session: BrowserSession) {
+        guard pendingCloseTabIDs.remove(session.id) != nil else { return }
+        onAnyChange?()
+    }
+
     func exitActivePiP() {
         activePiPCoordinator?.exitPiP()
     }
@@ -113,6 +129,7 @@ final class PiPManager: ObservableObject {
     }
 
     func stopObserving(_ session: BrowserSession) {
+        pendingCloseTabIDs.remove(session.id)
         observationCancellables.removeValue(forKey: session.id)?.cancel()
         // Keep the coordinator alive if it is the active PiP source; otherwise release it.
         if activePiPTabID != session.id {

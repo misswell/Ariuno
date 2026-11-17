@@ -67,13 +67,13 @@ final class DiagnosticsStoreTests: XCTestCase {
 
     func testJSONExportRoundTripsAndContainsPrivacyNotice() throws {
         let store = makeStore()
-        store.info(.app, "app.launch", "CloudFloat 启动")
+        store.info(.app, "app.launch", "Ariuno 启动")
         let data = try ExportDiagnostics.jsonData(events: store.events, session: nil)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let payload = try decoder.decode(DiagnosticsExportPayload.self, from: data)
         XCTAssertEqual(payload.events.count, 1)
-        XCTAssertTrue(payload.privacyNotice.contains("CloudFloat"))
+        XCTAssertTrue(payload.privacyNotice.contains("Ariuno"))
         XCTAssertFalse(payload.environment.osVersion.isEmpty)
         XCTAssertEqual(payload.environment.isSimulator, true)
     }
@@ -101,7 +101,7 @@ final class DiagnosticsStoreTests: XCTestCase {
                 recordedAt: clock
             )
         )
-        XCTAssertTrue(report.contains("CloudFloat Diagnostics"))
+        XCTAssertTrue(report.contains("Ariuno Diagnostics"))
         XCTAssertTrue(report.contains("streamStalled"))
         XCTAssertTrue(report.contains("Server session verified: false"))
         XCTAssertTrue(report.contains("media.stalled"))

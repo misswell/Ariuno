@@ -38,12 +38,12 @@ struct SettingsView: View {
             } header: {
                 Text("音频")
             } footer: {
-                Text("仅在检测到真实视频播放或画中画可见时配置 AVAudioSession .playback。CloudFloat 不会播放静音音频，也不会用音频保活。后台模式的使用说明与审核风险见 docs/background-audio.md。")
+                Text("仅在检测到真实视频播放或画中画可见时配置 AVAudioSession .playback。Ariuno 不会播放静音音频，也不会用音频保活。后台模式的使用说明与审核风险见 docs/background-audio.md。")
             }
 
             Section {
                 LabeledContent("WebKit Cookie 记录", value: "\(coordinator.cookieStore.cookieRecordCount)")
-                LabeledContent("米哈游相关记录", value: "\(coordinator.cookieStore.officialSiteRecordCount)")
+                LabeledContent("已记录站点数", value: "\(coordinator.cookieStore.domainRecordCount)")
                 Button(role: .destructive) {
                     showClearConfirmation = true
                 } label: {
@@ -104,7 +104,7 @@ struct SettingsView: View {
                 Text(FeatureFlags.privacyStatement)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Text("CloudFloat 是非官方浏览器工具，不使用游戏官方 Logo，不冒充官方客户端。云游戏服务条款、品牌授权与 App Review 2.5.4 的最终合规责任需在上架前由发布方确认。")
+                Text("Ariuno 是非官方浏览器工具，不使用游戏官方 Logo，不冒充官方客户端。云游戏服务条款、品牌授权与 App Review 2.5.4 的最终合规责任需在上架前由发布方确认。")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
             } header: {

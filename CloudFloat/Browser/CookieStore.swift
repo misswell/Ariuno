@@ -6,7 +6,9 @@ import WebKit
 @MainActor
 final class CookieStore: NSObject, ObservableObject {
     @Published private(set) var cookieRecordCount: Int = 0
-    @Published private(set) var officialSiteRecordCount: Int = 0
+    /// Number of distinct domains with website data. No domain is treated as "official";
+    /// Ariuno is a general-purpose browser.
+    @Published private(set) var domainRecordCount: Int = 0
     @Published private(set) var isClearing: Bool = false
     @Published private(set) var lastClearedAt: Date?
 
@@ -15,8 +17,6 @@ final class CookieStore: NSObject, ObservableObject {
     private let dataStore: WKWebsiteDataStore
     private let now: () -> Date
     private var observing = false
-
-    private static let officialDomainSuffixes = ["mihoyo.com", "hoyoverse.com", "hoyolab.com"]
 
     init(dataStore: WKWebsiteDataStore, now: @escaping () -> Date = Date.init) {
         self.dataStore = dataStore
@@ -44,17 +44,12 @@ final class CookieStore: NSObject, ObservableObject {
             guard let self else { return }
             let records = await self.dataStore.dataRecords(ofTypes: [WKWebsiteDataTypeCookies])
             let total = records.count
-            let official = records.filter { record in
-                let domain = record.displayName
-                    .lowercased()
-                    .trimmingCharacters(in: CharacterSet(charactersIn: "."))
-                return Self.officialDomainSuffixes.contains { suffix in
-                    domain == suffix || domain.hasSuffix("." + suffix)
-                }
-            }.count
+            let domains = Set(records.map {
+                $0.displayName.lowercased().trimmingCharacters(in: CharacterSet(charactersIn: "."))
+            })
             let changed = self.cookieRecordCount != total
             self.cookieRecordCount = total
-            self.officialSiteRecordCount = official
+            self.domainRecordCount = domains.count
             if changed {
                 self.onChange?(total)
             }
@@ -80,8 +75,8 @@ final class CookieStore: NSObject, ObservableObject {
     }
 
     /// Best-effort check without reading cookie values. It cannot prove login state.
-    var hasOfficialSiteCookieRecords: Bool {
-        officialSiteRecordCount > 0
+    var hasAnyCookieRecords: Bool {
+        cookieRecordCount > 0
     }
 }
 

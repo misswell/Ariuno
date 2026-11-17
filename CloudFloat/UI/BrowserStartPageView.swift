@@ -179,19 +179,56 @@ struct BrowserStartPageView: View {
     // MARK: - Quick actions
 
     private var quickActions: some View {
-        HStack(spacing: 10) {
-            QuickActionButton(title: "新建标签页", systemImage: "plus.square.on.square") {
-                addressFieldFocused = false
-                coordinator.createTab()
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                QuickActionButton(title: "新建标签页", systemImage: "plus.square.on.square") {
+                    addressFieldFocused = false
+                    coordinator.createTab()
+                }
+                QuickActionButton(title: "书签", systemImage: "bookmark") {
+                    showBookmarks = true
+                }
+                QuickActionButton(title: "历史", systemImage: "clock") {
+                    showHistory = true
+                }
+                QuickActionButton(title: "下载", systemImage: "arrow.down.circle") {
+                    showDownloads = true
+                }
             }
-            QuickActionButton(title: "书签", systemImage: "bookmark") {
-                showBookmarks = true
-            }
-            QuickActionButton(title: "历史", systemImage: "clock") {
-                showHistory = true
-            }
-            QuickActionButton(title: "下载", systemImage: "arrow.down.circle") {
-                showDownloads = true
+
+            Text("常用网站")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.top, 2)
+
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 92), spacing: 10)],
+                spacing: 10
+            ) {
+                ForEach(StartPageShortcut.defaults) { shortcut in
+                    Button {
+                        addressFieldFocused = false
+                        coordinator.openURL(shortcut.url)
+                    } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: shortcut.systemImage)
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.tint)
+                            Text(shortcut.title)
+                                .font(.caption2.weight(.medium))
+                                .lineLimit(1)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
+                        )
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.primary)
+                }
             }
         }
     }
@@ -409,6 +446,26 @@ struct BrowserStartPageView: View {
 }
 
 // MARK: - Building blocks
+
+/// Generic popular destinations shown on the start page. These are ordinary websites, not a
+/// hardcoded cloud-game entry; users can also add their own bookmarks and shortcuts.
+struct StartPageShortcut: Identifiable, Equatable {
+    let id: String
+    let title: String
+    let systemImage: String
+    let urlString: String
+
+    var url: URL { URL(string: urlString)! }
+
+    static let defaults: [StartPageShortcut] = [
+        StartPageShortcut(id: "google", title: "Google", systemImage: "magnifyingglass", urlString: "https://www.google.com"),
+        StartPageShortcut(id: "bing", title: "Bing", systemImage: "b.circle", urlString: "https://www.bing.com"),
+        StartPageShortcut(id: "duckduckgo", title: "DuckDuckGo", systemImage: "shield.lefthalf.filled", urlString: "https://duckduckgo.com"),
+        StartPageShortcut(id: "youtube", title: "YouTube", systemImage: "play.rectangle", urlString: "https://www.youtube.com"),
+        StartPageShortcut(id: "wikipedia", title: "Wikipedia", systemImage: "book.closed", urlString: "https://zh.wikipedia.org"),
+        StartPageShortcut(id: "github", title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right", urlString: "https://github.com")
+    ]
+}
 
 private struct QuickActionButton: View {
     let title: String

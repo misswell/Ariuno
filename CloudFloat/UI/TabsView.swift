@@ -25,7 +25,7 @@ struct TabsView: View {
                 titleVisibility: .visible
             ) {
                 Button("关闭全部", role: .destructive) {
-                    if coordinator.tabs.closeAllTabs(force: true) {
+                    if coordinator.closeAllTabs(force: true) {
                         dismiss()
                     }
                 }
@@ -58,8 +58,15 @@ struct TabsView: View {
                 tabRow(session)
             }
             .onDelete { indexSet in
-                for index in indexSet {
-                    close(coordinator.tabs.sessions[index])
+                // Snapshot stable IDs before mutating: closing a tab removes it from the array,
+                // so iterating live indices would shift underneath us.
+                let sessions = coordinator.tabs.sessions
+                let ids = indexSet.compactMap { index -> UUID? in
+                    guard index >= 0, index < sessions.count else { return nil }
+                    return sessions[index].id
+                }
+                if coordinator.closeTabs(withIDs: ids) == .requiresPiPConfirmation {
+                    tabCloseConfirmation = ids.compactMap { coordinator.tabs.session(withID: $0) }.first
                 }
             }
         }
@@ -70,7 +77,7 @@ struct TabsView: View {
         Section("最近关闭") {
             ForEach(coordinator.tabs.recentlyClosed.snapshots) { snapshot in
                 Button {
-                    if coordinator.tabs.restoreRecentlyClosed() != nil {
+                    if coordinator.restoreRecentlyClosedTab() != nil {
                         dismiss()
                     }
                 } label: {
@@ -106,14 +113,14 @@ struct TabsView: View {
                 }
                 Divider()
                 Button("关闭其他标签页") {
-                    if coordinator.tabs.closeAllTabs(except: coordinator.browser) {
+                    if coordinator.closeAllTabs(except: coordinator.browser) {
                         dismiss()
                     } else {
                         coordinator.showToast("有 PiP 来源标签页受保护", .warning)
                     }
                 }
                 Button("关闭全部标签页", role: .destructive) {
-                    if coordinator.tabs.closeAllTabs() {
+                    if coordinator.closeAllTabs() {
                         dismiss()
                     } else {
                         coordinator.showToast("有 PiP 来源标签页受保护", .warning)
@@ -143,7 +150,11 @@ struct TabsView: View {
             dismiss()
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                TabPreviewImage(webView: session.webView)
+                TabPreviewImage(
+                    tabID: session.id,
+                    webView: session.webView,
+                    isActive: isActive
+                )
                     .frame(width: 96, height: 64)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                     .overlay(
@@ -153,7 +164,7 @@ struct TabsView: View {
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
-                        Text(session.pageTitle.isEmpty ? "未命名页面" : session.pageTitle)
+                        Text(session.displayTitle.isEmpty ? "未命名页面" : session.displayTitle)
                             .font(.subheadline.weight(.medium))
                             .lineLimit(2)
                             .multilineTextAlignment(.leading)
@@ -163,7 +174,7 @@ struct TabsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Text(session.currentURL?.absoluteString ?? "空白页")
+                    Text(session.displayURL?.absoluteString ?? "空白页")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
@@ -203,7 +214,9 @@ struct TabsView: View {
 }
 
 struct TabPreviewImage: View {
+    let tabID: UUID
     let webView: WKWebView
+    var isActive: Bool = false
     @State private var image: UIImage?
 
     var body: some View {
@@ -220,18 +233,20 @@ struct TabPreviewImage: View {
                     )
             }
         }
-        .task {
-            image = await takeSnapshot()
+        .task(id: isActive) {
+            // Cached PNG first (Caches dir), then a fresh snapshot when missing or stale.
+            if let cached = TabThumbnailCache.shared.cachedImage(for: tabID) {
+                image = cached
+            }
+            image = await TabThumbnailCache.shared.image(
+                for: tabID,
+                webView: webView,
+                forceRefresh: isActive
+            ) ?? cachedImageFallback()
         }
     }
 
-    private func takeSnapshot() async -> UIImage? {
-        await withCheckedContinuation { continuation in
-            let configuration = WKSnapshotConfiguration()
-            configuration.afterScreenUpdates = false
-            webView.takeSnapshot(with: configuration) { image, _ in
-                continuation.resume(returning: image)
-            }
-        }
+    private func cachedImageFallback() -> UIImage? {
+        TabThumbnailCache.shared.cachedImage(for: tabID)
     }
 }

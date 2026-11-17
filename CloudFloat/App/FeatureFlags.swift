@@ -6,7 +6,7 @@ import Foundation
 /// documented, decodable live stream plus input/codec/session work. The app therefore does
 /// not claim a native PiP media pipeline.
 enum FeatureFlags {
-    static let appDisplayName = "CloudFloat"
+    static let appDisplayName = "Ariuno"
     static let minimumIOSVersion = "17.0"
 
     static var isDebugBuild: Bool {
@@ -55,7 +55,7 @@ enum FeatureFlags {
     }
 
     static let privacyStatement = """
-    CloudFloat 不接收、不保存账号密码或登录令牌。登录完全发生在官方网页内，网站数据由 \
+    Ariuno 不接收、不保存账号密码或登录令牌。登录完全发生在官方网页内，网站数据由 \
     WebKit 默认持久化存储管理；只有用户明确执行“清除网站数据”时才会删除。诊断日志在内存中\
     生成并在导出前脱敏，不会自动上传。服务器端云游戏会话是否持续运行无法由本 App 通过公开 \
     API 证明，界面会如实显示 UNVERIFIED。

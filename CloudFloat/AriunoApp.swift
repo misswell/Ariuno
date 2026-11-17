@@ -9,7 +9,11 @@ struct AriunoApp: App {
         let settings = AppSettings()
         let diagnostics = DiagnosticsStore()
         _coordinator = StateObject(
-            wrappedValue: AppCoordinator(settings: settings, diagnostics: diagnostics)
+            wrappedValue: AppCoordinator(
+                settings: settings,
+                diagnostics: diagnostics,
+                tabPersistence: TabSessionStore()
+            )
         )
     }
 

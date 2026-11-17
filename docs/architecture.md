@@ -16,14 +16,19 @@ AriunoApp (@main)
 AppCoordinator (@MainActor, composition root)
 ├── AppSettings (UserDefaults, non-sensitive)
 ├── DiagnosticsStore (in-memory, bounded, redacted)
-├── BrowserSession
-│   ├── WKWebView + WKWebViewConfiguration
-│   ├── BrowserNavigationDelegate / BrowserUIDelegate
-│   ├── CookieStore (counts only)
-│   ├── MediaDetector (JS bridge)
-│   └── popup WKWebView + Popup delegates
+├── BrowserTabManager（标签唯一事实来源）
+│   ├── BrowserSession × N
+│   │   ├── WKWebView + WKWebViewConfiguration
+│   │   ├── BrowserNavigationDelegate / BrowserUIDelegate
+│   │   ├── CookieStore (counts only)
+│   │   ├── MediaDetector (JS bridge)
+│   │   └── DownloadManager
+│   ├── TabSessionStore（版本化 tabs-v1.json）
+│   └── RecentlyClosedStore
+├── PiPManager（全局 PiP 来源 + 控制器表 + 待关闭集合）
+├── TabThumbnailCache（Caches/Ariuno/TabThumbnails）
+├── BrowserLibraryStore（BookmarkStore + HistoryStore）
 ├── SessionMonitor (SessionStateMachine, timers, lifecycle/network)
-├── WebPictureInPictureCoordinator
 ├── WebContentRecovery (RecoveryPolicy)
 ├── NetworkObserver (NWPathMonitor)
 └── AudioSessionManager (AVAudioSession, real media only)
@@ -49,20 +54,40 @@ AppCoordinator (@MainActor, composition root)
 - `#if DEBUG webView.isInspectable = true`
 - `javaScriptCanOpenWindowsAutomatically = false`（生产默认；避免无手势脚本弹窗）
 
-`RootView` 在 `hasStartedBrowser` 之后始终保留 `BrowserView`（返回首页时用 `opacity(0)` 隐藏但仍在视图层级），`CloudWebView.makeUIView` 返回同一个 `WKWebView`，`BrowserSession` 由 `@StateObject AppCoordinator` 长期持有。因此 SwiftUI 刷新、PiP 切换、前后台切换不会重建 WebView 或页面。
+`RootView` 在 `hasStartedBrowser` 之后始终保留 `BrowserView`（返回首页时用 `opacity(0)` 隐藏但仍在视图层级），
+`CloudWebView.makeUIView` 返回同一个 `WKWebView`，`BrowserSession` 由 `@StateObject AppCoordinator` 长期持有。
+
+[`BrowserTabHostView`](../CloudFloat/Browser/CloudWebView.swift) 将**所有标签**的 WebView 常驻挂载，
+仅活动标签 `opacity(1)` + 可交互，其他标签 `opacity(0)` 但保持视图层级。切换标签只改变可见性：
+不重建 WebView、不 reload、不改变 `loadGeneration`。`BrowserContainerTests` 验证 10 个标签切换后
+对象标识不变且从未发起导航。取舍：以常驻内存换取页面状态（JS、滚动、历史栈、媒体）绝对不丢失；
+关闭标签时 `tearDown()` 停止轮询、移除 message handler、取消 KVO/Combine、置 `isClosed`。
+
+### 2.1.1 标签冷启动持久化
+
+[`TabSessionStore`](../CloudFloat/Browser/TabSessionStore.swift) 将普通标签的 URL/标题/最后访问时间/
+活动标签写入 `Application Support/Ariuno/tabs-v1.json`：
+
+- `version` 不匹配直接丢弃（不猜测结构）；
+- 过滤 `about:blank`/空 URL，按 tabID 去重，上限 20；
+- 0.4 秒防抖 + `Data.write(options: .atomic)`；进入后台 `flush()`；
+- 隐私标签永不写入；
+- 冷启动只恢复元数据（`BrowserSession.applyRestoredMetadata`），用户首次激活时
+  `resumeRestoredPageIfNeeded()` 才发起一次导航，避免启动时同时请求全部标签。
 
 ### 2.2 导航与外部 URL
 
-[`NavigationPolicy`](../CloudFloat/Browser/NavigationPolicy.swift) 是纯 Foundation 策略：
+[`NavigationPolicy`](../CloudFloat/Browser/NavigationPolicy.swift) 是纯 Foundation 的通用浏览器策略，
+**不再包含任何游戏官方域名白名单**：
 
-- 允许 `https` 官方域名（`mihoyo.com`、`hoyoverse.com`、`hoyolab.com`、`yuanshen.com`）与已知认证伙伴（Apple/Google/Microsoft/TapTap 等）；
-- 主框架用户点击的非官方 `https` 链接 → 外部打开（经用户确认），不直接加载；
-- 表单提交、重定向、子 frame → 允许（认证跳转需要）；
-- `http` 只允许本地回环测试页；其他 `http` 阻止（不忽略 ATS/安全）；
-- `file` 只允许测试页目录；`javascript/data/blob/filesystem` 阻止；
-- `itms-services/itms-apps` 阻止；`mailto/tel/sms/facetime` 经确认交给系统；
-- 未知自定义 scheme 阻止（不执行网页发来的 native 指令）；
-- 官方域名判定使用精确/点后缀匹配，`evilmihoyo.com`、`mihoyo.com.evil.example` 不会通过（有单测）。
+- 任意 `http`/`https` 均在站内打开；`http` 由地址栏明确标注“不安全”；
+- 表单提交、重定向、子 frame、当前标签前进/后退 → 允许；
+- `file` 只允许 Debug 测试页目录；`javascript/data/blob/filesystem` 阻止；
+- `itms-services/itms-apps` 阻止；`mailto/tel/sms/facetime` 经用户确认交给系统；
+- 未知自定义 scheme 阻止；
+- TLS 继续使用系统默认校验，`shouldAllowDeprecatedTLS = false`，不忽略证书错误；
+- ATS 只在 `NSAllowsArbitraryLoadsInWebContent` 范围内允许网页内容加载 HTTP，
+  不设置全局 `NSAllowsArbitraryLoads`，不关闭系统 ATS。
 
 [`BrowserNavigationDelegate`](../CloudFloat/Browser/BrowserNavigationDelegate.swift) 执行策略，并：
 
@@ -85,9 +110,48 @@ AppCoordinator (@MainActor, composition root)
 [`CookieStore`](../CloudFloat/Browser/CookieStore.swift)：
 
 - 只使用 `WKWebsiteDataStore.dataRecords(ofTypes: [.cookies])` 做域名级记录计数，不读取 Cookie 名称/值或 HttpOnly 内容；
-- 只显示 Cookie 网站记录总数与米哈游相关记录数（域名级）；
+- 显示 Cookie 网站记录总数与不同域名数；不区分“官方/非官方”站点；
 - 只有用户在设置中明确确认“清除网站数据”后才调用 `removeData(ofTypes: allWebsiteDataTypes())`；
 - 不提供账号密码输入、存储、自动登录或 token 导出。
+
+### 2.4 媒体探测调度（统一 Timer）
+
+`AppCoordinator.updateMediaScheduling()` 是唯一入口：
+
+- 前台且处于浏览器界面：活动标签轮询；
+- 若 PiP 来源是另一个标签：该标签也保留轮询（最多 2 个 Timer）；
+- 其他后台标签、首页状态、App 进入后台：全部 `stopPolling()`；
+- PiP 事件监听来自 `WKScriptMessageHandler`，不依赖轮询，因此后台不受影响。
+
+### 2.5 PiP 全局生命周期
+
+[`PiPManager`](../CloudFloat/Browser/PiPManager.swift)：
+
+- `activePiPTabID` 记录唯一来源；`coordinators[tabID]` 每标签一个协调器；
+- 媒体事件按 tabID 路由，切换活动标签不改变来源；
+- 关闭来源标签：`beginStopBeforeClose` → `exitPiP()` → 等待页面
+  `leavepictureinpicture` → `completeDeferredPiPClose` → `tabs.closeTab(force:true)`；
+  1.5 秒未收到事件则超时兜底，避免永远无法关闭；
+- `stopObserving` 释放协调器与待关闭标记；
+- `AudioSessionManager` 依据全局 `activePiPTabID` 保持激活，不因选中标签变化而误停。
+
+### 2.6 下载
+
+`DownloadManager` 由 `BrowserTabManager` 创建并注入每个 `BrowserSession`，因此：
+
+- 所有标签（包括隐私标签）共用同一个下载队列；
+- 切换/关闭标签不会让进行中或已完成的下载从 Downloads UI 消失；
+- 下载文件写入 `Documents/Downloads`，支持进度、暂停（WebKit resumeData）、继续、
+  取消与系统分享；不读取下载内容、不绕过 TLS。
+
+### 2.7 标签缩略图
+
+[`TabThumbnailCache`](../CloudFloat/Browser/TabThumbnailCache.swift)：
+
+- `WKWebView.takeSnapshot` → PNG → `Caches/Ariuno/TabThumbnails/<tabID>.png`；
+- 2 分钟过期，过期后重新截图；
+- 标签关闭即删除文件；`clear()` 清空目录；
+- 不写入 UserDefaults，不进入备份敏感数据。
 
 ## 3. 媒体探测（M2）
 

@@ -75,7 +75,7 @@ enum ExportDiagnostics {
         let env = environment()
         let formatter = ISO8601DateFormatter()
         var lines: [String] = []
-        lines.append("CloudFloat Diagnostics")
+        lines.append("Ariuno Diagnostics")
         lines.append("=====================")
         lines.append("App: \(env.appVersion) (\(env.appBuild))")
         lines.append("OS: \(env.osVersion) [\(env.deviceModel)]\(env.isSimulator ? " (Simulator)" : "")")
@@ -139,7 +139,7 @@ enum ExportDiagnostics {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd-HHmmss"
         let suffix = UUID().uuidString.prefix(6)
-        let filename = "CloudFloat-Diagnostics-\(formatter.string(from: Date()))-\(suffix).\(format.fileExtension)"
+        let filename = "Ariuno-Diagnostics-\(formatter.string(from: Date()))-\(suffix).\(format.fileExtension)"
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
         try data.write(to: url, options: [.atomic])
         try? FileManager.default.setAttributes(

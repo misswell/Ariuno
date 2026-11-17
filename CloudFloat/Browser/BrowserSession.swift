@@ -47,13 +47,14 @@ struct ActivePopup: Identifiable {
 /// recreate it. It is never reloaded merely because the app backgrounds.
 @MainActor
 final class BrowserSession: NSObject, ObservableObject, Identifiable {
-    let id = UUID()
+    let id: UUID
     let isPrivate: Bool
     let webView: WKWebView
     let configuration: WKWebViewConfiguration
     let mediaDetector: MediaDetector
     let cookieStore: CookieStore
-    let downloadManager = DownloadManager()
+    /// App-wide download queue. Injected so every tab reports into the same Downloads UI.
+    let downloadManager: DownloadManager
     private(set) var navigationPolicy: NavigationPolicy
 
     /// New-window and close-window routing. BrowserTabManager installs these so target=_blank
@@ -72,6 +73,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var hasCommittedPage = false
     @Published private(set) var currentHost: String?
     @Published private(set) var pageTitle: String = ""
+    @Published private(set) var lastVisitedAt: Date
+    @Published private(set) var isClosed = false
     @Published private(set) var lastNavigationFailure: BrowserNavigationFailure?
     @Published private(set) var webContentTerminatedCount = 0
     @Published private(set) var pendingExternalURL: URL?
@@ -97,17 +100,27 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var suppressNavigationEvents = false
     private var hasRequestedInitialLoad = false
     private var sessionEnded = false
+    /// Title/URL restored from cold-start persistence. The page itself is only loaded when the
+    /// tab is first activated, so restoring 20 tabs does not start 20 network requests.
+    private var restoredTitle = ""
+    private var restoredURL: URL?
+    private var pendingRestoredURL: URL?
 
     init(
+        id: UUID = UUID(),
         navigationPolicy: NavigationPolicy = NavigationPolicy(),
         inPageControlEnabled: Bool = true,
         javaScriptCanOpenWindowsAutomatically: Bool = false,
         websiteDataStore: WKWebsiteDataStore = .default(),
         isPrivate: Bool = false,
         injectedConfiguration: WKWebViewConfiguration? = nil,
+        downloadManager: DownloadManager? = nil,
         now: @escaping () -> Date = Date.init
     ) {
+        self.id = id
+        self.downloadManager = downloadManager ?? DownloadManager()
         self.now = now
+        self.lastVisitedAt = now()
         self.isPrivate = isPrivate || (injectedConfiguration?.websiteDataStore.isPersistent == false)
         let configuration = injectedConfiguration ?? WKWebViewConfiguration()
         configuration.allowsInlineMediaPlayback = true
@@ -183,6 +196,41 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         hasCommittedPage
     }
 
+    /// Title to show in tab UI: live page title first, restored metadata second.
+    var displayTitle: String {
+        let live = pageTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !live.isEmpty { return live }
+        let restored = restoredTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !restored.isEmpty { return restored }
+        return restoredURL?.host ?? ""
+    }
+
+    /// Metadata shown while a restored tab has not been loaded yet.
+    var displayURL: URL? {
+        currentURL ?? restoredURL
+    }
+
+    /// Applies cold-start metadata without touching the network. `resumeRestoredPageIfNeeded()`
+    /// performs the actual load when the user first activates the tab.
+    func applyRestoredMetadata(url: URL, title: String, lastVisitedAt: Date) {
+        restoredURL = url
+        pendingRestoredURL = url
+        restoredTitle = title
+        self.lastVisitedAt = lastVisitedAt
+        currentURL = url
+        currentHost = url.host
+    }
+
+    /// Loads the persisted URL exactly once. Cold-start restoration is allowed to reload the
+    /// page; ordinary tab switches never do.
+    @discardableResult
+    func resumeRestoredPageIfNeeded() -> Bool {
+        guard let url = pendingRestoredURL, isShowingBlankPage else { return false }
+        pendingRestoredURL = nil
+        loadURL(url)
+        return true
+    }
+
     var pendingExternalHost: String {
         guard let url = pendingExternalURL else { return "" }
         return url.host ?? (url.scheme ?? "外部链接")
@@ -200,6 +248,9 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         sessionEnded = false
         suppressNavigationEvents = false
         hasRequestedInitialLoad = true
+        restoredURL = nil
+        pendingRestoredURL = nil
+        restoredTitle = ""
         webView.stopLoading()
         closePopup()
         pendingExternalURL = nil
@@ -295,6 +346,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         isLoading = false
         hasCommittedPage = true
         lastNavigationFailure = nil
+        lastVisitedAt = now()
         currentHost = webView.url?.host
         mediaDetector.refreshNow()
         onEvent?(.loadFinished(host: currentHost))
@@ -416,6 +468,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     // MARK: - Teardown (tests / explicit exit)
 
     func tearDown() {
+        guard !isClosed else { return }
+        isClosed = true
         cookieStore.stop()
         mediaDetector.shutdown()
         closePopup()
@@ -429,6 +483,9 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         progressObservation = nil
         securityObservation = nil
         objectWillChangeObservation = nil
+        onEvent = nil
+        onCreateWindow = nil
+        onCloseWindow = nil
         onAnyChange = nil
     }
 

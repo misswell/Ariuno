@@ -42,7 +42,7 @@ struct PiPStatusView: View {
             StatusRow(
                 title: "服务器会话",
                 value: "UNVERIFIED",
-                detail: "CloudFloat 无法通过公开 API 证明云端游戏会话、游戏进度或自动战斗仍在运行。只有人工返回游戏确认进度变化，才能作为挂机证据。",
+                detail: "Ariuno 无法通过公开 API 证明云端游戏会话、游戏进度或自动战斗仍在运行。只有人工返回游戏确认进度变化，才能作为挂机证据。",
                 tone: .warning
             )
 

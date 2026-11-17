@@ -19,6 +19,9 @@ final class BrowserTabManager: ObservableObject {
 
     let privateDataStore = WKWebsiteDataStore.nonPersistent()
     let recentlyClosed: RecentlyClosedStore
+    let persistence: TabSessionStore?
+    /// One shared queue for all tabs, so switching/closing tabs never hides a download.
+    let downloadManager = DownloadManager()
 
     private let navigationPolicy: NavigationPolicy
     private let inPageControlEnabled: Bool
@@ -33,16 +36,53 @@ final class BrowserTabManager: ObservableObject {
         navigationPolicy: NavigationPolicy = NavigationPolicy(),
         inPageControlEnabled: Bool = true,
         javaScriptCanOpenWindowsAutomatically: Bool = true,
-        recentlyClosed: RecentlyClosedStore? = nil
+        recentlyClosed: RecentlyClosedStore? = nil,
+        persistence: TabSessionStore? = nil,
+        restorePersistedTabs: Bool = true
     ) {
         self.navigationPolicy = navigationPolicy
         self.inPageControlEnabled = inPageControlEnabled
         self.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
         self.recentlyClosed = recentlyClosed ?? RecentlyClosedStore()
+        self.persistence = persistence
         self.activeSessionID = UUID()
         let first = makeSession()
         sessions = [first]
         activeSessionID = first.id
+        if restorePersistedTabs, persistence != nil {
+            restoreTabsFromDisk()
+        }
+    }
+
+    /// Cold-start restoration. Tabs are recreated with metadata only; each page loads when the
+    /// user first activates that tab (see `resumeRestoredPageIfNeeded`).
+    private func restoreTabsFromDisk() {
+        guard let persistence else { return }
+        let state = persistence.load()
+        guard !state.tabs.isEmpty else { return }
+        var restored: [BrowserSession] = []
+        for persisted in state.tabs {
+            guard let url = URL(string: persisted.urlString),
+                  url.absoluteString != "about:blank" else { continue }
+            let session = makeSession(isPrivate: false, id: persisted.id)
+            session.applyRestoredMetadata(
+                url: url,
+                title: persisted.title,
+                lastVisitedAt: persisted.lastVisitedAt
+            )
+            restored.append(session)
+        }
+        guard !restored.isEmpty else { return }
+        // Replace the initial blank tab with the restored set.
+        sessions.forEach { $0.tearDown() }
+        sessions = restored
+        if let activeTabID = state.activeTabID,
+           restored.contains(where: { $0.id == activeTabID }) {
+            activeSessionID = activeTabID
+        } else {
+            activeSessionID = restored[restored.count - 1].id
+        }
+        onAnyChange?()
     }
 
     var activeSessionIndex: Int? {
@@ -64,7 +104,12 @@ final class BrowserTabManager: ObservableObject {
             session.loadURL(url)
         }
         onAnyChange?()
+        schedulePersist()
         return session
+    }
+
+    func session(withID id: UUID) -> BrowserSession? {
+        sessions.first { $0.id == id }
     }
 
     enum TabCloseOutcome {
@@ -79,8 +124,8 @@ final class BrowserTabManager: ObservableObject {
 
         if !session.isPrivate {
             recentlyClosed.record(
-                title: session.pageTitle,
-                url: session.currentURL,
+                title: session.displayTitle,
+                url: session.displayURL,
                 closedAt: Date()
             )
         }
@@ -98,6 +143,21 @@ final class BrowserTabManager: ObservableObject {
             activeSessionID = sessions[nextIndex].id
         }
         onAnyChange?()
+        schedulePersist()
+        return .closed
+    }
+
+    /// Batch close takes a stable ID snapshot first, so removing tabs cannot shift indices
+    /// while the caller is still iterating (the classic IndexSet crash).
+    @discardableResult
+    func closeTabs(withIDs ids: [UUID], force: Bool = false) -> TabCloseOutcome {
+        let snapshot = ids.compactMap { session(withID: $0) }
+        if !force, snapshot.contains(where: { isPiPProtected($0) }) {
+            return .requiresPiPConfirmation
+        }
+        for session in snapshot {
+            closeTab(session, force: force)
+        }
         return .closed
     }
 
@@ -129,6 +189,7 @@ final class BrowserTabManager: ObservableObject {
         guard sessions.contains(where: { $0.id == session.id }) else { return }
         activeSessionID = session.id
         onAnyChange?()
+        schedulePersist()
     }
 
     func createTabWithInjectedConfiguration(
@@ -141,7 +202,8 @@ final class BrowserTabManager: ObservableObject {
             inPageControlEnabled: inPageControlEnabled,
             javaScriptCanOpenWindowsAutomatically: javaScriptCanOpenWindowsAutomatically,
             isPrivate: isPrivate,
-            injectedConfiguration: configuration
+            injectedConfiguration: configuration,
+            downloadManager: downloadManager
         )
         configure(session)
         onSessionCreated?(session)
@@ -150,6 +212,7 @@ final class BrowserTabManager: ObservableObject {
             activeSessionID = session.id
         }
         onAnyChange?()
+        schedulePersist()
         return session
     }
 
@@ -158,6 +221,7 @@ final class BrowserTabManager: ObservableObject {
         let next = (index + 1) % sessions.count
         activeSessionID = sessions[next].id
         onAnyChange?()
+        schedulePersist()
     }
 
     func activatePreviousTab() {
@@ -165,6 +229,53 @@ final class BrowserTabManager: ObservableObject {
         let previous = (index - 1 + sessions.count) % sessions.count
         activeSessionID = sessions[previous].id
         onAnyChange?()
+        schedulePersist()
+    }
+
+    // MARK: - Persistence
+
+    /// Persists non-private tabs with a real URL plus the active tab id. Private sessions are
+    /// never written; a browser with only private/blank tabs persists an empty tab list.
+    func persistState() {
+        guard let persistence else { return }
+        let persistable = sessions.filter {
+            !$0.isPrivate && !$0.isClosed
+                && ($0.displayURL?.absoluteString.isEmpty == false)
+                && $0.displayURL?.absoluteString != "about:blank"
+        }
+        let tabs = persistable.map { session in
+            PersistedTab(
+                id: session.id,
+                urlString: session.displayURL?.absoluteString ?? "",
+                title: session.displayTitle,
+                lastVisitedAt: session.lastVisitedAt
+            )
+        }
+        let activeID = persistable.contains(where: { $0.id == activeSessionID })
+            ? activeSessionID
+            : persistable.first?.id
+        persistence.scheduleSave(
+            PersistedBrowserState(
+                version: PersistedBrowserState.currentVersion,
+                tabs: tabs,
+                activeTabID: activeID,
+                updatedAt: Date()
+            )
+        )
+    }
+
+    func promptPersist() {
+        schedulePersist()
+    }
+
+    func savePersistedStateNow() {
+        persistState()
+        persistence?.flush()
+    }
+
+    private func schedulePersist() {
+        guard persistence != nil else { return }
+        persistState()
     }
 
     func shutdown() {
@@ -175,13 +286,15 @@ final class BrowserTabManager: ObservableObject {
         sessionObservations.removeAll()
     }
 
-    private func makeSession(isPrivate: Bool = false) -> BrowserSession {
+    private func makeSession(isPrivate: Bool = false, id: UUID = UUID()) -> BrowserSession {
         let session = BrowserSession(
+            id: id,
             navigationPolicy: navigationPolicy,
             inPageControlEnabled: inPageControlEnabled,
             javaScriptCanOpenWindowsAutomatically: javaScriptCanOpenWindowsAutomatically,
             websiteDataStore: isPrivate ? privateDataStore : .default(),
-            isPrivate: isPrivate
+            isPrivate: isPrivate,
+            downloadManager: downloadManager
         )
         configure(session)
         onSessionCreated?(session)
@@ -192,6 +305,12 @@ final class BrowserTabManager: ObservableObject {
         session.onEvent = { [weak self, weak session] event in
             guard let self, let session else { return }
             self.onSessionEvent?(session, event)
+            switch event {
+            case .titleChanged, .loadFinished, .navigationCommitted, .webContentProcessTerminated:
+                self.schedulePersist()
+            default:
+                break
+            }
         }
         session.mediaDetector.onSnapshot = { [weak self, weak session] aggregate, snapshot in
             guard let self, let session else { return }

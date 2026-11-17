@@ -136,9 +136,10 @@ final class AppCoordinator: ObservableObject {
     let audioSession: AudioSessionManager
     let pipManager: PiPManager
     let library: BrowserLibraryStore
-    let downloadManager = DownloadManager()
 
     var browser: BrowserSession { tabs.activeSession }
+    /// Shared across every tab; owned by the tab manager so downloads survive tab switches.
+    var downloadManager: DownloadManager { tabs.downloadManager }
     var media: MediaDetector { browser.mediaDetector }
     var pip: WebPictureInPictureCoordinator { pipManager.coordinator(for: browser) }
     var cookieStore: CookieStore { browser.cookieStore }
@@ -159,13 +160,15 @@ final class AppCoordinator: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
     private var toastTask: Task<Void, Never>?
+    private var pendingPiPCloseTasks: [UUID: Task<Void, Never>] = [:]
     private var lastSnapshotSignature = ""
     private var lastNetworkStatus: NetworkStatus = .unknown
 
     init(
         settings: AppSettings,
         diagnostics: DiagnosticsStore,
-        recentlyClosed: RecentlyClosedStore? = nil
+        recentlyClosed: RecentlyClosedStore? = nil,
+        tabPersistence: TabSessionStore? = nil
     ) {
         self.settings = settings
         self.diagnostics = diagnostics
@@ -178,7 +181,8 @@ final class AppCoordinator: ObservableObject {
         self.tabs = BrowserTabManager(
             navigationPolicy: policy,
             inPageControlEnabled: settings.enableInPagePiPButton,
-            recentlyClosed: recentlyClosed
+            recentlyClosed: recentlyClosed,
+            persistence: tabPersistence
         )
         self.bookmarks = BookmarkStore()
         self.session = SessionMonitor()
@@ -221,15 +225,15 @@ final class AppCoordinator: ObservableObject {
         case .background:
             diagnostics.info(.app, "scene.background", "进入后台；保留 WebView，不自动重载")
             session.appDidEnterBackground()
-            media.stopPolling()
-            session.setMediaProbePolling(false)
+            // Persist tab metadata before suspension; PiP source tabs are left untouched.
+            tabs.savePersistedStateNow()
+            updateMediaScheduling()
             updateAudioSession()
         case .active:
             diagnostics.info(.app, "scene.active", "回到前台；继续使用现有页面")
             session.appDidBecomeActive()
             if hasStartedBrowser {
-                media.startPolling()
-                session.setMediaProbePolling(media.isPolling)
+                updateMediaScheduling()
                 browser.verifyExistingPageOnForeground()
             }
             pip.refreshAvailability()
@@ -246,23 +250,23 @@ final class AppCoordinator: ObservableObject {
     func continueBrowsing() {
         route = .game
         hasStartedBrowser = true
-        if browser.isShowingBlankPage {
+        if browser.resumeRestoredPageIfNeeded() {
+            diagnostics.info(.app, "session.continue", "恢复上次会话的标签页")
+        } else if browser.isShowingBlankPage {
             browser.loadURL(URLInputParser.placeholderURL())
             diagnostics.info(.app, "session.continue", "打开新标签页")
         } else {
             browser.verifyExistingPageOnForeground()
             diagnostics.info(.app, "session.continue", "继续使用已加载的页面")
         }
-        media.startPolling()
-        session.setMediaProbePolling(media.isPolling)
+        updateMediaScheduling()
     }
 
     func openURL(_ url: URL) {
         route = .game
         hasStartedBrowser = true
         browser.loadURL(url)
-        media.startPolling()
-        session.setMediaProbePolling(media.isPolling)
+        updateMediaScheduling()
         session.resetForTabSwitch(hasLoadedPage: false)
         diagnostics.info(
             .navigation,
@@ -289,8 +293,8 @@ final class AppCoordinator: ObservableObject {
         session.resetForTabSwitch(hasLoadedPage: tabSession.hasLoadedPage)
         route = .game
         hasStartedBrowser = true
-        media.startPolling()
-        session.setMediaProbePolling(media.isPolling)
+        tabSession.resumeRestoredPageIfNeeded()
+        updateMediaScheduling()
     }
 
     enum TabCloseResult {
@@ -300,9 +304,20 @@ final class AppCoordinator: ObservableObject {
 
     @discardableResult
     func closeTab(_ tabSession: BrowserSession, force: Bool = false) -> TabCloseResult {
+        if pipManager.isPiPActive(for: tabSession) {
+            guard force else {
+                showToast("该标签页正在画中画。请先退出 PiP，或确认关闭以结束浮窗。", .warning)
+                return .requiresPiPConfirmation
+            }
+            // Correct order: ask the system to stop PiP first, keep the WebView alive, and only
+            // tear the tab down once the page reports it left PiP (or a short timeout fires).
+            beginDeferredPiPClose(tabSession)
+            return .closed
+        }
         let outcome = tabs.closeTab(tabSession, force: force)
         switch outcome {
         case .closed:
+            finishTabClose(tabSession)
             return .closed
         case .requiresPiPConfirmation:
             showToast("该标签页正在画中画。请先退出 PiP，或确认关闭以结束浮窗。", .warning)
@@ -310,12 +325,87 @@ final class AppCoordinator: ObservableObject {
         }
     }
 
+    /// Closes several tabs using an ID snapshot. Safe against index shifting.
+    @discardableResult
+    func closeTabs(withIDs ids: [UUID], force: Bool = false) -> TabCloseResult {
+        let sessions = ids.compactMap { tabs.session(withID: $0) }
+        let protected = sessions.filter { pipManager.isPiPActive(for: $0) }
+        if !force, !protected.isEmpty {
+            showToast("有标签页正在画中画；请先退出 PiP 或确认关闭", .warning)
+            return .requiresPiPConfirmation
+        }
+        if force, !protected.isEmpty {
+            for session in protected {
+                beginDeferredPiPClose(session)
+            }
+            let remaining = sessions.filter { !pipManager.isPiPActive(for: $0) }
+            _ = tabs.closeTabs(withIDs: remaining.map(\.id), force: true)
+            remaining.forEach(finishTabClose)
+            return .closed
+        }
+        _ = tabs.closeTabs(withIDs: ids, force: force)
+        sessions.forEach(finishTabClose)
+        return .closed
+    }
+
+    private func finishTabClose(_ tabSession: BrowserSession) {
+        pendingPiPCloseTasks.removeValue(forKey: tabSession.id)?.cancel()
+        pipManager.stopObserving(tabSession)
+        TabThumbnailCache.shared.remove(tabID: tabSession.id)
+    }
+
+    /// Batch close entry point for the tab UI. Performs PiP/thumbnail cleanup for every
+    /// session that actually went away.
+    @discardableResult
+    func closeAllTabs(except session: BrowserSession? = nil, force: Bool = false) -> Bool {
+        let before = tabs.sessions
+        let closed = tabs.closeAllTabs(except: session, force: force)
+        guard closed else { return false }
+        let remaining = Set(tabs.sessions.map(\.id))
+        for tabSession in before where !remaining.contains(tabSession.id) {
+            finishTabClose(tabSession)
+        }
+        return true
+    }
+
+    // MARK: - Deferred PiP close
+
+    private func beginDeferredPiPClose(_ tabSession: BrowserSession) {
+        showToast("已请求结束画中画，正在安全关闭标签页", .info)
+        pipManager.beginStopBeforeClose(tabSession)
+        pendingPiPCloseTasks.removeValue(forKey: tabSession.id)?.cancel()
+        pendingPiPCloseTasks[tabSession.id] = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                self?.completeDeferredPiPClose(tabSession)
+            }
+        }
+    }
+
+    /// Called when the page reports `leavepictureinpicture` (or by the timeout fallback).
+    func completeDeferredPiPClose(_ tabSession: BrowserSession) {
+        guard pipManager.pendingCloseTabIDs.contains(tabSession.id) else { return }
+        pipManager.cancelStopBeforeClose(tabSession)
+        pendingPiPCloseTasks.removeValue(forKey: tabSession.id)?.cancel()
+        pipManager.clearActivePiP(for: tabSession)
+        _ = tabs.closeTab(tabSession, force: true)
+        finishTabClose(tabSession)
+        diagnostics.info(.navigation, "tab.close_after_pip", "PiP 停止后已关闭来源标签页")
+    }
+
     func createTab(url: URL? = nil, isPrivate: Bool = false) {
         tabs.createTab(url: url, isPrivate: isPrivate)
-        route = .game
+        // A brand-new tab shows the browser start page; only explicit URLs open web content.
+        route = url == nil ? .home : .game
         hasStartedBrowser = true
-        media.startPolling()
-        session.setMediaProbePolling(media.isPolling)
+        updateMediaScheduling()
+    }
+
+    /// Returns to the start page without destroying any tab or WebView.
+    func openHome() {
+        route = .home
+        updateMediaScheduling()
     }
 
     /// Restores the most recently closed tab and opens the browser on it.
@@ -324,8 +414,7 @@ final class AppCoordinator: ObservableObject {
         guard let snapshot = tabs.restoreRecentlyClosed() else { return nil }
         route = .game
         hasStartedBrowser = true
-        media.startPolling()
-        session.setMediaProbePolling(media.isPolling)
+        updateMediaScheduling()
         session.resetForTabSwitch(hasLoadedPage: false)
         diagnostics.info(.navigation, "tab.restore", "已恢复最近关闭的标签页")
         return snapshot
@@ -336,23 +425,49 @@ final class AppCoordinator: ObservableObject {
     }
 
     func exitSession() {
-        if session.pipVisible {
-            if pipManager.isPiPActive(for: browser) {
-                pipManager.exitPiP(for: browser)
-            }
+        if pipManager.activePiPTabID != nil {
+            pipManager.exitActivePiP()
         }
         browser.resetToBlank()
         session.userExited()
-        media.stopPolling()
-        session.setMediaProbePolling(false)
-        recovery.reset()
-        audioSession.deactivate()
         hasStartedBrowser = false
         route = .home
+        updateMediaScheduling()
+        recovery.reset()
+        audioSession.deactivate()
         diagnostics.info(.app, "session.exit", "用户退出会话；网站数据与登录状态保留")
     }
 
-    // MARK: - PiP
+    // MARK: - Media scheduling
+
+    /// Single source of truth for probe polling. At most two timers exist: the active tab and
+    /// the PiP source tab. Every other tab stops polling, so background tabs never run
+    /// JavaScript on a timer. Polling also stops entirely while the app is backgrounded.
+    private func updateMediaScheduling() {
+        let appIsForeground = session.appIsForeground
+        let browserActive = hasStartedBrowser && route == .game
+        let pipSourceID = pipManager.activePiPTabID
+        for tab in tabs.sessions {
+            guard !tab.isClosed else {
+                tab.mediaDetector.stopPolling()
+                continue
+            }
+            let isActive = browserActive && tab.id == browser.id
+            let isPiPSource = tab.id == pipSourceID
+            let shouldPoll = appIsForeground && (isActive || isPiPSource)
+            if shouldPoll {
+                tab.mediaDetector.startPolling()
+            } else {
+                tab.mediaDetector.stopPolling()
+            }
+        }
+        session.setMediaProbePolling(browser.mediaDetector.isPolling)
+    }
+
+    var activelyPollingTabCount: Int {
+        tabs.sessions.filter { $0.mediaDetector.isPolling }.count
+    }
+
 
     func requestPictureInPicture() async -> PiPRequestOutcome {
         session.pipRequestStarted()
@@ -520,19 +635,16 @@ final class AppCoordinator: ObservableObject {
         websiteDataError = nil
         defer { isClearingWebsiteData = false }
 
-        if session.pipVisible {
-            if pipManager.isPiPActive(for: browser) {
-                pipManager.exitPiP(for: browser)
-            }
+        if pipManager.activePiPTabID != nil {
+            pipManager.exitActivePiP()
         }
         browser.resetToBlank()
         session.userExited()
-        media.stopPolling()
-        session.setMediaProbePolling(false)
-        recovery.reset()
-        audioSession.deactivate()
         hasStartedBrowser = false
         route = .home
+        updateMediaScheduling()
+        recovery.reset()
+        audioSession.deactivate()
 
         let result = await cookieStore.clearAll()
         switch result {
@@ -600,8 +712,7 @@ final class AppCoordinator: ObservableObject {
 
         route = .game
         hasStartedBrowser = true
-        media.startPolling()
-        session.setMediaProbePolling(true)
+        updateMediaScheduling()
         browser.webView.load(URLRequest(url: url))
     }
 
@@ -625,8 +736,7 @@ final class AppCoordinator: ObservableObject {
 
             route = .game
             hasStartedBrowser = true
-            media.startPolling()
-            session.setMediaProbePolling(true)
+            updateMediaScheduling()
             diagnostics.info(
                 .test,
                 "debug.local_page",
@@ -649,7 +759,7 @@ final class AppCoordinator: ObservableObject {
         diagnostics.info(
             .app,
             "app.launch",
-            "CloudFloat 启动",
+            "Ariuno 启动",
             [
                 "version": appVersion,
                 "os": UIDevice.current.systemVersion,
@@ -674,8 +784,19 @@ final class AppCoordinator: ObservableObject {
             self?.configure(session)
         }
         tabs.onSessionEvent = { [weak self] session, event in
-            guard session === self?.browser else { return }
-            self?.handleBrowserEvent(event)
+            guard let self else { return }
+            guard session === self.browser else {
+                // Log failures for background tabs without hijacking the active tab's state.
+                if case .webContentProcessTerminated = event {
+                    self.diagnostics.warning(
+                        .recovery,
+                        "webcontent.terminated.background_tab",
+                        "后台标签页 WebContent 进程终止；其他标签不受影响"
+                    )
+                }
+                return
+            }
+            self.handleBrowserEvent(event)
         }
         tabs.onMediaSnapshot = { [weak self] session, aggregate, snapshot in
             guard let self else { return }
@@ -689,6 +810,9 @@ final class AppCoordinator: ObservableObject {
             pipManager.handle(event: event, from: session)
             if event.name == .leavepictureinpicture {
                 pipManager.clearActivePiP(for: session)
+                if pipManager.pendingCloseTabIDs.contains(session.id) {
+                    self.completeDeferredPiPClose(session)
+                }
             }
             guard session === self.browser else { return }
             self.handleMediaEvent(event)
@@ -791,8 +915,7 @@ final class AppCoordinator: ObservableObject {
 
         case .loadFinished(let host):
             session.loadFinished()
-            media.startPolling()
-            session.setMediaProbePolling(media.isPolling)
+            updateMediaScheduling()
             media.refreshNow()
             pip.refreshAvailability()
             if let url = browser.currentURL, !browser.isPrivate {
@@ -1058,15 +1181,22 @@ final class AppCoordinator: ObservableObject {
     }
 
     private func updateAudioSession() {
-        // Only genuine foreground playback or a visible PiP window may keep the session
-        // active. Background playback without PiP is not used for keep-alive.
-        let realMedia = session.mediaPlayingObserved && (session.appIsForeground || session.pipVisible)
+        // Audio state is global: a PiP window may belong to a background tab, so it must not
+        // be deactivated just because the selected tab changed. Background playback without
+        // PiP is still never used as a keep-alive trick.
+        let pipActive = pipManager.activePiPTabID != nil
+        let activeTabMediaPlaying = session.mediaPlayingObserved && session.appIsForeground
         audioSession.update(
-            isMediaPlaying: realMedia,
-            isPiPActive: session.pipVisible,
+            isMediaPlaying: activeTabMediaPlaying || pipActive,
+            isPiPActive: pipActive,
             enabled: settings.enableBackgroundAudio,
             appIsForeground: session.appIsForeground
         )
+    }
+
+    /// True while any tab owns the single system PiP window, independent of selection.
+    var isAnyPiPActive: Bool {
+        pipManager.activePiPTabID != nil
     }
 
     private var appVersion: String {

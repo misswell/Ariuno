@@ -48,6 +48,17 @@ targets:
         SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: NO
         ALLOW_TARGET_PLATFORM_SPECIALIZATION: NO
         CODE_SIGN_ENTITLEMENTS: ""
+      configs:
+        Release:
+          SWIFT_OPTIMIZATION_LEVEL: "-Osize"
+          SWIFT_COMPILATION_MODE: wholemodule
+          DEPLOYMENT_POSTPROCESSING: YES
+          STRIP_INSTALLED_PRODUCT: YES
+          COPY_PHASE_STRIP: YES
+          VALIDATE_PRODUCT: YES
+          # QA-only offline pages (including a 2 MB sample video) are debug tooling and must
+          # not ship in the release bundle.
+          EXCLUDED_SOURCE_FILE_NAMES: "TestPages/* TestPages"
     dependencies: []
     preBuildScripts: []
 

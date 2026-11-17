@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WebKit
 
 struct BrowserView: View {
@@ -134,6 +135,15 @@ struct BrowserView: View {
                     .padding(.horizontal, 2)
             }
 
+            if !addressFieldFocused, !coordinator.browser.displayTitle.isEmpty {
+                Text(coordinator.browser.displayTitle)
+                    .font(.system(size: 10, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 4)
+            }
+
             HStack(spacing: 8) {
                 if coordinator.browser.isPrivate {
                     Label("隐私", systemImage: "mask")
@@ -183,11 +193,47 @@ struct BrowserView: View {
                     .onSubmit {
                         openAddress()
                     }
+                    if addressFieldFocused, !addressText.isEmpty {
+                        Button {
+                            addressText = ""
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 12))
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("清空地址栏")
+                    }
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 7)
                 .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .frame(maxWidth: .infinity)
+                .contextMenu {
+                    if let url = coordinator.browser.currentURL,
+                       url.absoluteString != "about:blank" {
+                        Button {
+                            UIPasteboard.general.string = url.absoluteString
+                            coordinator.showToast("已复制网址", .info)
+                        } label: {
+                            Label("复制网址", systemImage: "doc.on.doc")
+                        }
+                    }
+                    Button {
+                        if let value = UIPasteboard.general.string, !value.isEmpty {
+                            addressText = value
+                            addressFieldFocused = true
+                        }
+                    } label: {
+                        Label("粘贴", systemImage: "doc.on.clipboard")
+                    }
+                    Button {
+                        addressText = ""
+                        addressFieldFocused = true
+                    } label: {
+                        Label("清空输入", systemImage: "xmark.circle")
+                    }
+                }
 
                 navigationButton(
                     systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise",
@@ -279,11 +325,20 @@ struct BrowserView: View {
             Button {
                 activeSheet = .tabs
             } label: {
-                Image(systemName: "square.on.square")
-                    .font(.system(size: 16, weight: .semibold))
+                ZStack(alignment: .topTrailing) {
+                    Image(systemName: "square.on.square")
+                        .font(.system(size: 16, weight: .semibold))
+                    Text("\(coordinator.tabs.sessions.count)")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.accentColor, in: Capsule())
+                        .offset(x: 9, y: -7)
+                }
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("标签页")
+            .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
 
             Menu {
                 Button {
@@ -307,11 +362,21 @@ struct BrowserView: View {
                     Label("历史记录", systemImage: "clock")
                 }
                 Button {
+                    activeSheet = .downloads
+                } label: {
+                    Label("下载", systemImage: "arrow.down.circle")
+                }
+                Button {
                     activeSheet = .diagnostics
                 } label: {
                     Label("诊断", systemImage: "waveform.path.ecg")
                 }
                 Divider()
+                Button {
+                    coordinator.openHome()
+                } label: {
+                    Label("主页", systemImage: "house")
+                }
                 Button {
                     coordinator.requestUserReload()
                 } label: {
@@ -437,7 +502,7 @@ struct BrowserView: View {
             Text("正在加载页面")
                 .font(.headline)
                 .foregroundStyle(.white)
-            Text("登录与网页内容均在官方网站内完成\nCloudFloat 不接触账号密码或令牌")
+            Text("登录与网页内容均在官方网站内完成\nAriuno 不接触账号密码或令牌")
                 .font(.caption)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.72))

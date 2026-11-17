@@ -99,4 +99,18 @@ final class BrowserFeatureTests: XCTestCase {
             XCTAssertTrue(url!.absoluteString.contains("cloud%20game") || url!.absoluteString.contains("cloud+game"))
         }
     }
+
+    func testAllTabsShareOneDownloadQueue() {
+        let manager = BrowserTabManager()
+        let first = manager.activeSession
+        let second = manager.createTab()
+        let privateTab = manager.createTab(isPrivate: true)
+
+        XCTAssertTrue(first.downloadManager === second.downloadManager)
+        XCTAssertTrue(first.downloadManager === privateTab.downloadManager)
+        XCTAssertTrue(manager.downloadManager === first.downloadManager)
+        XCTAssertTrue(first.downloadManager.items.isEmpty)
+
+        manager.shutdown()
+    }
 }

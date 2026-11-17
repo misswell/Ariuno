@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 159 tests, with 0 failures (0 unexpected)
+Executed 199 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -54,12 +54,19 @@ Executed 159 tests, with 0 failures (0 unexpected)
 | SessionMonitorTests | 9 | 加载、媒体、前后台、网络、失败、恢复计数、诊断快照 |
 | SessionPersistenceTests | 2 | T09：跨 BrowserSession 的 WebKit Cookie 持久化；T11：SwiftUI host 重建后同一 WebView/JS 状态 |
 | SessionRecoveryTests | 12 | 无自动重载、用户确认、冷却、上限、窗口清理 |
-| URLInputParserTests | 6 | 地址栏解析、HTTPS 补全、危险 scheme 拒绝 |
-| BrowserFeatureTests | 5 | PiP 跨标签绑定/来源保护、书签文件夹排序、搜索引擎、10 标签生命周期 |
+| URLInputParserTests | 10 | 地址栏解析、域名/IP/IP:端口、HTTPS 补全、搜索回退、危险 scheme 拒绝 |
+| BrowserFeatureTests | 6 | PiP 跨标签绑定/来源保护、书签文件夹排序、搜索引擎、10 标签生命周期、共享下载队列 |
 | DownloadManagerTests | 13 | 文件名清洗、目标路径冲突编号、暂停/恢复/取消回退状态、分享与续传标记、新条目置顶 |
-| AppCoordinatorStartPageTests | 4 | 起始页数据支撑：恢复最近关闭标签并路由到浏览器、无快照无操作、新建标签路由、最近关闭经协调器暴露 |
+| AppCoordinatorStartPageTests | 6 | 起始页数据支撑：恢复最近关闭标签并路由到浏览器、无快照无操作、新建标签路由、最近关闭经协调器暴露 |
 | WebPictureInPictureTests | 6 | 平台/配置/探测门控、enter/leave 状态、M4 不可行 |
-| **合计** | **159** | |
+| TabSessionStoreTests | 5 | 标签持久化：版本校验、去重、空白过滤、上限、清空 |
+| BrowserTabPersistenceTests | 7 | 冷启动恢复、ID 稳定、恢复页仅激活时加载、隐私不落盘、批量关闭 |
+| MediaSchedulingTests | 7 | 仅活动+PiP来源轮询、切后台全停、PiP全局状态、后台不停止 PiP |
+| PiPSourceCloseTests | 5 | 关闭来源需确认、先停PiP后销毁、超时兜底、批量关闭、协调器释放 |
+| TabThumbnailCacheTests | 4 | Caches PNG、过期、删除/清空、不写 UserDefaults |
+| BrowserContainerTests | 2 | WebView 容器切换不重建/不重载、10 标签稳定实例 |
+| BrowserPerformanceTests | 3 | 标签创建/切换/关闭耗时、10标签 footprint、历史写入 |
+| **合计** | **199** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
 
@@ -167,7 +174,7 @@ Executed 159 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：159/159 通过（当前）。
+- 自动化：199/199 通过（当前）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

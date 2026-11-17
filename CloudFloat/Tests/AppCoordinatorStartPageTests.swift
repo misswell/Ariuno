@@ -60,12 +60,26 @@ final class AppCoordinatorStartPageTests: XCTestCase {
         XCTAssertEqual(coordinator.tabs.sessions.count, 1)
     }
 
-    func testCreateTabRoutesToBrowserAndActivatesNewSession() {
+    func testCreateTabShowsStartPageAndActivatesNewSession() {
         coordinator.createTab()
-        XCTAssertEqual(coordinator.route, .game)
+        XCTAssertEqual(coordinator.route, .home, "新建空白标签页应显示浏览器首页")
         XCTAssertTrue(coordinator.hasStartedBrowser)
         XCTAssertEqual(coordinator.tabs.sessions.count, 2)
         XCTAssertEqual(coordinator.browser.id, coordinator.tabs.sessions.last?.id)
+    }
+
+    func testCreateTabWithURLRoutesToBrowser() {
+        coordinator.createTab(url: URL(string: "https://example.com/page")!)
+        XCTAssertEqual(coordinator.route, .game)
+        XCTAssertEqual(coordinator.browser.loadGeneration, 1, "应发起一次导航")
+    }
+
+    func testOpenHomeKeepsTabsAlive() {
+        coordinator.createTab(url: URL(string: "https://example.com/page")!)
+        coordinator.openHome()
+        XCTAssertEqual(coordinator.route, .home)
+        XCTAssertEqual(coordinator.tabs.sessions.count, 2)
+        XCTAssertTrue(coordinator.hasStartedBrowser)
     }
 
     func testRecentlyClosedStoreExposedThroughCoordinator() {

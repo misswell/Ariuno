@@ -88,9 +88,9 @@ final class BrowserSessionTests: XCTestCase {
         defer { session.tearDown() }
         // We only assert the count is non-negative and values are never exposed by the API.
         XCTAssertGreaterThanOrEqual(session.cookieStore.cookieRecordCount, 0)
-        XCTAssertGreaterThanOrEqual(session.cookieStore.officialSiteRecordCount, 0)
+        XCTAssertGreaterThanOrEqual(session.cookieStore.domainRecordCount, 0)
         XCTAssertFalse(
-            session.cookieStore.hasOfficialSiteCookieRecords
+            session.cookieStore.hasAnyCookieRecords
                 && session.cookieStore.cookieRecordCount == 0
         )
     }
