@@ -49,6 +49,28 @@ final class MediaProbeIntegrationTests: XCTestCase {
         XCTAssertEqual(buttonAPI as? String, "function")
     }
 
+    func testShadowDomVideoIsDetectedThroughOpenShadowRoot() async throws {
+        let harness = try await makeHarness()
+        self.harness = harness
+
+        let expectation = XCTestExpectation(description: "shadow DOM video snapshot")
+        expectation.assertForOverFulfill = false
+        harness.detector.onSnapshot = { _, snapshot in
+            if snapshot.isTopFrame && snapshot.videoCount >= 1 {
+                expectation.fulfill()
+            }
+        }
+
+        harness.webView.load(URLRequest(url: harness.primaryURL("shadow-video.html")))
+        await fulfillment(of: [expectation], timeout: 25)
+
+        let topSnapshot = harness.detector.frames.values.first(where: \.isTopFrame)
+        XCTAssertNotNil(topSnapshot)
+        XCTAssertGreaterThanOrEqual(topSnapshot?.videoCount ?? 0, 1)
+        XCTAssertEqual(topSnapshot?.pageKind, "media")
+        XCTAssertFalse(topSnapshot?.videos.isEmpty ?? true)
+    }
+
     func testMediaEventsReachNativeBridge() async throws {
         let harness = try await makeHarness()
         self.harness = harness

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shadow DOM 视频</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font: 16px -apple-system, sans-serif; }
+    .hud { padding: 16px; }
+    video { width: 100%; max-width: 480px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="hud">视频位于 open shadow root 中，用于验证探测脚本能穿透 Web Component。</div>
+  <script>
+    class ShadowVideo extends HTMLElement {
+      constructor() {
+        super();
+        const root = this.attachShadow({ mode: 'open' });
+        const video = document.createElement('video');
+        video.src = 'sample.mp4';
+        video.muted = true;
+        video.autoplay = true;
+        video.playsInline = true;
+        video.controls = true;
+        root.appendChild(video);
+      }
+    }
+    customElements.define('shadow-video', ShadowVideo);
+    document.body.appendChild(document.createElement('shadow-video'));
+  </script>
+</body>
+</html>

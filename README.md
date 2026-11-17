@@ -4,7 +4,7 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；Debug/Release 构建、Release Archive 与 IPA 导出成功。
-> - 自动化测试 **221 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - 自动化测试 **222 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。
 > - 另有 **7 项 XCUITest** 在模拟器上真实点击通过：起始页入口、新建标签、书签/历史面板、地址栏导航、冷启动标签恢复、工具栏收起为悬浮球并展开；另含 1 项设备专用 PiP 生命周期测试（模拟器自动跳过）。
 > - Release IPA **0.70 MB**（723,820 字节），`.app` 1.7 MB，主可执行文件 1.58 MB；无第三方依赖、无内嵌浏览器引擎/动态库。
 > - 重构后的 Ariuno 已在 iPhone 15 Pro 真机启动并显示起始页（系统画中画显示“支持”）。
@@ -40,7 +40,7 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 ![悬浮球模式](docs/images/floating-ball.png)
 - 标签元数据（URL/标题/上次活动标签）版本化持久化；冷启动只恢复元数据，首次激活时才加载页面，避免一次启动 20 个请求。
 - 真机登录、Cookie、网页输入由官方网页自身处理；系统移动端 User-Agent 保持不变。
-- 页面加载后向每个 frame 注入只读媒体探测脚本，观测 `video`、`canvas`、`iframe`、`readyState`、PiP 能力与媒体事件；不采集媒体 URL。
+- 页面加载后向每个 frame 注入只读媒体探测脚本，观测 `video`、`canvas`、`iframe`、`readyState`、PiP 能力与媒体事件；不采集媒体 URL。支持 open shadow DOM 内的视频（Web Component 播放器）。
 - 优先使用网页 HTML5 PiP；当原生 `evaluateJavaScript` 缺少用户激活时，提供页面内轻量 PiP 控件并如实提示。
 - 用独立状态机区分：PiP 浮窗是否显示、媒体是否仍有播放观测、服务器端会话是否持续（后者始终显示 UNVERIFIED）。
 - 统一媒体轮询调度：只有活动标签与 PiP 来源标签持有探测定时器（最多 2 个），进入后台全部停止；事件驱动为主，3 秒低频刷新仅作兜底。
@@ -103,7 +103,7 @@ xcodebuild \
 最近一次结果（2026-11-17，iPhone 17 Pro / iOS 26.3.1 模拟器）：
 
 ```text
-Executed 221 tests, with 0 failures (0 unexpected)
+Executed 222 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 
 # UI 测试（另运行）
@@ -148,7 +148,7 @@ CloudFloat/
 │   ├── UI/                         # 起始页 / 浏览器壳 / 标签 / 书签 / 历史 / 下载 / 诊断 / 设置
 │   ├── Developer/                  # 回环测试服务器、测试页实验室
 │   ├── TestPages/                  # 离线 HTML/视频测试资源
-│   └── Tests/                      # 221 项自动化测试
+│   └── Tests/                      # 222 项自动化测试
 ├── docs/                           # 可行性、架构、QA、限制、报告、隐私与审核风险
 └── artifacts/                      # 构建/截图原始证据（非源码）
 ```

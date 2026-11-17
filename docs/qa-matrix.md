@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 221 tests, with 0 failures (0 unexpected)
+Executed 222 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -47,7 +47,7 @@ Executed 221 tests, with 0 failures (0 unexpected)
 | HistoryStoreTests | 4 | 历史持久化、搜索、文件/空白跳过、上限/删除/清空 |
 | LocalHTTPServerTests | 7 | 回环、MIME、Range、404、路径穿越、双端口、解析器 |
 | LoginPopupIntegrationTests | 1 | target=_blank/window.open 转标签、关闭弹窗标签不刷新主页面 |
-| MediaProbeIntegrationTests | 6 | 本地视频快照/事件、Canvas、跨域 iframe、控件禁用、UTF-8 文本 |
+| MediaProbeIntegrationTests | 7 | 本地视频快照/事件、Canvas、跨域 iframe、控件禁用、UTF-8 文本 |
 | MediaProbeTests | 14 | 快照/事件解码、origin 清洗、聚合分类、上限、PiP 原因映射、脚本资源 |
 | PrivacyRedactorTests | 10 | URL/Cookie/Authorization/token/邮箱/手机/JWT/UUID/长密钥/元数据 |
 | RecentlyClosedStoreTests | 3 | 最近关闭记录/跳过空白/恢复/清空 |
@@ -175,7 +175,7 @@ Executed 221 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：221/221 通过（当前）+ XCUITest 7/7 通过（模拟器真实点击）。
+- 自动化：222/222 通过（当前）+ XCUITest 7/7 通过（模拟器真实点击）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

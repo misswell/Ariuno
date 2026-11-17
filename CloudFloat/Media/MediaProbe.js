@@ -80,12 +80,36 @@
 
   // ---------- DOM inspection (no URLs) ----------
 
-  function allVideos() {
-    try {
-      return Array.prototype.slice.call(document.querySelectorAll('video'));
-    } catch (error) {
-      return [];
+  // Open shadow roots are accessible; closed roots are not. Many modern players put
+  // <video> inside a web component, so walking open roots materially increases coverage.
+  const MAX_SHADOW_ELEMENTS = 4000;
+
+  function collectVideos(root, out, depth) {
+    if (!root || depth > 6 || out.length >= MAX_VIDEOS * 4) {
+      return;
     }
+    try {
+      const videos = root.querySelectorAll ? root.querySelectorAll('video') : [];
+      for (let i = 0; i < videos.length; i += 1) {
+        out.push(videos[i]);
+      }
+      const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+      const limit = Math.min(elements.length, MAX_SHADOW_ELEMENTS);
+      for (let i = 0; i < limit; i += 1) {
+        const shadow = elements[i].shadowRoot;
+        if (shadow) {
+          collectVideos(shadow, out, depth + 1);
+        }
+      }
+    } catch (error) {
+      // Ignore inaccessible/cross-origin roots.
+    }
+  }
+
+  function allVideos() {
+    const out = [];
+    collectVideos(document, out, 0);
+    return Array.from(new Set(out));
   }
 
   function pipSupport(video) {
@@ -308,7 +332,13 @@
       return true;
     }
     try {
-      return !!node.querySelector('video,canvas,iframe');
+      if (node.querySelector('video,canvas,iframe')) {
+        return true;
+      }
+      if (node.shadowRoot && node.shadowRoot.querySelector('video,canvas,iframe')) {
+        return true;
+      }
+      return false;
     } catch (error) {
       return false;
     }
@@ -320,6 +350,28 @@
       if (!target || typeof MutationObserver !== 'function') {
         return;
       }
+      const observedRoots = new WeakSet();
+
+      function observeShadowRoots(root, depth) {
+        if (!root || depth > 6) {
+          return;
+        }
+        try {
+          const elements = root.querySelectorAll ? root.querySelectorAll('*') : [];
+          const limit = Math.min(elements.length, MAX_SHADOW_ELEMENTS);
+          for (let i = 0; i < limit; i += 1) {
+            const shadow = elements[i].shadowRoot;
+            if (shadow && !observedRoots.has(shadow)) {
+              observedRoots.add(shadow);
+              observer.observe(shadow, { childList: true, subtree: true });
+              observeShadowRoots(shadow, depth + 1);
+            }
+          }
+        } catch (error) {
+          // Ignore.
+        }
+      }
+
       const observer = new MutationObserver((records) => {
         let interesting = false;
         for (let i = 0; i < records.length; i += 1) {
@@ -337,12 +389,14 @@
             break;
           }
         }
+        observeShadowRoots(document, 0);
         if (interesting) {
           postEvent('domchanged', null, 'mutation');
           scheduleSnapshot('mutation');
         }
       });
       observer.observe(target, { childList: true, subtree: true });
+      observeShadowRoots(document, 0);
     } catch (error) {
       // Ignore.
     }
