@@ -76,23 +76,13 @@ final class AppSettingsToolbarTests: XCTestCase {
         XCTAssertEqual(settings.fullscreenInsetLeft, 0, accuracy: 0.001)
     }
 
-    func testPiPButtonSettingsDefaultAndPersist() {
+    func testToolbarPiPButtonSettingDefaultsAndPersists() {
         let settings = AppSettings(defaults: defaults)
         XCTAssertTrue(settings.showToolbarPiPButton)
-        XCTAssertTrue(settings.showFloatingPiPButton)
-        XCTAssertEqual(settings.floatingPiPX, 0.72, accuracy: 0.001)
-        XCTAssertEqual(settings.floatingPiPY, 0.42, accuracy: 0.001)
 
         settings.showToolbarPiPButton = false
-        settings.showFloatingPiPButton = false
-        settings.floatingPiPX = 0.3
-        settings.floatingPiPY = 0.7
-
         let reloaded = AppSettings(defaults: defaults)
         XCTAssertFalse(reloaded.showToolbarPiPButton)
-        XCTAssertFalse(reloaded.showFloatingPiPButton)
-        XCTAssertEqual(reloaded.floatingPiPX, 0.3, accuracy: 0.001)
-        XCTAssertEqual(reloaded.floatingPiPY, 0.7, accuracy: 0.001)
     }
 
     func testFloatingBallDiameterDefaultsPersistsAndClamps() {

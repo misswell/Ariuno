@@ -16,9 +16,6 @@ final class AppSettings: ObservableObject {
         static let fullscreenInsetLeft = "cf.settings.fullscreenInsetLeft"
         static let fullscreenInsetRight = "cf.settings.fullscreenInsetRight"
         static let showToolbarPiPButton = "cf.settings.showToolbarPiPButton"
-        static let showFloatingPiPButton = "cf.settings.showFloatingPiPButton"
-        static let floatingPiPX = "cf.settings.floatingPiPX"
-        static let floatingPiPY = "cf.settings.floatingPiPY"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -125,19 +122,6 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(showToolbarPiPButton, forKey: Key.showToolbarPiPButton) }
     }
 
-    /// Whether a draggable PiP control appears while the toolbar is collapsed to a ball.
-    @Published var showFloatingPiPButton: Bool {
-        didSet { defaults.set(showFloatingPiPButton, forKey: Key.showFloatingPiPButton) }
-    }
-
-    @Published var floatingPiPX: Double {
-        didSet { defaults.set(floatingPiPX, forKey: Key.floatingPiPX) }
-    }
-
-    @Published var floatingPiPY: Double {
-        didSet { defaults.set(floatingPiPY, forKey: Key.floatingPiPY) }
-    }
-
     private static func clampInset(_ value: Double) -> Double {
         min(max(value, 0), 80)
     }
@@ -194,9 +178,6 @@ final class AppSettings: ObservableObject {
         self.fullscreenInsetLeft = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetLeft) as? Double ?? 0)
         self.fullscreenInsetRight = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetRight) as? Double ?? 0)
         self.showToolbarPiPButton = defaults.object(forKey: Key.showToolbarPiPButton) as? Bool ?? true
-        self.showFloatingPiPButton = defaults.object(forKey: Key.showFloatingPiPButton) as? Bool ?? true
-        self.floatingPiPX = min(max(defaults.object(forKey: Key.floatingPiPX) as? Double ?? 0.72, 0.05), 0.95)
-        self.floatingPiPY = min(max(defaults.object(forKey: Key.floatingPiPY) as? Double ?? 0.42, 0.08), 0.92)
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =

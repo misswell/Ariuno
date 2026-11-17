@@ -83,32 +83,6 @@ struct BrowserView: View {
                     )
                 }
                 .transition(.scale.combined(with: .opacity))
-
-                if coordinator.settings.showFloatingPiPButton,
-                   coordinator.isAnyPiPActive || pipAvailability.isAvailable {
-                    GeometryReader { proxy in
-                        FloatingEdgeControl(
-                            containerSize: proxy.size,
-                            normalizedPosition: CGPoint(
-                                x: coordinator.settings.floatingPiPX,
-                                y: coordinator.settings.floatingPiPY
-                            ),
-                            diameter: CGFloat(coordinator.settings.floatingBallDiameter) * 0.84,
-                            tint: coordinator.isAnyPiPActive ? .green : .accentColor,
-                            icon: "pip",
-                            showsCenterDot: false,
-                            showsPiPBadge: false,
-                            accessibilityLabel: coordinator.isAnyPiPActive
-                                ? "退出画中画" : "进入画中画",
-                            onTap: { togglePiPFromFloatingControl() },
-                            onMoved: { normalized in
-                                coordinator.settings.floatingPiPX = Double(normalized.x)
-                                coordinator.settings.floatingPiPY = Double(normalized.y)
-                            }
-                        )
-                    }
-                    .transition(.scale.combined(with: .opacity))
-                }
             }
         }
         .statusBarHidden(coordinator.route == .game)
@@ -679,16 +653,6 @@ struct BrowserView: View {
         autoHideWorkItem?.cancel()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true
-        }
-    }
-
-    private func togglePiPFromFloatingControl() {
-        if coordinator.isAnyPiPActive || coordinator.session.pipVisible {
-            coordinator.exitPictureInPicture()
-            return
-        }
-        Task { @MainActor in
-            await attemptPiP()
         }
     }
 

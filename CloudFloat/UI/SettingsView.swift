@@ -53,7 +53,6 @@ struct SettingsView: View {
 
             Section {
                 Toggle("显示工具栏 PiP 按钮", isOn: $settings.showToolbarPiPButton)
-                Toggle("显示浮动 PiP 按钮（收起工具栏时）", isOn: $settings.showFloatingPiPButton)
                 Toggle("显示网页内 PiP 按钮", isOn: $settings.enableInPagePiPButton)
             } header: {
                 Text("画中画")
