@@ -59,6 +59,35 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["历史记录"].waitForExistence(timeout: 10))
     }
 
+    func testTabMetadataRestoresAfterRelaunch() {
+        app.launch()
+        let field = app.textFields["搜索或输入网址"]
+        XCTAssertTrue(field.waitForExistence(timeout: 15))
+        field.tap()
+        field.typeText("example.com\n")
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20))
+
+        // Let the load finish and the debounced tab store write to disk.
+        sleep(4)
+        app.terminate()
+        app.launch()
+
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let tabsButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
+        ).firstMatch
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 20))
+        tabsButton.tap()
+
+        let restored = app.staticTexts.matching(
+            NSPredicate(format: "label CONTAINS %@", "example.com")
+        ).firstMatch
+        XCTAssertTrue(restored.waitForExistence(timeout: 10), "冷启动后应恢复标签 URL/标题")
+    }
+
     func testAddressBarNavigatesToTypedHost() {
         app.launch()
         let field = app.textFields["搜索或输入网址"]
