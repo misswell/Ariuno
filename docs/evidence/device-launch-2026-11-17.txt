@@ -1,0 +1,26 @@
+Ariuno real-device launch trace (summary)
+=========================================
+Device: iPhone 15 Pro (iPhone16,1), iOS 27.2.1 (24B156)
+Build: Debug (local test pages enabled)
+Tool: xcrun xctrace record --template 'App Launch' --launch com.misswell.Ariuno --time-limit 30s
+Date: 2026-11-17 13:41 +08:00
+
+Lifecycle periods (trace-relative start | duration | period):
+00:00.285.894 | 20.96 ms   | Initializing - System Interface Initialization
+00:00.306.849 | 4.99 ms    | Initializing - Static Runtime Initialization
+00:00.322.962 | 86.71 ms   | Launching - UIKit Initialization
+00:00.409.674 | 1.19 ms    | Launching - UIKit Scene Creation
+00:00.410.862 | 96.62 us   | Launching - didFinishLaunchingWithOptions()
+00:00.415.823 | 30.35 ms   | Launching - sceneWillConnectTo()
+00:00.447.207 | 120.83 us  | Launching - sceneWillEnterForeground()
+00:00.447.871 | 96.48 ms   | Launching - Initial Frame Rendering
+00:00.565.991 | 3.47 s     | Foreground - Active
+00:04.917.820 | 25.41 s    | Background
+
+Derived:
+- Process start -> first frame: 544.351 ms - 285.894 ms = 258.5 ms
+- Process start -> Foreground Active: 565.991 ms - 285.894 ms = 280.1 ms
+
+Note: the trace file itself (944 MB) is under build/evidence/ and is not committed.
+The device became unavailable immediately after this recording; Release launch,
+CPU/memory and the cloud-game PiP A-J matrix were not captured in this run.

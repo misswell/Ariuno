@@ -75,7 +75,23 @@
 | 10 标签 App footprint | 81.2 MB |
 | 写入 1000 条历史 | 16.2 ms |
 
-未测得（明确 UNVERIFIED）：真机首次启动时间、真机标签切换渲染耗时、后台 CPU、PiP 播放 CPU/内存。
+### 1.2.1 真机启动（iPhone 15 Pro / iOS 27.2.1，Debug 构建）
+
+用 `xctrace 'App Launch'` 在真机记录并导出 `life-cycle-period`：
+
+| 阶段 | 耗时 |
+|---|---:|
+| 系统框架初始化 | 20.96 ms |
+| 静态运行时初始化 | 4.99 ms |
+| UIKit 初始化 | 86.71 ms |
+| `didFinishLaunchingWithOptions()` | 96.62 µs |
+| `sceneWillConnectTo()` | 30.35 ms |
+| 首帧渲染 | 96.48 ms |
+| **进程启动 → 首帧** | **258.5 ms** |
+| **进程启动 → Foreground Active** | **280.1 ms** |
+
+证据摘要：[docs/evidence/device-launch-2026-11-17.txt](evidence/device-launch-2026-11-17.txt)。
+该次为 Debug 构建；Release 启动、页面加载、后台 CPU、PiP CPU/内存尚未采集，保持 UNVERIFIED。
 模拟器数据不能替代真机数据。
 
 ---
@@ -261,14 +277,21 @@ Executed 5 tests, with 0 failures (0 unexpected)
 
 - Debug 构建成功；
 - `devicectl device install` 安装成功（iPhone 15 Pro，UDID `00008130-000E782A26B8001C`）；
-- 启动失败：`FBSOpenApplicationErrorDomain error 7`，设备处于锁定状态，无法在无人解锁时启动。
+- 设备曾解锁并成功启动 App；随后 `devicectl` 再次报告设备 unavailable/锁定。
+- 已完成的真机证据：App 启动并显示 Ariuno 起始页（系统画中画指示为“支持”）；
+  `xctrace 'App Launch'` 成功采集 Debug 启动生命周期（进程→首帧 258.5 ms）。
+- 未完成：Release 启动、页面加载 CPU、后台 CPU、PiP CPU/内存、云游戏 A–J。
+- 真机 XCUITest 运行失败：`AriunoUITests-Runner exited with code 74 before establishing connection`
+  （设备侧 UI automation 不可用），因此浏览器 UI 流程只在模拟器通过。
+- 真机断开后 `devicectl install`/`xctrace` 均因设备 unavailable 失败。
 
 因此以下项目**未执行**，标记 UNVERIFIED：
 
 - 11.3 PiP 场景 A–J（真机）：进入云游戏 → PiP → 切标签 → 切回 → 停止 → 关闭来源 → 新建标签；
 - App 进入后台后 PiP 是否持续（新架构）；
 - 音频会话在 PiP 期间是否被其他标签误停（状态层已修复，真机未验）；
-- 真机首次启动时间、PiP CPU/内存、后台 CPU；
+- Release 构建真机启动、PiP CPU/内存、后台 CPU（Debug 启动已实测）；
+- 真机 XCUITest：runner 在建立连接前退出（exit code 74），未取得结果；
 - 真机 HTTP 站点“不安全”展示、文件上传 UI。
 
 历史真机证据（重构前构建，仅作参考，不代表新架构）：
