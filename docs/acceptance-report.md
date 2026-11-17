@@ -285,6 +285,13 @@ Executed 5 tests, with 0 failures (0 unexpected)
   （设备侧 UI automation 不可用），因此浏览器 UI 流程只在模拟器通过。
 - 真机断开后 `devicectl install`/`xctrace` 均因设备 unavailable 失败。
 
+### 6.1 为什么这些项不能由自动化代做
+
+- 云游戏 A–J 需要真实账号登录、可能包含验证码/二次验证；本项目明确不接收、不保存、不代填账号密码或令牌。
+- 设备侧 UI automation 不可用：XCUITest runner 在连接前退出（exit code 74），无法用脚本点击网页内 PiP 按钮。
+- 设备当前 `unavailable`；`devicectl install` / `xctrace` 均无法连接。
+- 因此 A–J 必须由测试者在自己的账号环境下操作；Agent 不会用普通视频/模拟器结果冒充云游戏 PiP。
+
 因此以下项目**未执行**，标记 UNVERIFIED：
 
 - 11.3 PiP 场景 A–J（真机）：进入云游戏 → PiP → 切标签 → 切回 → 停止 → 关闭来源 → 新建标签；
