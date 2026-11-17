@@ -7,6 +7,9 @@ final class AppSettings: ObservableObject {
         static let autoHideToolbar = "cf.settings.autoHideToolbar"
         static let autoHideToolbarExplicit = "cf.settings.autoHideToolbar.explicit"
         static let toolbarAutoHideDelay = "cf.settings.toolbarAutoHideDelay"
+        static let collapseToolbarToBallOnOpen = "cf.settings.collapseToolbarToBallOnOpen"
+        static let floatingBallX = "cf.settings.floatingBallX"
+        static let floatingBallY = "cf.settings.floatingBallY"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -33,6 +36,21 @@ final class AppSettings: ObservableObject {
             }
             defaults.set(clamped, forKey: Key.toolbarAutoHideDelay)
         }
+    }
+
+    /// Collapse the browser chrome into a draggable floating ball when entering a page.
+    /// Off by default; the bottom bar always exposes a one-tap "收起为悬浮球" button.
+    @Published var collapseToolbarToBallOnOpen: Bool {
+        didSet { defaults.set(collapseToolbarToBallOnOpen, forKey: Key.collapseToolbarToBallOnOpen) }
+    }
+
+    /// Normalized (0...1) floating-ball position, persisted across launches.
+    @Published var floatingBallX: Double {
+        didSet { defaults.set(floatingBallX, forKey: Key.floatingBallX) }
+    }
+
+    @Published var floatingBallY: Double {
+        didSet { defaults.set(floatingBallY, forKey: Key.floatingBallY) }
     }
 
     /// Adds a small in-page picture-in-picture control. A real tap inside the web content is
@@ -74,6 +92,12 @@ final class AppSettings: ObservableObject {
             : false
         let storedDelay = defaults.object(forKey: Key.toolbarAutoHideDelay) as? Double
         self.toolbarAutoHideDelay = min(max(storedDelay ?? FeatureFlags.defaultToolbarAutoHideDelay, 2), 12)
+        self.collapseToolbarToBallOnOpen =
+            defaults.object(forKey: Key.collapseToolbarToBallOnOpen) as? Bool ?? false
+        self.floatingBallX =
+            min(max(defaults.object(forKey: Key.floatingBallX) as? Double ?? 0.90, 0.05), 0.95)
+        self.floatingBallY =
+            min(max(defaults.object(forKey: Key.floatingBallY) as? Double ?? 0.62, 0.08), 0.92)
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =

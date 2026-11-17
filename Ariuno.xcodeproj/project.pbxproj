@@ -51,8 +51,10 @@
 		8BF89E330DC95517574F6B6B /* BookmarkStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B9F0B12ACCB7553A8539964 /* BookmarkStore.swift */; };
 		8C2F8BD08F3A7A1E8456FD1C /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0EE70E071BA2031ACEBB38D /* HistoryView.swift */; };
 		8EBA632EE40EB89EA4F36C77 /* WebContentRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAA89859FAB77C099C4B68B3 /* WebContentRecovery.swift */; };
+		9184B9DA2B7E9A94A29E9CA6 /* FloatingBallGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A771A1440BD131028C86CCD /* FloatingBallGeometryTests.swift */; };
 		9412ADD8E6122DA5A24E6C92 /* CookieStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC72E5F1F9BA20914A1D2C68 /* CookieStore.swift */; };
 		98A8C025314D96AF86D9657A /* SessionRecoveryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB088B11234F8D29A1F9DDED /* SessionRecoveryTests.swift */; };
+		9A7A22E81DB293D93496F24C /* FloatingToolbarBall.swift in Sources */ = {isa = PBXBuildFile; fileRef = B397DB98A2DC8412A23B6473 /* FloatingToolbarBall.swift */; };
 		9CC91C5AA2639068E55E5FC0 /* BrowserFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9655ADBEF80B62E9CE6CB457 /* BrowserFeatureTests.swift */; };
 		9D652632BC33423B5E7945AE /* PrivacyRedactorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A9BB0AA746C7ABC32C4625 /* PrivacyRedactorTests.swift */; };
 		9F31537A966DF621547E7F76 /* GameSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78CAC10C7FFF8EA81BC37A4 /* GameSessionState.swift */; };
@@ -129,6 +131,7 @@
 		44431CEFAB7B884BBF024C05 /* FeatureFlags.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureFlags.swift; sourceTree = "<group>"; };
 		465FEA310F901CCD531B9E56 /* GameSessionStateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSessionStateTests.swift; sourceTree = "<group>"; };
 		4A3920FFFD1491369B3B6A50 /* HistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryStoreTests.swift; sourceTree = "<group>"; };
+		4A771A1440BD131028C86CCD /* FloatingBallGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingBallGeometryTests.swift; sourceTree = "<group>"; };
 		5887605E1CDBE1F5906EF4FA /* BookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookmarksView.swift; sourceTree = "<group>"; };
 		59EF2C6FD76F65F725FA3AB8 /* PiPCapabilityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiPCapabilityView.swift; sourceTree = "<group>"; };
 		5AB59731D581AE98DF6821C5 /* BrowserTabManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserTabManager.swift; sourceTree = "<group>"; };
@@ -165,6 +168,7 @@
 		A8474A8F8B14127B5718B85A /* SessionRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionRecovery.swift; sourceTree = "<group>"; };
 		AAA89859FAB77C099C4B68B3 /* WebContentRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebContentRecovery.swift; sourceTree = "<group>"; };
 		B142EE81D5BCEC922D2E2D03 /* BrowserStartPageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserStartPageView.swift; sourceTree = "<group>"; };
+		B397DB98A2DC8412A23B6473 /* FloatingToolbarBall.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FloatingToolbarBall.swift; sourceTree = "<group>"; };
 		B5634F4AE71A7602B06B6ECC /* LocalHTTPServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalHTTPServer.swift; sourceTree = "<group>"; };
 		B78CAC10C7FFF8EA81BC37A4 /* GameSessionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSessionState.swift; sourceTree = "<group>"; };
 		B7BA5F127D6A28BA4F6A030F /* PrivacyRedactor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrivacyRedactor.swift; sourceTree = "<group>"; };
@@ -262,6 +266,7 @@
 				FCC2225ED5E2156251727B6A /* BrowserView.swift */,
 				33F0263602F003A58B111A8C /* DiagnosticsView.swift */,
 				5B5F6B646958986BA365BDDF /* DownloadsView.swift */,
+				B397DB98A2DC8412A23B6473 /* FloatingToolbarBall.swift */,
 				A0EE70E071BA2031ACEBB38D /* HistoryView.swift */,
 				59EF2C6FD76F65F725FA3AB8 /* PiPCapabilityView.swift */,
 				99E7D414C79EEF89270DA521 /* PiPStatusView.swift */,
@@ -295,6 +300,7 @@
 				C9D21C83DB276EC81A184437 /* BrowserTabPersistenceTests.swift */,
 				99B4A4B37149B88CAD0478D0 /* DiagnosticsStoreTests.swift */,
 				867B15ADD9172CCAFD1D13EF /* DownloadManagerTests.swift */,
+				4A771A1440BD131028C86CCD /* FloatingBallGeometryTests.swift */,
 				465FEA310F901CCD531B9E56 /* GameSessionStateTests.swift */,
 				4A3920FFFD1491369B3B6A50 /* HistoryStoreTests.swift */,
 				7C8B156FF6A242327E104EE2 /* LocalHTTPServerTests.swift */,
@@ -518,6 +524,7 @@
 				0B2946C5291CC797F74D7C31 /* DownloadsView.swift in Sources */,
 				FBFA2664BB390654863484B4 /* ExportDiagnostics.swift in Sources */,
 				2849774931B654301BFDE135 /* FeatureFlags.swift in Sources */,
+				9A7A22E81DB293D93496F24C /* FloatingToolbarBall.swift in Sources */,
 				9F31537A966DF621547E7F76 /* GameSessionState.swift in Sources */,
 				8C2F8BD08F3A7A1E8456FD1C /* HistoryView.swift in Sources */,
 				CEC8026316EF1A061EE2602D /* LocalHTTPServer.swift in Sources */,
@@ -569,6 +576,7 @@
 				CED793CDED269DBBB15750E8 /* BrowserTabPersistenceTests.swift in Sources */,
 				5E59C77B6350357D84B05759 /* DiagnosticsStoreTests.swift in Sources */,
 				D604A3EBEFDA696CF978152C /* DownloadManagerTests.swift in Sources */,
+				9184B9DA2B7E9A94A29E9CA6 /* FloatingBallGeometryTests.swift in Sources */,
 				09FCBC8F0520CB18A37B6C4A /* GameSessionStateTests.swift in Sources */,
 				E7B21DF9116785AA2B4B55B9 /* HistoryStoreTests.swift in Sources */,
 				DC14874D3AA8982565EC4EEB /* LocalHTTPServerTests.swift in Sources */,

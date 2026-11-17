@@ -1,0 +1,56 @@
+import SwiftUI
+import XCTest
+@testable import Ariuno
+
+final class FloatingBallGeometryTests: XCTestCase {
+    private let size = CGSize(width: 390, height: 844)
+    private let safeArea = EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0)
+
+    func testClampKeepsBallInsideSafeArea() {
+        let topLeft = FloatingBallGeometry.clamp(
+            CGPoint(x: -100, y: -100),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(topLeft.x, 34, accuracy: 0.01)
+        XCTAssertEqual(topLeft.y, 93, accuracy: 0.01)
+
+        let bottomRight = FloatingBallGeometry.clamp(
+            CGPoint(x: 10_000, y: 10_000),
+            in: size,
+            safeArea: safeArea,
+            diameter: 56
+        )
+        XCTAssertEqual(bottomRight.x, 356, accuracy: 0.01)
+        XCTAssertEqual(bottomRight.y, 776, accuracy: 0.01)
+    }
+
+    func testNormalizationRoundTrip() {
+        let point = CGPoint(x: 200, y: 400)
+        let normalized = FloatingBallGeometry.normalized(point, in: size)
+        let restored = FloatingBallGeometry.point(fromNormalized: normalized, in: size)
+        XCTAssertEqual(restored.x, point.x, accuracy: 0.01)
+        XCTAssertEqual(restored.y, point.y, accuracy: 0.01)
+    }
+
+    func testNormalizationClampsOutOfBounds() {
+        let normalized = FloatingBallGeometry.normalized(
+            CGPoint(x: -50, y: 2_000),
+            in: size
+        )
+        XCTAssertEqual(normalized.x, 0, accuracy: 0.001)
+        XCTAssertEqual(normalized.y, 1, accuracy: 0.001)
+    }
+
+    func testTinyContainerDoesNotProduceInvertedBounds() {
+        let point = FloatingBallGeometry.clamp(
+            CGPoint(x: 10, y: 10),
+            in: CGSize(width: 20, height: 20),
+            safeArea: EdgeInsets(),
+            diameter: 56
+        )
+        XCTAssertGreaterThanOrEqual(point.x, 34)
+        XCTAssertGreaterThanOrEqual(point.y, 34)
+    }
+}

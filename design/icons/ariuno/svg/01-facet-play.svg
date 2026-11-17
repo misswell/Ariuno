@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0.02" y1="0" x2="0.98" y2="1">
+      <stop offset="0" stop-color="#070A1E"/>
+      <stop offset="0.48" stop-color="#0A1034"/>
+      <stop offset="1" stop-color="#0B1B4C"/>
+    </linearGradient>
+    <radialGradient id="vig" cx="0.5" cy="0.47" r="0.75">
+      <stop offset="0.5" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="1" stop-color="#02030C" stop-opacity="0.75"/>
+    </radialGradient>
+    <linearGradient id="f1" gradientUnits="userSpaceOnUse" x1="320" y1="280" x2="700" y2="500">
+      <stop offset="0" stop-color="#F0DEFF"/>
+      <stop offset="0.45" stop-color="#C39BFF"/>
+      <stop offset="1" stop-color="#7B5BFF"/>
+    </linearGradient>
+    <linearGradient id="f2" gradientUnits="userSpaceOnUse" x1="320" y1="440" x2="720" y2="560">
+      <stop offset="0" stop-color="#8E7BFF"/>
+      <stop offset="0.5" stop-color="#4F7BFF"/>
+      <stop offset="1" stop-color="#2F9BFF"/>
+    </linearGradient>
+    <linearGradient id="f3" gradientUnits="userSpaceOnUse" x1="320" y1="600" x2="740" y2="740">
+      <stop offset="0" stop-color="#2F86FF"/>
+      <stop offset="0.55" stop-color="#31B6FF"/>
+      <stop offset="1" stop-color="#7FF4FF"/>
+    </linearGradient>
+    <linearGradient id="rim" gradientUnits="userSpaceOnUse" x1="252" y1="282" x2="772" y2="742">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.5" stop-color="#D8F4FF"/>
+      <stop offset="1" stop-color="#8FF0FF"/>
+    </linearGradient>
+    <linearGradient id="bloomG" gradientUnits="userSpaceOnUse" x1="300" y1="300" x2="760" y2="720">
+      <stop offset="0" stop-color="#A855FF"/>
+      <stop offset="0.5" stop-color="#4F7BFF"/>
+      <stop offset="1" stop-color="#2FE8FF"/>
+    </linearGradient>
+    <linearGradient id="shade" gradientUnits="userSpaceOnUse" x1="0" y1="300" x2="0" y2="760">
+      <stop offset="0" stop-color="#030616" stop-opacity="0"/>
+      <stop offset="1" stop-color="#030616" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="blur3" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="blur8" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="blur20" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="20"/></filter>
+    <filter id="blur30" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="30"/></filter>
+    <filter id="blur46" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="46"/></filter>
+    <filter id="blur80" x="-70%" y="-70%" width="240%" height="240%"><feGaussianBlur stdDeviation="80"/></filter>
+    <filter id="grain" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.14"/></feComponentTransfer>
+    </filter>
+
+    <path id="tri" d="M252 282 L252 742 L772 512 Z"/>
+    <clipPath id="triClip"><use href="#tri"/></clipPath>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+
+  <g filter="url(#blur80)">
+    <ellipse cx="180" cy="140" rx="440" ry="320" fill="#7B4BFF" opacity="0.6" transform="rotate(-16 180 140)"/>
+    <ellipse cx="880" cy="900" rx="470" ry="350" fill="#17B8FF" opacity="0.42" transform="rotate(-12 880 900)"/>
+    <ellipse cx="940" cy="140" rx="280" ry="240" fill="#FF5BD6" opacity="0.14"/>
+  </g>
+
+  <g opacity="0.5">
+    <circle cx="512" cy="512" r="404" fill="none" stroke="#CFE8FF" stroke-opacity="0.16" stroke-width="2"/>
+    <circle cx="512" cy="512" r="438" fill="none" stroke="#9FE6FF" stroke-opacity="0.22" stroke-width="2" stroke-dasharray="2 18" stroke-linecap="round"/>
+    <circle cx="512" cy="512" r="360" fill="none" stroke="url(#rim)" stroke-opacity="0.18" stroke-width="6" stroke-dasharray="360 1900" transform="rotate(140 512 512)" filter="url(#blur3)"/>
+  </g>
+
+  <rect width="1024" height="1024" fill="url(#vig)"/>
+
+  <g filter="url(#blur46)" opacity="0.6">
+    <use href="#tri" fill="url(#bloomG)"/>
+  </g>
+  <g filter="url(#blur30)" opacity="0.55">
+    <use href="#tri" fill="#02040E" transform="translate(0,38)"/>
+  </g>
+
+  <g>
+    <path d="M252 282 L252 435 L772 512 Z" fill="url(#f1)"/>
+    <path d="M252 435 L252 588 L772 512 Z" fill="url(#f2)"/>
+    <path d="M252 588 L252 742 L772 512 Z" fill="url(#f3)"/>
+
+    <g clip-path="url(#triClip)">
+      <rect x="200" y="380" width="620" height="470" fill="url(#shade)" opacity="0.55"/>
+      <ellipse cx="470" cy="360" rx="300" ry="90" fill="#FFFFFF" opacity="0.22" transform="rotate(-16 470 360)" filter="url(#blur30)"/>
+      <ellipse cx="560" cy="640" rx="280" ry="70" fill="#8FF3FF" opacity="0.18" transform="rotate(-8 560 640)" filter="url(#blur30)"/>
+    </g>
+
+    <path d="M252 435 L772 512" stroke="#060A1C" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+    <path d="M252 588 L772 512" stroke="#060A1C" stroke-width="6" stroke-linecap="round" opacity="0.9"/>
+    <path d="M257 437 L767 513" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.22"/>
+    <path d="M257 590 L767 514" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" opacity="0.18"/>
+
+    <use href="#tri" fill="none" stroke="url(#rim)" stroke-opacity="0.65" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M252 282 L772 512" stroke="#FFFFFF" stroke-opacity="0.5" stroke-width="3" stroke-linecap="round"/>
+    <path d="M252 742 L772 512" stroke="#8FF3FF" stroke-opacity="0.3" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <g opacity="0.6">
+    <circle cx="196" cy="256" r="4" fill="#FFFFFF" filter="url(#blur3)"/>
+    <circle cx="842" cy="300" r="7" fill="#D9C9FF" filter="url(#blur8)"/>
+    <circle cx="852" cy="700" r="5" fill="#8FF3FF" filter="url(#blur8)"/>
+    <circle cx="260" cy="820" r="3" fill="#FFFFFF" filter="url(#blur3)"/>
+  </g>
+
+  <rect width="1024" height="1024" filter="url(#grain)" opacity="0.5" style="mix-blend-mode:overlay"/>
+</svg>

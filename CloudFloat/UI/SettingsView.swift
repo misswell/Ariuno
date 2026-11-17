@@ -9,6 +9,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
+                Toggle("进入网页时收起为悬浮球", isOn: $settings.collapseToolbarToBallOnOpen)
                 Toggle("自动隐藏工具栏", isOn: $settings.autoHideToolbar)
                 if settings.autoHideToolbar {
                     Picker("隐藏延迟", selection: $settings.toolbarAutoHideDelay) {
@@ -22,7 +23,7 @@ struct SettingsView: View {
             } header: {
                 Text("游戏界面")
             } footer: {
-                Text("工具栏位于顶部，约 \(Int(settings.toolbarAutoHideDelay)) 秒后自动隐藏；点击顶部把手可再次唤出，避免遮挡游戏按键。")
+                Text("工具栏位于底部。可随时点击“收起为悬浮球”，把工具栏缩成可拖动的小球；点击小球恢复。开启上面的选项后，进入网页时会自动收起。自动隐藏延迟为 \(Int(settings.toolbarAutoHideDelay)) 秒。")
             }
 
             Section {

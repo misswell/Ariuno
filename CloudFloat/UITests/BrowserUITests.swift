@@ -129,6 +129,34 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(restored.waitForExistence(timeout: 10), "冷启动后应恢复标签 URL/标题")
     }
 
+    func testToolbarCollapsesToFloatingBallAndExpands() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let collapse = app.buttons["收起为悬浮球"]
+        XCTAssertTrue(collapse.waitForExistence(timeout: 15))
+        collapse.tap()
+
+        let ball = app.buttons["展开工具栏"]
+        XCTAssertTrue(ball.waitForExistence(timeout: 5), "收起后应出现可点击的悬浮球")
+        XCTAssertFalse(collapse.exists, "悬浮球模式下底部工具栏应隐藏")
+
+        let collapsed = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        collapsed.name = "floating-ball-collapsed"
+        collapsed.lifetime = .keepAlways
+        add(collapsed)
+
+        ball.tap()
+        XCTAssertTrue(collapse.waitForExistence(timeout: 5), "点击悬浮球应恢复工具栏")
+
+        let expanded = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        expanded.name = "floating-ball-expanded"
+        expanded.lifetime = .keepAlways
+        add(expanded)
+    }
+
     func testAddressBarNavigatesToTypedHost() {
         app.launch()
         let field = app.textFields["搜索或输入网址"]

@@ -34,6 +34,30 @@ final class AppSettingsToolbarTests: XCTestCase {
         XCTAssertTrue(settings.autoHideToolbar)
     }
 
+    func testFloatingBallDefaultsAndPersistence() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.collapseToolbarToBallOnOpen)
+        XCTAssertEqual(settings.floatingBallX, 0.90, accuracy: 0.001)
+        XCTAssertEqual(settings.floatingBallY, 0.62, accuracy: 0.001)
+
+        settings.collapseToolbarToBallOnOpen = true
+        settings.floatingBallX = 0.42
+        settings.floatingBallY = 0.33
+
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertTrue(reloaded.collapseToolbarToBallOnOpen)
+        XCTAssertEqual(reloaded.floatingBallX, 0.42, accuracy: 0.001)
+        XCTAssertEqual(reloaded.floatingBallY, 0.33, accuracy: 0.001)
+    }
+
+    func testFloatingBallPositionIsClampedOnLoad() {
+        defaults.set(9.0, forKey: "cf.settings.floatingBallX")
+        defaults.set(-3.0, forKey: "cf.settings.floatingBallY")
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertLessThanOrEqual(settings.floatingBallX, 0.95)
+        XCTAssertGreaterThanOrEqual(settings.floatingBallY, 0.08)
+    }
+
     func testTogglingMarksChoiceExplicit() {
         let settings = AppSettings(defaults: defaults)
         XCTAssertFalse(settings.autoHideToolbar)

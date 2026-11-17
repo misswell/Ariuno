@@ -12,6 +12,7 @@ struct BrowserView: View {
     @State private var isPiPRequestInFlight = false
     @State private var activeAlert: GameAlert?
     @State private var addressText = ""
+    @State private var isBallMode = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -25,31 +26,57 @@ struct BrowserView: View {
                 loadingOverlay
             }
 
-            VStack(spacing: 8) {
-                Spacer(minLength: 0)
-                sessionBanner
-                if toolbarVisible {
-                    addressBar
-                        .padding(.horizontal, 12)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    // The reveal control stays on the trailing edge instead of floating in
-                    // the middle of the page, so it is easy to find without covering content.
-                    HStack {
-                        Spacer()
-                        toolbarHandle
+            if !isBallMode {
+                VStack(spacing: 8) {
+                    Spacer(minLength: 0)
+                    sessionBanner
+                    if toolbarVisible {
+                        addressBar
+                            .padding(.horizontal, 12)
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                    } else {
+                        // The reveal control stays on the trailing edge instead of floating in
+                        // the middle of the page, so it is easy to find without covering content.
+                        HStack {
+                            Spacer()
+                            toolbarHandle
+                        }
+                        .padding(.trailing, 12)
                     }
-                    .padding(.trailing, 12)
+                    bottomBar
+                        .padding(.horizontal, 12)
                 }
-                bottomBar
-                    .padding(.horizontal, 12)
+                .padding(.top, 6)
+                .padding(.bottom, 8)
+                .transition(.opacity)
             }
-            .padding(.top, 6)
-            .padding(.bottom, 8)
+
+            if isBallMode {
+                GeometryReader { proxy in
+                    FloatingToolbarBall(
+                        containerSize: proxy.size,
+                        safeArea: proxy.safeAreaInsets,
+                        normalizedPosition: CGPoint(
+                            x: coordinator.settings.floatingBallX,
+                            y: coordinator.settings.floatingBallY
+                        ),
+                        showsPiPBadge: coordinator.isAnyPiPActive,
+                        onTap: { expandToolbarFromBall() },
+                        onMoved: { normalized in
+                            coordinator.settings.floatingBallX = Double(normalized.x)
+                            coordinator.settings.floatingBallY = Double(normalized.y)
+                        }
+                    )
+                }
+                .transition(.scale.combined(with: .opacity))
+            }
         }
         .statusBarHidden(coordinator.route == .game)
         .onAppear {
             syncAddressText()
+            if coordinator.route == .game, coordinator.settings.collapseToolbarToBallOnOpen {
+                isBallMode = true
+            }
             if coordinator.settings.autoHideToolbar {
                 scheduleAutoHide()
             }
@@ -61,6 +88,9 @@ struct BrowserView: View {
             guard newRoute == .game else { return }
             withAnimation(.easeInOut(duration: 0.18)) {
                 toolbarVisible = true
+            }
+            if coordinator.settings.collapseToolbarToBallOnOpen {
+                isBallMode = true
             }
             syncAddressText()
             scheduleAutoHide()
@@ -337,6 +367,15 @@ struct BrowserView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
 
+            Button {
+                collapseToolbarToBall()
+            } label: {
+                Image(systemName: "rectangle.compress.vertical")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("收起为悬浮球")
+
             Menu {
                 Button {
                     activeSheet = .status
@@ -582,6 +621,22 @@ struct BrowserView: View {
     private func syncAddressText() {
         guard !addressFieldFocused else { return }
         addressText = coordinator.browser.currentURL?.absoluteString ?? ""
+    }
+
+    private func collapseToolbarToBall() {
+        addressFieldFocused = false
+        autoHideWorkItem?.cancel()
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            isBallMode = true
+        }
+    }
+
+    private func expandToolbarFromBall() {
+        autoHideWorkItem?.cancel()
+        withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
+            isBallMode = false
+            toolbarVisible = true
+        }
     }
 
     private func scheduleAutoHide() {
