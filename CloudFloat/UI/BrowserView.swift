@@ -33,7 +33,13 @@ struct BrowserView: View {
                         .padding(.horizontal, 12)
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 } else {
-                    toolbarHandle
+                    // The reveal control stays on the trailing edge instead of floating in
+                    // the middle of the page, so it is easy to find without covering content.
+                    HStack {
+                        Spacer()
+                        toolbarHandle
+                    }
+                    .padding(.trailing, 12)
                 }
                 bottomBar
                     .padding(.horizontal, 12)

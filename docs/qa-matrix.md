@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 203 tests, with 0 failures (0 unexpected)
+Executed 206 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -175,7 +175,7 @@ Executed 203 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：203/203 通过（当前）+ XCUITest 5/5 通过（模拟器真实点击）。
+- 自动化：206/206 通过（当前）+ XCUITest 5/5 通过（模拟器真实点击）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

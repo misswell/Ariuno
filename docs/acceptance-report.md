@@ -20,7 +20,7 @@
 - 浏览器底座为系统 `WKWebView`，**没有**打包 Chromium/Gecko/独立 JS 引擎/第三方浏览器 SDK。
 - 第三方运行时依赖 **0**；`project.yml` 无 dependencies，包内无 `.framework`/`.dylib`。
 - 浏览器核心 **17 个 Swift 文件 / 2,889 行 / 136 KB**（目标 10～20 个文件，达标）。
-- 自动化测试 **203 项全部通过**（0 failures），其中相对 159 项基线新增 44 项浏览器/标签/PiP 生命周期测试。
+- 自动化测试 **206 项全部通过**（0 failures），其中相对 159 项基线新增 47 项浏览器/标签/PiP 生命周期测试。
 - 另有 **5 项 XCUITest** 在模拟器上真实点击 UI 并通过：起始页入口、新建标签页/标签计数、书签/历史面板、地址栏输入 example.com 后出现真实 WKWebView、终止并重启后恢复标签元数据。
 - Release Archive + IPA 导出成功：**IPA 723,820 字节（0.70 MB）**，`.app` 1.7 MB，主可执行文件 1,657,200 字节，Assets.car 76 KB。
 - 真机：最新 Debug 包已安装到 iPhone 15 Pro；设备锁定，无法启动，故**新架构真机 PiP 标签切换矩阵 UNVERIFIED**。
@@ -35,7 +35,7 @@
 | 浏览器底座 | 系统 WKWebView + WKNavigationDelegate + WKUIDelegate + WKWebsiteDataStore + WKUserContentController | `CloudFloat/Browser/BrowserSession.swift`、`BrowserNavigationDelegate.swift`、`BrowserUIDelegate.swift` |
 | 第三方依赖 | **0** | `project.yml` 无 `dependencies`；无 `Package.swift`/`Package.resolved`；IPA 内无 `.framework`/`.dylib` |
 | 源码规模 | Browser 核心 17 文件、2,889 行、136 KB；全工程 74 个 Swift 文件、14,672 行、696 KB | `find`/`wc`/`du` 实测 |
-| 多标签 | 10 标签独立 WebView、切换不重建/不重载、批量关闭按 ID 快照 | `BrowserTabPersistenceTests`、`BrowserFeatureTests`、`BrowserContainerTests`（203 项内） |
+| 多标签 | 10 标签独立 WebView、切换不重建/不重载、批量关闭按 ID 快照 | `BrowserTabPersistenceTests`、`BrowserFeatureTests`、`BrowserContainerTests`（206 项内） |
 | Cookie | 普通标签共享 `.default()`，隐私标签共享同一个 `.nonPersistent()`；无官方域名分类逻辑 | `BrowserPrivacyTests`；`CookieStore` 已移除域名白名单 |
 | 书签 | 新增/编辑/删除/文件夹/排序/持久化 + UI | `BookmarkStoreTests`（7）、`BrowserFeatureTests`（1）、`BookmarksView` |
 | 历史 | 记录/搜索/删除/清空/上限/原子写入；隐私标签不记录 | `HistoryStoreTests`（4）、`BrowserPrivacyTests`、`HistoryView` |
@@ -172,7 +172,7 @@
 | 16 | 关闭 PiP 来源标签有安全处理 | PASS（状态层） | `PiPSourceCloseTests` 5 项 |
 | 17 | App 后台行为正常 | PASS（状态层） | 后台停止轮询、不停止 PiP 测试 |
 | 18 | 不存在多余 Timer 和明显资源泄漏 | PASS（可观测范围） | 调度器测试（≤2 个定时器）；tearDown 清理测试；thumbnail 删除测试 |
-| 19 | 所有必要测试通过 | PASS | 203/203 |
+| 19 | 所有必要测试通过 | PASS | 206/206 |
 | 20 | Release 构建成功 | PASS | Archive + Export 成功 |
 | 21 | 提供真实 IPA 大小和性能数据 | PASS（体积）/ 部分（性能） | §1.1、§1.2；真机性能 UNVERIFIED |
 
@@ -203,12 +203,12 @@
 | 19 | 保留 TLS/脱敏/诊断/恢复 | PASS | `PrivacyRedactorTests`、`DiagnosticsStoreTests`、`SessionRecoveryTests` |
 | 20 | 下载/上传/分享正常 | PASS（下载/分享）/ 上传仅代码路径 | `DownloadManagerTests`；`runOpenPanelWith` 无自动化 UI 测试 |
 | 21 | 10 标签内存/生命周期 | PASS（模拟器） | `BrowserPerformanceTests`、容器测试 |
-| 22 | 原有测试保留/迁移，新增专项 | PASS | 203 项，含从 113 → 199 的增量 |
+| 22 | 原有测试保留/迁移，新增专项 | PASS | 206 项，含从 113 → 199 的增量 |
 | 23 | UI/工程/文档统一 Ariuno | PASS | Bundle ID 未变；显示名/文件/文档已统一 |
 
 ---
 
-## 5. 测试清单（203 项）
+## 5. 测试清单（206 项）
 
 | 套件 | 数量 | 覆盖 |
 |---|---:|---|
@@ -241,7 +241,7 @@
 | TabThumbnailCacheTests | 4 | Caches 缩略图、过期、删除 |
 | URLInputParserTests | 10 | URL/域名/IP/端口/搜索/危险 scheme |
 | WebPictureInPictureTests | 6 | PiP 门控/状态 |
-| **合计** | **203** | **0 failures** |
+| **合计** | **206** | **0 failures** |
 
 命令与结果：
 
@@ -249,7 +249,7 @@
 xcodebuild -project Ariuno.xcodeproj -scheme Ariuno \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/SimDerivedData test
-Executed 203 tests, with 0 failures (0 unexpected)
+Executed 206 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 
 xcodebuild -project Ariuno.xcodeproj -scheme AriunoUITests \
@@ -401,6 +401,9 @@ xcrun devicectl device install app --device <UDID> build/ipa/Payload/Ariuno.app
 | `pip.foreground_retained` | 回到前台时 PiP 来源保持不变 |
 | `pip.close_requested` | 请求先停止 PiP 再关闭来源 |
 | `pip.close_completed` | 收到停止事件后安全销毁来源标签 |
+
+浏览器工具栏默认保持可见（不再 4 秒自动折叠）；用户仍可在设置中主动开启自动隐藏，
+开启后“显示工具栏”把手固定在右侧边缘，不再悬浮在页面中央。
 
 这些事件只含截断的 tab UUID，不含 URL、标题或账号信息。
 

@@ -5,6 +5,7 @@ import Foundation
 final class AppSettings: ObservableObject {
     private enum Key {
         static let autoHideToolbar = "cf.settings.autoHideToolbar"
+        static let autoHideToolbarExplicit = "cf.settings.autoHideToolbar.explicit"
         static let toolbarAutoHideDelay = "cf.settings.toolbarAutoHideDelay"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
@@ -17,7 +18,10 @@ final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
 
     @Published var autoHideToolbar: Bool {
-        didSet { defaults.set(autoHideToolbar, forKey: Key.autoHideToolbar) }
+        didSet {
+            defaults.set(autoHideToolbar, forKey: Key.autoHideToolbar)
+            defaults.set(true, forKey: Key.autoHideToolbarExplicit)
+        }
     }
 
     @Published var toolbarAutoHideDelay: TimeInterval {
@@ -62,7 +66,12 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.autoHideToolbar = defaults.object(forKey: Key.autoHideToolbar) as? Bool ?? true
+        // Keep the browser toolbar visible by default. Auto-hide was previously on and made
+        // bookmark/share/tab buttons hard to find; only honour it when the user chose it.
+        let explicitlySet = defaults.bool(forKey: Key.autoHideToolbarExplicit)
+        self.autoHideToolbar = explicitlySet
+            ? (defaults.object(forKey: Key.autoHideToolbar) as? Bool ?? false)
+            : false
         let storedDelay = defaults.object(forKey: Key.toolbarAutoHideDelay) as? Double
         self.toolbarAutoHideDelay = min(max(storedDelay ?? FeatureFlags.defaultToolbarAutoHideDelay, 2), 12)
         self.enableInPagePiPButton =
