@@ -4,7 +4,7 @@ Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原�
 
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；模拟器构建成功。
-> - 自动化测试 **142 项全部通过**（多标签、书签、地址栏、历史、隐私浏览、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、下载、隐私脱敏、诊断导出、本地 HTTP 服务）。
+> - 自动化测试 **159 项全部通过**（多标签、书签、地址栏、历史、隐私浏览、起始页最近访问/最近关闭、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、下载、隐私脱敏、诊断导出、本地 HTTP 服务）。
 > - 真机 iPhone 15 Pro 已完成：本地视频 PiP 5 分钟（T01 PASS）、官方登录并进入云游戏（T02 PASS）、登录跨升级保持（T09 PASS）、游戏自动战斗实时 PiP（T03 PASS，单次约 5 分钟）。
 > - **T04/T05 FAIL**：后台无输入约 15 分钟后，游戏自身提示“长时间未操作游戏，已中断连接，错误码 -1022”，PiP 结束。App 没有也不应绕过服务器空闲超时。
 > - 因此，本仓库**不能**作为“可后台挂机”的交付结论，只能交付浏览器 + 画中画能力探测 + 会话诊断原型。
@@ -85,7 +85,7 @@ xcodebuild \
 最近一次结果（2026-11-16，iPhone 17 Pro / iOS 26.3.1 模拟器）：
 
 ```text
-Executed 142 tests, with 0 failures (0 unexpected)
+Executed 159 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -125,7 +125,7 @@ CloudFloat/
 │   ├── UI/                         # Home/Game/PiPStatus/Diagnostics/Settings/Capability
 │   ├── Developer/                  # 回环测试服务器、测试页实验室
 │   ├── TestPages/                  # 离线 HTML/视频测试资源
-│   └── Tests/                      # 142 项自动化测试
+│   └── Tests/                      # 159 项自动化测试
 ├── docs/                           # 可行性、架构、QA、限制、报告、隐私与审核风险
 └── artifacts/                      # 构建/截图原始证据（非源码）
 ```

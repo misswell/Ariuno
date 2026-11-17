@@ -31,7 +31,7 @@ xcodebuild \
 结果：
 
 ```text
-Executed 142 tests, with 0 failures (0 unexpected)
+Executed 159 tests, with 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -56,8 +56,10 @@ Executed 142 tests, with 0 failures (0 unexpected)
 | SessionRecoveryTests | 12 | 无自动重载、用户确认、冷却、上限、窗口清理 |
 | URLInputParserTests | 6 | 地址栏解析、HTTPS 补全、危险 scheme 拒绝 |
 | BrowserFeatureTests | 5 | PiP 跨标签绑定/来源保护、书签文件夹排序、搜索引擎、10 标签生命周期 |
+| DownloadManagerTests | 13 | 文件名清洗、目标路径冲突编号、暂停/恢复/取消回退状态、分享与续传标记、新条目置顶 |
+| AppCoordinatorStartPageTests | 4 | 起始页数据支撑：恢复最近关闭标签并路由到浏览器、无快照无操作、新建标签路由、最近关闭经协调器暴露 |
 | WebPictureInPictureTests | 6 | 平台/配置/探测门控、enter/leave 状态、M4 不可行 |
-| **合计** | **142** | |
+| **合计** | **159** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
 
@@ -106,6 +108,13 @@ Executed 142 tests, with 0 failures (0 unexpected)
 | 旋转/横竖屏 | 网页输入坐标、工具栏、安全区 | |
 | 动态岛/刘海机型 | 工具栏不被遮挡、游戏可操作 | |
 | 弱网/断网/恢复 | 不无限重试，提示，手动恢复 | |
+| 起始页：最近访问 | 显示最近浏览的网页（隐私标签不计入），点击可打开 | |
+| 起始页：最近关闭的标签页 | 显示最近关闭条目，“恢复关闭的标签页”可还原 | |
+| 起始页：新建标签页/书签/历史/下载入口 | 四个快捷入口均可用 | |
+| 下载：进度与暂停 | 下载中显示进度；暂停后状态为“已暂停” | |
+| 下载：继续（断点续传） | 暂停后可继续并完成；服务器不支持续传时如实提示 | |
+| 下载：分享 | 完成的文件可经系统分享面板分享 | |
+| 下载：取消 | 取消后状态为“已取消” | |
 
 ## 4. 30 分钟场景记录（至少 3 次）
 
@@ -158,7 +167,7 @@ Executed 142 tests, with 0 failures (0 unexpected)
 
 ## 8. 通过条件与签字
 
-- 自动化：142/142 通过（当前）。
+- 自动化：159/159 通过（当前）。
 - 真机：T01/T02/T03/T09 PASS（T03 为单次约 5 分钟实时 PiP）；T04/T05 **FAIL**（15 分钟空闲断线 -1022）。T06–T08/T10–T12 部分待补。
 - 30 分钟：第 1 次在 15 分钟失败；#2/#3 未执行。不得把 T04/T05 记为通过。
 - 结论：交付范围降级为浏览器 + 诊断原型；后台挂机不可交付。

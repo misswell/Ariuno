@@ -162,7 +162,11 @@ final class AppCoordinator: ObservableObject {
     private var lastSnapshotSignature = ""
     private var lastNetworkStatus: NetworkStatus = .unknown
 
-    init(settings: AppSettings, diagnostics: DiagnosticsStore) {
+    init(
+        settings: AppSettings,
+        diagnostics: DiagnosticsStore,
+        recentlyClosed: RecentlyClosedStore? = nil
+    ) {
         self.settings = settings
         self.diagnostics = diagnostics
 
@@ -173,7 +177,8 @@ final class AppCoordinator: ObservableObject {
         )
         self.tabs = BrowserTabManager(
             navigationPolicy: policy,
-            inPageControlEnabled: settings.enableInPagePiPButton
+            inPageControlEnabled: settings.enableInPagePiPButton,
+            recentlyClosed: recentlyClosed
         )
         self.bookmarks = BookmarkStore()
         self.session = SessionMonitor()
@@ -311,6 +316,19 @@ final class AppCoordinator: ObservableObject {
         hasStartedBrowser = true
         media.startPolling()
         session.setMediaProbePolling(media.isPolling)
+    }
+
+    /// Restores the most recently closed tab and opens the browser on it.
+    @discardableResult
+    func restoreRecentlyClosedTab() -> ClosedTabSnapshot? {
+        guard let snapshot = tabs.restoreRecentlyClosed() else { return nil }
+        route = .game
+        hasStartedBrowser = true
+        media.startPolling()
+        session.setMediaProbePolling(media.isPolling)
+        session.resetForTabSwitch(hasLoadedPage: false)
+        diagnostics.info(.navigation, "tab.restore", "已恢复最近关闭的标签页")
+        return snapshot
     }
 
     func backToHome() {
@@ -687,6 +705,12 @@ final class AppCoordinator: ObservableObject {
             self?.objectWillChange.send()
         }
         library.history.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+        bookmarks.objectWillChange.sink { [weak self] _ in
+            self?.objectWillChange.send()
+        }.store(in: &cancellables)
+        tabs.recentlyClosed.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
         pipManager.onAnyChange = { [weak self] in

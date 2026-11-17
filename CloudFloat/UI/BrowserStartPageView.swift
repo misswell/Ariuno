@@ -1,11 +1,16 @@
 import SwiftUI
 
+/// Ariuno start page: address entry, quick actions (new tab, bookmarks, history,
+/// downloads), recently visited sites and recently closed tabs. Nothing here is a
+/// hardcoded cloud-game entry; every destination comes from user data.
 struct BrowserStartPageView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var settings: AppSettings
     @State private var addressText = ""
     @State private var showCapability = false
     @State private var showHistory = false
+    @State private var showBookmarks = false
+    @State private var showDownloads = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -14,33 +19,12 @@ struct BrowserStartPageView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     header
                     addressCard
+                    quickActions
+                    recentlyVisitedSection
+                    recentlyClosedSection
+                    bookmarkSection
                     VStack(spacing: 12) {
-                        Button {
-                            showCapability = true
-                        } label: {
-                            HomeActionCard(
-                                title: "画中画能力检测",
-                                subtitle: capabilitySubtitle,
-                                systemImage: "pip",
-                                tint: .blue,
-                                badge: capabilityBadge
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        Button {
-                            showHistory = true
-                        } label: {
-                            HomeActionCard(
-                                title: "历史记录",
-                                subtitle: "按时间排列，可搜索、删除和清空",
-                                systemImage: "clock",
-                                tint: .orange,
-                                badge: nil
-                            )
-                        }
-                        .buttonStyle(.plain)
-
+                        capabilityCard
                         NavigationLink {
                             DiagnosticsView()
                         } label: {
@@ -81,12 +65,22 @@ struct BrowserStartPageView: View {
             HistoryView()
                 .environmentObject(coordinator)
         }
+        .sheet(isPresented: $showBookmarks) {
+            BookmarksView(canAddCurrentPage: false)
+                .environmentObject(coordinator)
+        }
+        .sheet(isPresented: $showDownloads) {
+            DownloadsView()
+                .environmentObject(coordinator)
+        }
         .sheet(isPresented: $showCapability) {
             PiPCapabilityView()
                 .environmentObject(coordinator)
                 .environmentObject(coordinator.settings)
         }
     }
+
+    // MARK: - Header
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -95,7 +89,7 @@ struct BrowserStartPageView: View {
                     .font(.system(size: 30, weight: .semibold))
                     .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("CloudFloat")
+                    Text("Ariuno")
                         .font(.system(size: 30, weight: .bold, design: .rounded))
                     Text("现代浏览器 · 内置画中画")
                         .font(.subheadline)
@@ -122,6 +116,8 @@ struct BrowserStartPageView: View {
             .padding(.top, 2)
         }
     }
+
+    // MARK: - Address
 
     private var addressCard: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -168,13 +164,144 @@ struct BrowserStartPageView: View {
                 .background(Color.accentColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             }
             .buttonStyle(.plain)
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+        )
+    }
 
-            if !coordinator.bookmarks.bookmarks.isEmpty {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("书签")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.secondary)
-                    ForEach(coordinator.bookmarks.bookmarks.prefix(5)) { bookmark in
+    // MARK: - Quick actions
+
+    private var quickActions: some View {
+        HStack(spacing: 10) {
+            QuickActionButton(title: "新建标签页", systemImage: "plus.square.on.square") {
+                addressFieldFocused = false
+                coordinator.createTab()
+            }
+            QuickActionButton(title: "书签", systemImage: "bookmark") {
+                showBookmarks = true
+            }
+            QuickActionButton(title: "历史", systemImage: "clock") {
+                showHistory = true
+            }
+            QuickActionButton(title: "下载", systemImage: "arrow.down.circle") {
+                showDownloads = true
+            }
+        }
+    }
+
+    // MARK: - Recently visited
+
+    private var recentlyVisitedSection: some View {
+        SectionCard(header: "最近访问", headerTrailing: "历史记录") {
+            showHistory = true
+        } content: {
+            let entries = coordinator.library.history.entries.prefix(5)
+            if entries.isEmpty {
+                Text("暂无访问记录；隐私标签页不会记录历史")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(entries)) { entry in
+                        Button {
+                            if let url = entry.url {
+                                coordinator.openURL(url)
+                            }
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "globe")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(.tint)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(entry.title.isEmpty ? entry.urlString : entry.title)
+                                        .font(.subheadline.weight(.medium))
+                                        .lineLimit(1)
+                                    Text(entryDisplayHost(entry))
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                                Spacer()
+                                Text(entryRelativeTime(entry.visitedAt))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                            }
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Recently closed tabs
+
+    private var recentlyClosedSection: some View {
+        SectionCard(header: "最近关闭的标签页") {
+            // informational header
+        } content: {
+            let snapshots = coordinator.tabs.recentlyClosed.snapshots.prefix(3)
+            if snapshots.isEmpty {
+                Text("暂无最近关闭的标签页")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(Array(snapshots)) { snapshot in
+                        HStack(spacing: 10) {
+                            Image(systemName: "arrow.uturn.backward.circle")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(.tint)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(snapshot.title.isEmpty ? snapshot.urlString : snapshot.title)
+                                    .font(.subheadline.weight(.medium))
+                                    .lineLimit(1)
+                                Text(snapshot.urlString)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                        }
+                    }
+                    Button {
+                        coordinator.restoreRecentlyClosedTab()
+                    } label: {
+                        Label("恢复关闭的标签页", systemImage: "arrow.uturn.backward")
+                            .font(.subheadline.weight(.semibold))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    // MARK: - Bookmarks
+
+    private var bookmarkSection: some View {
+        SectionCard(header: "书签", headerTrailing: "全部书签") {
+            showBookmarks = true
+        } content: {
+            let bookmarks = coordinator.bookmarks.bookmarks.prefix(5)
+            if bookmarks.isEmpty {
+                Text("在浏览网页时可通过分享菜单或书签页添加收藏")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(Array(bookmarks)) { bookmark in
                         Button {
                             if let url = bookmark.url {
                                 coordinator.openURL(url)
@@ -201,19 +328,25 @@ struct BrowserStartPageView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .padding(12)
-                .background(Color.primary.opacity(0.04), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
         }
-        .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+    }
+
+    // MARK: - Capability
+
+    private var capabilityCard: some View {
+        Button {
+            showCapability = true
+        } label: {
+            HomeActionCard(
+                title: "画中画能力检测",
+                subtitle: capabilitySubtitle,
+                systemImage: "pip",
+                tint: .blue,
+                badge: capabilityBadge
+            )
+        }
+        .buttonStyle(.plain)
     }
 
     private var footer: some View {
@@ -221,7 +354,7 @@ struct BrowserStartPageView: View {
             Text("非官方浏览器")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
-            Text("任何网页都可浏览；云游戏画中画是可选能力，需由网页视频自身支持。CloudFloat 不保存账号密码或令牌，也不宣称已经验证后台挂机成功。")
+            Text("任何网页都可浏览；画中画是可选能力，需由网页视频自身支持。Ariuno 不保存账号密码或令牌，也不宣称已经验证后台挂机成功。")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -261,6 +394,91 @@ struct BrowserStartPageView: View {
     private func openAddress() {
         addressFieldFocused = false
         coordinator.openAddressText(addressText)
+    }
+
+    private func entryDisplayHost(_ entry: HistoryEntry) -> String {
+        entry.url?.host ?? entry.urlString
+    }
+
+    private func entryRelativeTime(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.unitsStyle = .abbreviated
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+// MARK: - Building blocks
+
+private struct QuickActionButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 6) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 17, weight: .semibold))
+                Text(title)
+                    .font(.caption.weight(.medium))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.primary)
+    }
+}
+
+private struct SectionCard<Content: View>: View {
+    let header: String
+    var headerTrailing: String?
+    let headerAction: () -> Void
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(header)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if let headerTrailing {
+                    Button(action: headerAction) {
+                        Label(headerTrailing, systemImage: "chevron.right")
+                            .font(.caption.weight(.semibold))
+                            .labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 12)
+            content
+                .padding(.horizontal, 14)
+                .padding(.bottom, 12)
+        }
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
+        )
     }
 }
 
