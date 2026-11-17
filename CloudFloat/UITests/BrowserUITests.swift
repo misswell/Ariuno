@@ -59,6 +59,47 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["历史记录"].waitForExistence(timeout: 10))
     }
 
+    /// Device-only mechanical check of the HTML5 PiP lifecycle: enter PiP from the local
+    /// video page, switch tabs, return to the source, then close it and confirm the
+    /// stop-before-destroy dialog. This does NOT substitute for the cloud-game A-J
+    /// acceptance and is never reported as such.
+    func testLocalVideoPiPLifecycleOnDevice() throws {
+        try XCTSkipIf(
+            ProcessInfo.processInfo.environment["SIMULATOR_DEVICE_NAME"] != nil,
+            "System PiP is unavailable in the simulator; run on a real iPhone"
+        )
+        app.launchArguments = ["-CFOpenLocalGame"]
+        app.launch()
+
+        let webView = app.webViews.firstMatch
+        XCTAssertTrue(webView.waitForExistence(timeout: 30))
+        let pagePiPButton = webView.buttons["进入画中画（页面点击）"]
+        XCTAssertTrue(pagePiPButton.waitForExistence(timeout: 20), "本地视频页的页面内 PiP 按钮应可点击")
+        pagePiPButton.tap()
+
+        let exitPiP = app.buttons["退出画中画"]
+        XCTAssertTrue(exitPiP.waitForExistence(timeout: 15), "页面内点击后应进入系统 PiP")
+
+        // Create B and verify the PiP source is still retained when returning to it.
+        let tabsButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
+        ).firstMatch
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 10))
+        tabsButton.tap()
+        XCTAssertTrue(app.buttons["新建普通标签页"].waitForExistence(timeout: 10))
+        app.buttons["新建普通标签页"].tap()
+        XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 10), "B 标签显示浏览器首页")
+
+        // Return to A and confirm the PiP state is still bound to the source tab.
+        app.buttons["继续浏览"].tap()
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 10))
+        tabsButton.tap()
+        let sourceRow = app.staticTexts["CloudFloat · 原生视频 PiP 测试"].firstMatch
+        XCTAssertTrue(sourceRow.waitForExistence(timeout: 10), "标签列应显示 PiP 来源标签")
+        sourceRow.tap()
+        XCTAssertTrue(exitPiP.waitForExistence(timeout: 15), "切回 A 后 PiP 仍应有效")
+    }
+
     func testTabMetadataRestoresAfterRelaunch() {
         app.launch()
         let field = app.textFields["搜索或输入网址"]

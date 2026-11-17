@@ -255,7 +255,7 @@ Executed 202 tests, with 0 failures (0 unexpected)
 xcodebuild -project Ariuno.xcodeproj -scheme AriunoUITests \
   -destination 'platform=iOS Simulator,id=4F2CA7A5-367C-4D1F-B6E1-AC0D8766DC69' \
   -derivedDataPath build/SimDerivedData test
-Executed 5 tests, with 0 failures (0 unexpected)
+Executed 6 tests, with 1 test skipped and 0 failures (0 unexpected)
 ** TEST SUCCEEDED **
 ```
 
@@ -268,6 +268,7 @@ Executed 5 tests, with 0 failures (0 unexpected)
 | testBookmarksAndHistorySheetsOpenFromStartPage | 书签与历史入口可打开对应面板 | PASS |
 | testAddressBarNavigatesToTypedHost | 地址栏输入 `example.com` 后出现真实 WKWebView 且浏览器工具栏可见 | PASS |
 | testTabMetadataRestoresAfterRelaunch | 打开 example.com → 终止 App → 重启 → 标签列表中恢复该 URL | PASS |
+| testLocalVideoPiPLifecycleOnDevice | 真机本地视频：进入 PiP → 新建 B → 切回 A → PiP 仍有效；用于机械验证，不替代云游戏 A–J | 设备专用；本轮未执行 |
 
 ---
 

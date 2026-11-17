@@ -66,7 +66,7 @@ Executed 202 tests, with 0 failures (0 unexpected)
 | TabThumbnailCacheTests | 4 | Caches PNG、过期、删除/清空、不写 UserDefaults |
 | BrowserContainerTests | 2 | WebView 容器切换不重建/不重载、10 标签稳定实例 |
 | BrowserPerformanceTests | 3 | 标签创建/切换/关闭耗时、10标签 footprint、历史写入 |
-| AriunoUITests（XCUITest） | 5 | 起始页入口、新标签仍为首页、标签面板计数、地址栏导航到真实 WebView、重启后标签恢复 |
+| AriunoUITests（XCUITest） | 5 + 1 | 起始页入口、新标签仍为首页、标签面板计数、地址栏导航到真实 WebView、重启后标签恢复；另 1 项设备专用本地视频 PiP 生命周期（模拟器 skip） |
 | **合计** | **201 + 4** | |
 
 构建日志与测试日志：`build/test-final.log`、`build/release-final.log`（本地生成，不含凭证）。
