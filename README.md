@@ -2,6 +2,11 @@
 
 Ariuno 是一个 iOS 原生（Swift + SwiftUI + WKWebView）现代浏览器原型，支持多标签、书签、历史、隐私浏览和任意网址访问；云游戏画中画只是内置的可选媒体能力。登录、游玩和云游戏会话都发生在官方网页内；App 不接收账号密码，不保存令牌，也不宣称已经实现或验证“后台挂机”。
 
+> **发布状态（2026-11-17）**
+> - App Store Connect App 记录已创建：`Ariuno`（App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`）。
+> - TestFlight：版本 `1.0`、build `1` 已上传，处理状态 `VALID`，导出合规 `usesNonExemptEncryption=false`；内部组「内部测试」已创建，测试员待添加。
+> - App Store 版本 `1.0` 仅为记录，尚未提交审核；上架前仍需截图、隐私、审核信息等元数据。
+>
 > **当前状态（2026-11-17）**
 > - 源码、工程配置、测试页与开发文档已实现；Debug/Release 构建、Release Archive 与 IPA 导出成功。
 > - 自动化测试 **222 项全部通过**（多标签、标签冷启动恢复、标签缩略图、媒体轮询调度、PiP 来源安全关闭、书签、地址栏/搜索、历史、隐私浏览、起始页、下载暂停/续传/分享、状态机、媒体探测、跨域 iframe、Canvas、登录弹窗、隐私脱敏、诊断导出、本地 HTTP 服务）。

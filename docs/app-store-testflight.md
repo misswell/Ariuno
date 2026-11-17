@@ -12,17 +12,19 @@
 | 显式 App ID | 已创建：`com.misswell.Ariuno`，资源 ID `PJQF7UQ8T2` |
 | App Store 描述文件 | 已创建并安装：`Ariuno AppStore`（ID `U3V2UYVTYQ`，有效期至 2027-09-06） |
 | 分发证书 | `Apple Distribution: Guofeng Liu (U8U443D7ZL)`，证书资源 ID `J4Z29X3RMS` |
-| App Store Connect App 记录 | **尚未创建**（`asc apps list --bundle-id com.misswell.Ariuno` 为空） |
-| Apple 网页会话 | 未登录（`asc web auth status` → `authenticated:false`） |
-| 最终 Archive | 已就绪：`build/Ariuno-TF-1.xcarchive`（0.1.0 / build 1，显式 App ID，手动 App Store 签名） |
+| App Store Connect App 记录 | **已创建**：Ariuno，App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`，主要语言简体中文 |
+| App Store 版本 | iOS `1.0`（准备提交，尚未提交审核） |
+| TestFlight 构建 | **已上传并处理完成**：版本 `1.0`，build `1`，`processingState=VALID`，`usesNonExemptEncryption=false` |
+| TestFlight 内部组 | 已创建「内部测试」（ID `7b5d82a6-8d28-4a24-9779-f83e999b29f0`），尚无测试员 |
+| Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
 
 ## 1. 创建 App Store Connect App 记录
 
 Apple 的公开 API **不支持创建 App 记录**（`asc apps create` 已被移除）；`asc web apps create`
 需要 Apple 网页登录（Apple ID + 密码 + 2FA）。密码只能由账号持有人输入，Agent 不读取、不代填。
 
-当前只差这一步：Bundle ID、App Store 描述文件、Release Archive 都已准备好；网页会话登录后
-即可创建 App 记录并上传。
+App 记录已通过 Chrome 中已登录的 App Store Connect 网页创建；Release archive 已通过
+`~/.appstoreconnect/upload-testflight.sh` 上传。
 
 ### 方式 A：网页创建（推荐，最少步骤）
 
