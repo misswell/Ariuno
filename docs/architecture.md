@@ -188,8 +188,8 @@ AppCoordinator (@MainActor, composition root)
 1. 平台门控：`AVPictureInPictureController.isPictureInPictureSupported()`。
 2. 配置门控：`allowsPictureInPictureMediaPlayback`。
 3. 探测门控：有快照、有 video、有播放中的视频、video 支持 HTML5 PiP、Permissions Policy 不禁止。
-4. 原生按钮通过 `evaluateJavaScript` 调页面 `requestPiP(requestId, videoIndex)`；如果 WebKit 因缺少 transient activation 拒绝，映射为 `requiresUserGesture`，自动显示网页内 PiP 控件。
-5. 网页内控件（Shadow DOM，44pt，右上角）在真实点击事件中同步调用 `webkitSetPresentationMode('picture-in-picture')` 或 `requestPictureInPicture()`；这是 WebKit 认可的路径。
+4. 浏览器界面不再提供第二个原生 PiP 悬浮球；能力检测页/测试页仍可通过 `evaluateJavaScript` 调页面 `requestPiP(requestId, videoIndex)`。
+5. 唯一的 PiP 入口是网页内控件（Shadow DOM，44pt，默认右上角，可拖动，位置按站点记忆）；它在真实点击事件中同步调用 `webkitSetPresentationMode('picture-in-picture')` 或 `requestPictureInPicture()`；这是 WebKit 认可的路径。
 6. 页面回传 `pipResult`，原生等待 requestId、5 秒超时；enter/leave 事件驱动状态机。
 7. 用户可在设置中关闭页面内控件；已存在的子 frame 在下次导航后生效（文档已注明）。
 8. 若唯一可 PiP 的视频位于跨域子 frame，原生 `evaluateJavaScript` 无法到达；协调器返回 `requiresUserGesture` 并引导使用子 frame 自己的页面内控件，而不是误报“无视频”。

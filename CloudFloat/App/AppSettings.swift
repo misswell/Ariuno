@@ -16,10 +16,6 @@ final class AppSettings: ObservableObject {
         static let fullscreenInsetBottom = "cf.settings.fullscreenInsetBottom"
         static let fullscreenInsetLeft = "cf.settings.fullscreenInsetLeft"
         static let fullscreenInsetRight = "cf.settings.fullscreenInsetRight"
-        static let showFloatingPiPButton = "cf.settings.showFloatingPiPButton"
-        static let floatingPiPX = "cf.settings.floatingPiPX"
-        static let floatingPiPY = "cf.settings.floatingPiPY"
-        static let floatingPiPEdge = "cf.settings.floatingPiPEdge"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -49,7 +45,7 @@ final class AppSettings: ObservableObject {
     }
 
     /// Collapse the browser chrome into a draggable floating ball when entering a page.
-    /// Off by default; the bottom bar always exposes a one-tap "收起为悬浮球" button.
+    /// Off by default; the chrome always exposes a one-tap "全屏" button.
     @Published var collapseToolbarToBallOnOpen: Bool {
         didSet { defaults.set(collapseToolbarToBallOnOpen, forKey: Key.collapseToolbarToBallOnOpen) }
     }
@@ -67,10 +63,6 @@ final class AppSettings: ObservableObject {
     /// across launches and orientation changes instead of re-picking by nearest distance.
     @Published var floatingBallEdge: String {
         didSet { defaults.set(floatingBallEdge, forKey: Key.floatingBallEdge) }
-    }
-
-    @Published var floatingPiPEdge: String {
-        didSet { defaults.set(floatingPiPEdge, forKey: Key.floatingPiPEdge) }
     }
 
     /// Floating-ball diameter in points (40...80). Persisted so the chosen size survives launches.
@@ -131,19 +123,6 @@ final class AppSettings: ObservableObject {
         }
     }
 
-    /// The single PiP control is a draggable floating button; this hides it entirely.
-    @Published var showFloatingPiPButton: Bool {
-        didSet { defaults.set(showFloatingPiPButton, forKey: Key.showFloatingPiPButton) }
-    }
-
-    @Published var floatingPiPX: Double {
-        didSet { defaults.set(floatingPiPX, forKey: Key.floatingPiPX) }
-    }
-
-    @Published var floatingPiPY: Double {
-        didSet { defaults.set(floatingPiPY, forKey: Key.floatingPiPY) }
-    }
-
     private static func clampInset(_ value: Double) -> Double {
         min(max(value, 0), 80)
     }
@@ -181,8 +160,7 @@ final class AppSettings: ObservableObject {
         self.defaults = defaults
         if ProcessInfo.processInfo.arguments.contains("-CFResetFloatingBall") {
             for key in [
-                Key.floatingBallX, Key.floatingBallY, Key.floatingBallEdge,
-                Key.floatingPiPX, Key.floatingPiPY, Key.floatingPiPEdge
+                Key.floatingBallX, Key.floatingBallY, Key.floatingBallEdge
             ] {
                 defaults.removeObject(forKey: key)
             }
@@ -208,10 +186,6 @@ final class AppSettings: ObservableObject {
         self.fullscreenInsetBottom = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetBottom) as? Double ?? 0)
         self.fullscreenInsetLeft = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetLeft) as? Double ?? 0)
         self.fullscreenInsetRight = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetRight) as? Double ?? 0)
-        self.showFloatingPiPButton = defaults.object(forKey: Key.showFloatingPiPButton) as? Bool ?? true
-        self.floatingPiPX = min(max(defaults.object(forKey: Key.floatingPiPX) as? Double ?? 0.72, 0.05), 0.95)
-        self.floatingPiPY = min(max(defaults.object(forKey: Key.floatingPiPY) as? Double ?? 0.42, 0.08), 0.92)
-        self.floatingPiPEdge = defaults.string(forKey: Key.floatingPiPEdge) ?? "right"
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =

@@ -9,7 +9,6 @@ struct BrowserView: View {
     @State private var autoHideWorkItem: DispatchWorkItem?
     @State private var activeSheet: GameSheet?
     @State private var showExitConfirmation = false
-    @State private var isPiPRequestInFlight = false
     @State private var activeAlert: GameAlert?
     @State private var addressText = ""
     @State private var isBallMode = false
@@ -80,37 +79,6 @@ struct BrowserView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
-            if coordinator.settings.showFloatingPiPButton,
-               coordinator.isAnyPiPActive || pipAvailability.isAvailable {
-                GeometryReader { proxy in
-                    FloatingEdgeControl(
-                        containerSize: proxy.size,
-                        normalizedPosition: CGPoint(
-                            x: coordinator.settings.floatingPiPX,
-                            y: coordinator.settings.floatingPiPY
-                        ),
-                        preferredEdge: FloatingBallGeometry.Edge(
-                            rawValue: coordinator.settings.floatingPiPEdge
-                        ),
-                        diameter: CGFloat(coordinator.settings.floatingBallDiameter) * 0.84,
-                        tint: coordinator.isAnyPiPActive ? .green : .accentColor,
-                        icon: "pip",
-                        showsCenterDot: false,
-                        showsPiPBadge: false,
-                        accessibilityLabel: coordinator.isAnyPiPActive
-                            ? "退出画中画" : "进入画中画",
-                        onTap: { togglePiPFromFloatingControl() },
-                        onMoved: { normalized in
-                            coordinator.settings.floatingPiPX = Double(normalized.x)
-                            coordinator.settings.floatingPiPY = Double(normalized.y)
-                        },
-                        onEdgeChanged: { edge in
-                            coordinator.settings.floatingPiPEdge = edge.rawValue
-                        }
-                    )
-                }
-                .transition(.scale.combined(with: .opacity))
-            }
         }
         .statusBarHidden(coordinator.route == .game)
         .onAppear {
@@ -374,14 +342,7 @@ struct BrowserView: View {
 
             tabsBarButton
 
-            Button {
-                collapseToolbarToBall()
-            } label: {
-                Image(systemName: "rectangle.compress.vertical")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("收起为悬浮球")
+            fullscreenButton
 
             Menu {
                 Button {
@@ -536,6 +497,8 @@ struct BrowserView: View {
                 }
             }
 
+            fullscreenButton
+
             tabsBarButton
 
             Menu {
@@ -567,11 +530,6 @@ struct BrowserView: View {
                 } label: {
                     Label("主页", systemImage: "house")
                 }
-                Button {
-                    collapseToolbarToBall()
-                } label: {
-                    Label("收起为悬浮球", systemImage: "rectangle.compress.vertical")
-                }
                 Button(role: .destructive) {
                     showExitConfirmation = true
                 } label: {
@@ -601,6 +559,18 @@ struct BrowserView: View {
             return url.absoluteString
         }
         return "搜索或输入网址"
+    }
+
+    private var fullscreenButton: some View {
+        Button {
+            collapseToolbarToBall()
+        } label: {
+            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                .font(.system(size: 16, weight: .semibold))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("全屏")
+        .accessibilityHint("收起工具栏并让网页铺满屏幕")
     }
 
     private var tabsBarButton: some View {
@@ -752,27 +722,6 @@ struct BrowserView: View {
 
     // MARK: - Actions
 
-    private func attemptPiP() async {
-        guard !isPiPRequestInFlight else { return }
-        isPiPRequestInFlight = true
-        let outcome = await coordinator.requestPictureInPicture()
-        isPiPRequestInFlight = false
-
-        switch outcome {
-        case .success:
-            coordinator.showToast("已进入系统画中画", .info)
-        case .failure(let reason, _):
-            var message = reason.userMessage
-            if reason == .requiresUserGesture {
-                message += "\n\n请点击网页视频画面右上角的 PiP 按钮。若没有看到按钮，请在设置中开启“显示网页内 PiP 按钮”，并让视频重新加载后重试；WebKit 只接受来自网页内容的真实点击。"
-            }
-            if reason == .platformUnsupported {
-                message += "\n\n请使用真实 iPhone 验证；模拟器不支持系统画中画。"
-            }
-            activeAlert = .pipFailure(message)
-        }
-    }
-
     private func openAddress() {
         addressFieldFocused = false
         coordinator.openAddressText(addressText)
@@ -814,16 +763,6 @@ struct BrowserView: View {
         autoHideWorkItem?.cancel()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true
-        }
-    }
-
-    private func togglePiPFromFloatingControl() {
-        if coordinator.isAnyPiPActive || coordinator.session.pipVisible {
-            coordinator.exitPictureInPicture()
-            return
-        }
-        Task { @MainActor in
-            await attemptPiP()
         }
     }
 

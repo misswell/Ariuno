@@ -31,7 +31,7 @@ struct SettingsView: View {
             } header: {
                 Text("游戏界面")
             } footer: {
-                Text("工具栏位于底部。可随时点击“收起为悬浮球”，把工具栏缩成可拖动的小球；点击小球恢复。开启上面的选项后，进入网页时会自动收起。自动隐藏延迟为 \(Int(settings.toolbarAutoHideDelay)) 秒。")
+                Text("工具栏位于底部。可随时点击“全屏”，把工具栏缩成可拖动的小球并让网页铺满屏幕；点击小球退出全屏。开启上面的选项后，进入网页时会自动收起。自动隐藏延迟为 \(Int(settings.toolbarAutoHideDelay)) 秒。")
             }
 
             Section {
@@ -52,12 +52,11 @@ struct SettingsView: View {
             }
 
             Section {
-                Toggle("显示 PiP 悬浮按钮（可拖动）", isOn: $settings.showFloatingPiPButton)
-                Toggle("显示网页内 PiP 按钮", isOn: $settings.enableInPagePiPButton)
+                Toggle("显示网页内 PiP 按钮（可拖动）", isOn: $settings.enableInPagePiPButton)
             } header: {
                 Text("画中画")
             } footer: {
-                Text("WebKit 要求来自网页内容的真实点击才能进入 HTML5 PiP。PiP 入口是一个可拖动的悬浮按钮（四边吸附、空闲半收），不会在工具栏重复出现；关闭上面的开关可完全隐藏它。网页内 PiP 控件开关控制视频右上角的小按钮。")
+                Text("WebKit 要求来自网页内容的真实点击才能进入 HTML5 PiP。PiP 入口只有网页内一个按钮：按住即可拖动到任意位置，位置按站点记住；轻点进入画中画。关闭此开关可完全隐藏它。")
             }
 
             Section {

@@ -424,6 +424,140 @@
     return playing.filter(pipSupport)[0] || playing[0] || videos.filter(pipSupport)[0] || videos[0] || null;
   }
 
+  const BUTTON_POSITION_KEY = 'cf.pipButtonPosition.v1';
+  const BUTTON_SIZE = 44;
+  let buttonDrag = null;
+  let suppressButtonClick = false;
+  let buttonResizeListenerInstalled = false;
+
+  function readStoredButtonPosition() {
+    try {
+      const raw = window.localStorage.getItem(BUTTON_POSITION_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      if (Number.isFinite(parsed.x) && Number.isFinite(parsed.y)) {
+        return { x: parsed.x, y: parsed.y };
+      }
+    } catch (error) {
+      // Local storage can be unavailable in sandboxed frames.
+    }
+    return null;
+  }
+
+  function storeButtonPosition(point) {
+    try {
+      window.localStorage.setItem(BUTTON_POSITION_KEY, JSON.stringify(point));
+    } catch (error) {
+      // Ignore; dragging still works for this page load.
+    }
+  }
+
+  function clampButtonPosition(point) {
+    const margin = 8;
+    const width = Math.max(0, window.innerWidth || 0);
+    const height = Math.max(0, window.innerHeight || 0);
+    return {
+      x: Math.min(Math.max(margin, point.x), Math.max(margin, width - BUTTON_SIZE - margin)),
+      y: Math.min(Math.max(margin, point.y), Math.max(margin, height - BUTTON_SIZE - margin))
+    };
+  }
+
+  function setButtonPosition(point, persist) {
+    if (!buttonHost) {
+      return;
+    }
+    const clamped = clampButtonPosition(point);
+    buttonHost.style.setProperty('left', clamped.x + 'px', 'important');
+    buttonHost.style.setProperty('top', clamped.y + 'px', 'important');
+    buttonHost.style.setProperty('right', 'auto', 'important');
+    buttonHost.style.setProperty('bottom', 'auto', 'important');
+    if (persist) {
+      storeButtonPosition(clamped);
+    }
+  }
+
+  function installButtonDrag() {
+    if (!buttonElement) {
+      return;
+    }
+
+    buttonElement.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'mouse' && event.button !== 0) {
+        return;
+      }
+      const rect = buttonHost.getBoundingClientRect();
+      event.stopPropagation();
+      buttonDrag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        left: rect.left,
+        top: rect.top,
+        moved: false
+      };
+      suppressButtonClick = false;
+      try {
+        buttonElement.setPointerCapture(event.pointerId);
+      } catch (error) {
+        // Ignore.
+      }
+    }, true);
+
+    buttonElement.addEventListener('pointermove', (event) => {
+      if (!buttonDrag || event.pointerId !== buttonDrag.pointerId) {
+        return;
+      }
+      const dx = event.clientX - buttonDrag.startX;
+      const dy = event.clientY - buttonDrag.startY;
+      if (!buttonDrag.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) {
+        return;
+      }
+      buttonDrag.moved = true;
+      event.preventDefault();
+      event.stopPropagation();
+      setButtonPosition({ x: buttonDrag.left + dx, y: buttonDrag.top + dy }, false);
+    }, true);
+
+    const finishDrag = (event) => {
+      if (!buttonDrag || event.pointerId !== buttonDrag.pointerId) {
+        return;
+      }
+      const moved = buttonDrag.moved;
+      buttonDrag = null;
+      try {
+        buttonElement.releasePointerCapture(event.pointerId);
+      } catch (error) {
+        // Ignore.
+      }
+      if (!moved) {
+        return;
+      }
+      suppressButtonClick = true;
+      window.setTimeout(() => { suppressButtonClick = false; }, 400);
+      if (buttonHost) {
+        const rect = buttonHost.getBoundingClientRect();
+        storeButtonPosition(clampButtonPosition({ x: rect.left, y: rect.top }));
+      }
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    buttonElement.addEventListener('pointerup', finishDrag, true);
+    buttonElement.addEventListener('pointercancel', finishDrag, true);
+
+    if (!buttonResizeListenerInstalled) {
+      buttonResizeListenerInstalled = true;
+      window.addEventListener('resize', () => {
+        if (!buttonHost) {
+          return;
+        }
+        const rect = buttonHost.getBoundingClientRect();
+        setButtonPosition({ x: rect.left, y: rect.top }, true);
+      }, { passive: true });
+    }
+  }
+
   function ensureButton() {
     if (buttonHost) {
       return;
@@ -471,7 +605,8 @@
             -webkit-user-select: none;
             user-select: none;
             -webkit-tap-highlight-color: transparent;
-            touch-action: manipulation;
+            -webkit-user-drag: none;
+            touch-action: none;
           }
           button:active { transform: scale(0.94); }
           .icon {
@@ -514,13 +649,24 @@
       `;
       buttonElement = shadow.querySelector('button');
       toastElement = shadow.querySelector('.toast');
-      buttonElement.addEventListener('click', () => {
+      buttonElement.addEventListener('click', (event) => {
+        if (suppressButtonClick) {
+          suppressButtonClick = false;
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         const requestId = 'ui-' + Math.random().toString(16).slice(2, 10);
         requestPiP(requestId, null, true);
       }, true);
       const parent = document.documentElement || document.body;
       if (parent) {
         parent.appendChild(buttonHost);
+      }
+      installButtonDrag();
+      const storedPosition = readStoredButtonPosition();
+      if (storedPosition) {
+        setButtonPosition(storedPosition, false);
       }
     } catch (error) {
       buttonHost = null;
@@ -532,6 +678,15 @@
       return;
     }
     toastElement.textContent = message;
+    if (buttonHost) {
+      const rect = buttonHost.getBoundingClientRect();
+      const width = Math.min(200, Math.max(0, window.innerWidth - 16));
+      const left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
+      const top = Math.min(rect.bottom + 8, Math.max(8, window.innerHeight - 64));
+      toastElement.style.left = left + 'px';
+      toastElement.style.top = top + 'px';
+      toastElement.style.right = 'auto';
+    }
     toastElement.style.display = 'block';
     if (toastTimer !== null) {
       window.clearTimeout(toastTimer);

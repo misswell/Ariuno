@@ -149,13 +149,14 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
         addressButton.tap()
 
-        let collapse = app.buttons["收起为悬浮球"]
-        XCTAssertTrue(collapse.waitForExistence(timeout: 5))
-        collapse.tap()
+        let fullscreen = app.buttons["全屏"]
+        XCTAssertTrue(fullscreen.waitForExistence(timeout: 5))
+        fullscreen.tap()
 
         let ball = app.buttons["展开工具栏"]
-        XCTAssertTrue(ball.waitForExistence(timeout: 5), "收起后应出现可点击的悬浮球")
-        XCTAssertFalse(collapse.exists, "悬浮球模式下底部工具栏应隐藏")
+        XCTAssertTrue(ball.waitForExistence(timeout: 5), "全屏后应出现可点击的悬浮球")
+        XCTAssertFalse(fullscreen.exists, "全屏模式下底部工具栏应隐藏")
+        XCTAssertFalse(app.buttons["添加书签"].exists, "全屏模式下两行工具栏应隐藏")
 
         // After 3 seconds of inactivity the ball should tuck into the right edge.
         sleep(4)
@@ -172,7 +173,7 @@ final class BrowserUITests: XCTestCase {
         add(collapsed)
 
         ball.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).tap()
-        XCTAssertTrue(collapse.waitForExistence(timeout: 5), "点击悬浮球应恢复工具栏")
+        XCTAssertTrue(app.buttons["添加书签"].waitForExistence(timeout: 5), "点击悬浮球应恢复工具栏")
 
         let expanded = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         expanded.name = "floating-ball-expanded"
@@ -197,9 +198,9 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
         addressButton.tap()
 
-        let collapse = app.buttons["收起为悬浮球"]
-        XCTAssertTrue(collapse.waitForExistence(timeout: 5))
-        collapse.tap()
+        let fullscreen = app.buttons["全屏"]
+        XCTAssertTrue(fullscreen.waitForExistence(timeout: 5))
+        fullscreen.tap()
 
         let ball = app.buttons["展开工具栏"]
         XCTAssertTrue(ball.waitForExistence(timeout: 5))
@@ -219,7 +220,7 @@ final class BrowserUITests: XCTestCase {
 
         XCTAssertTrue(ball.waitForExistence(timeout: 5), "横屏后悬浮球仍应存在")
         XCTAssertTrue(ball.exists, "横屏后悬浮球仍应存在")
-        XCTAssertFalse(collapse.exists, "横屏后工具栏应保持收起状态")
+        XCTAssertFalse(app.buttons["全屏"].exists, "横屏后工具栏应保持收起状态")
         let edgeValue = ball.value as? String ?? ""
         XCTAssertTrue(
             edgeValue.contains("右侧"),
@@ -240,14 +241,15 @@ final class BrowserUITests: XCTestCase {
 
         let addressButton = app.buttons["地址栏，点击编辑"]
         XCTAssertTrue(addressButton.waitForExistence(timeout: 15), "默认应显示单行紧凑控制栏")
-        XCTAssertFalse(app.buttons["收起为悬浮球"].exists, "单行模式不应显示完整工具栏")
+        XCTAssertTrue(app.buttons["全屏"].exists, "单行控制栏应保留全屏入口")
+        XCTAssertFalse(app.buttons["添加书签"].exists, "单行模式不应显示完整工具栏")
         let compactShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         compactShot.name = "chrome-compact"
         compactShot.lifetime = .keepAlways
         add(compactShot)
 
         addressButton.tap()
-        XCTAssertTrue(app.buttons["收起为悬浮球"].waitForExistence(timeout: 5), "点击地址栏应展开两行工具栏")
+        XCTAssertTrue(app.buttons["添加书签"].waitForExistence(timeout: 5), "点击地址栏应展开两行工具栏")
         let expandedShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         expandedShot.name = "chrome-expanded"
         expandedShot.lifetime = .keepAlways
@@ -258,7 +260,28 @@ final class BrowserUITests: XCTestCase {
         page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
 
         XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击页面应收起为单行")
-        XCTAssertFalse(app.buttons["收起为悬浮球"].exists)
+        XCTAssertFalse(app.buttons["添加书签"].exists)
+    }
+
+    func testFullscreenButtonCollapsesChromeAndBallRestoresIt() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let addressButton = app.buttons["地址栏，点击编辑"]
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
+
+        let fullscreen = app.buttons["全屏"]
+        XCTAssertTrue(fullscreen.exists, "控制栏应提供明确的全屏按钮")
+        fullscreen.tap()
+
+        let ball = app.buttons["展开工具栏"]
+        XCTAssertTrue(ball.waitForExistence(timeout: 5), "全屏后应出现悬浮球")
+        XCTAssertFalse(addressButton.exists, "全屏后不应保留底部控制栏")
+
+        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击悬浮球应退出全屏并恢复控制栏")
     }
 
     func testAddressBarNavigatesToTypedHost() {
