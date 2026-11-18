@@ -96,8 +96,8 @@ final class BrowserUITests: XCTestCase {
         ).firstMatch
         XCTAssertTrue(tabsButton.waitForExistence(timeout: 10))
         tabsButton.tap()
-        XCTAssertTrue(app.buttons["新建普通标签页"].waitForExistence(timeout: 10))
-        app.buttons["新建普通标签页"].tap()
+        XCTAssertTrue(app.buttons["新建标签页"].waitForExistence(timeout: 10))
+        app.buttons["新建标签页"].tap()
         XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 10), "B 标签显示浏览器首页")
 
         // Return to A and confirm the PiP state is still bound to the source tab.
