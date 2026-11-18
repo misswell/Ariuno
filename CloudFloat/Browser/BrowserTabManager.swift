@@ -287,6 +287,10 @@ final class BrowserTabManager: ObservableObject {
     }
 
     private func makeSession(isPrivate: Bool = false, id: UUID = UUID()) -> BrowserSession {
+        // Normal tabs MUST use .default(). It is the persistent store that keeps cookies,
+        // localStorage, IndexedDB and the HTTP cache across app launches and App Store
+        // updates. Only private tabs use the shared non-persistent store. Never clear this
+        // store at launch and never uninstall the app when installing a new build.
         let session = BrowserSession(
             id: id,
             navigationPolicy: navigationPolicy,

@@ -44,7 +44,7 @@ AppCoordinator (@MainActor, composition root)
 
 - `allowsInlineMediaPlayback = true`
 - `allowsPictureInPictureMediaPlayback = true`
-- 普通标签共享 `.default()` 网站数据存储（Cookie/本地存储）；
+- 普通标签共享 `.default()` 网站数据存储（Cookie/本地存储/IndexedDB/HTTP 缓存），App 重启和正常升级后保留；
 - 隐私标签共享同一个 `.nonPersistent()` 网站数据存储，且不进入历史/最近关闭；
 - `mediaTypesRequiringUserActionForPlayback = .audio`（保留正常用户播放语义）
 - `preferences.isElementFullscreenEnabled = true`

@@ -52,7 +52,7 @@ Ariuno 本体：
 
 - 诊断：内存中，App 退出即丢失；用户可在“诊断”中清除。
 - 设置：保留在 UserDefaults，直到用户重置/删除 App。
-- 网站数据/Cookie：由 WKWebView 持久化；只有用户在“设置 → 清除网站数据”明确确认后，App 才调用 `WKWebsiteDataStore` 删除全部网站数据类型（Cookie、本地存储、IndexedDB、缓存等），并退出当前会话/PiP。
+- 网站数据/Cookie：由 WKWebView 的 `.default()` 持久化存储管理；正常 App 重启和 App Store 升级不会清除，登录状态按网站策略保留。只有用户在“设置 → 清除网站数据”明确确认后，App 才调用 `WKWebsiteDataStore` 删除全部网站数据类型（Cookie、本地存储、IndexedDB、缓存等），并退出当前会话/PiP；卸载 App 或系统卸载未使用的 App 也会由 iOS 删除整个容器。
 - 导出文件：分享结束后 App 删除临时文件；用户另存/转发的副本由用户管理。
 
 ## 6. 安全措施
