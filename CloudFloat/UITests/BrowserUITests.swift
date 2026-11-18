@@ -86,7 +86,12 @@ final class BrowserUITests: XCTestCase {
         field.typeText("exam")
 
         let suggestion = app.buttons.matching(
-            NSPredicate(format: "label CONTAINS %@", "Example Domain")
+            NSPredicate(
+                format: "(label BEGINSWITH %@ OR label BEGINSWITH %@) AND label CONTAINS %@",
+                "历史记录，",
+                "书签，",
+                "example.com"
+            )
         ).firstMatch
         XCTAssertTrue(suggestion.waitForExistence(timeout: 10), "历史记录应出现地址建议")
         suggestion.tap()

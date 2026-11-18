@@ -130,6 +130,7 @@ final class AppCoordinator: ObservableObject {
     let diagnostics: DiagnosticsStore
     let tabs: BrowserTabManager
     let bookmarks: BookmarkStore
+    let shortcuts: StartPageShortcutStore
     let session: SessionMonitor
     let network: NetworkObserver
     let recovery: WebContentRecovery
@@ -185,6 +186,7 @@ final class AppCoordinator: ObservableObject {
             persistence: tabPersistence
         )
         self.bookmarks = BookmarkStore()
+        self.shortcuts = StartPageShortcutStore()
         self.session = SessionMonitor()
         self.network = NetworkObserver()
         self.recovery = WebContentRecovery()

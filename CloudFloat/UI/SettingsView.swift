@@ -90,6 +90,12 @@ struct SettingsView: View {
 
             Section {
                 NavigationLink {
+                    ShortcutSettingsView()
+                        .environmentObject(coordinator)
+                } label: {
+                    Label("常用网站", systemImage: "square.grid.2x2")
+                }
+                NavigationLink {
                     PiPCapabilityView()
                         .environmentObject(coordinator)
                         .environmentObject(settings)

@@ -173,14 +173,21 @@ struct BrowserStartPageView: View {
                 .foregroundStyle(.secondary)
                 .padding(.top, 2)
 
+            if coordinator.shortcuts.shortcuts.isEmpty {
+                Text("常用网站为空。可在 设置 → 常用网站 中添加。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
             LazyVGrid(
                 columns: [GridItem(.adaptive(minimum: 92), spacing: 10)],
                 spacing: 10
             ) {
-                ForEach(StartPageShortcut.defaults) { shortcut in
+                ForEach(coordinator.shortcuts.shortcuts) { shortcut in
                     Button {
                         addressFieldFocused = false
-                        coordinator.openURL(shortcut.url)
+                        if let url = shortcut.url {
+                            coordinator.openURL(url)
+                        }
                     } label: {
                         VStack(spacing: 5) {
                             Image(systemName: shortcut.systemImage)
@@ -198,6 +205,7 @@ struct BrowserStartPageView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.primary)
                 }
+            }
             }
         }
     }
@@ -402,23 +410,6 @@ struct BrowserStartPageView: View {
 }
 
 // MARK: - Building blocks
-
-/// Built-in start-page shortcuts. This list is compiled into the app (it is not user-editable);
-/// user-managed destinations live in Bookmarks and History.
-struct StartPageShortcut: Identifiable, Equatable {
-    let id: String
-    let title: String
-    let systemImage: String
-    let urlString: String
-
-    var url: URL { URL(string: urlString)! }
-
-    static let defaults: [StartPageShortcut] = [
-        StartPageShortcut(id: "bing", title: "Bing", systemImage: "b.circle", urlString: "https://www.bing.com"),
-        StartPageShortcut(id: "github", title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right", urlString: "https://github.com"),
-        StartPageShortcut(id: "starrail-cloud", title: "云星穹铁道", systemImage: "cloud.fill", urlString: "https://sr.mihoyo.com/cloud/")
-    ]
-}
 
 private struct QuickActionButton: View {
     let title: String
