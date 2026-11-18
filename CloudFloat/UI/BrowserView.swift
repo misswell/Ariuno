@@ -294,12 +294,8 @@ struct BrowserView: View {
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
+        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
     }
 
     private var bottomBar: some View {
@@ -399,12 +395,8 @@ struct BrowserView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 9)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
+        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
         .padding(.bottom, 2)
     }
 
@@ -451,7 +443,18 @@ struct BrowserView: View {
                 .padding(.bottom, 8)
             }
         }
-        .background(Color.black)
+        .background(
+            LinearGradient(
+                colors: [Color(white: 0.09), Color.black],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        )
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(.white.opacity(0.06))
+                .frame(height: 0.5)
+        }
     }
 
     /// Safari-like single-row bar used whenever the chrome is not expanded.
@@ -543,12 +546,8 @@ struct BrowserView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
+        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
     }
 
     private var compactAddressText: String {
@@ -627,7 +626,7 @@ struct BrowserView: View {
             Image(systemName: systemName)
                 .font(.system(size: 14, weight: .semibold))
                 .frame(width: 32, height: 32)
-                .background(Color.primary.opacity(0.08), in: Circle())
+                .liquidGlassCircle(tint: .primary.opacity(0.04), interactive: true)
         }
         .buttonStyle(.plain)
         .disabled(disabled)
@@ -654,7 +653,7 @@ struct BrowserView: View {
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
-            .background(Color.black.opacity(0.22), in: Capsule())
+            .liquidGlassCapsule(tint: .white.opacity(0.04), interactive: true)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("显示工具栏")
@@ -903,7 +902,7 @@ private struct GameBanner: View {
             }
         }
         .padding(12)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .liquidGlass(cornerRadius: 16, tint: .orange.opacity(0.05))
         .padding(.horizontal, 12)
     }
 }

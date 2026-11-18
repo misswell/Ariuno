@@ -176,14 +176,7 @@ struct BrowserStartPageView: View {
             .buttonStyle(.plain)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+        .liquidGlass(cornerRadius: 24, tint: .accentColor.opacity(0.08))
     }
 
     // MARK: - Quick actions
@@ -230,10 +223,7 @@ struct BrowserStartPageView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-                        )
+                        .liquidGlass(cornerRadius: 12, tint: .accentColor.opacity(0.06), interactive: true)
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -429,15 +419,27 @@ struct BrowserStartPageView: View {
     }
 
     private var background: some View {
-        LinearGradient(
-            colors: [
-                Color(uiColor: .systemBackground),
-                Color(uiColor: .secondarySystemBackground).opacity(0.7),
-                Color.accentColor.opacity(0.06)
-            ],
-            startPoint: .top,
-            endPoint: .bottomTrailing
-        )
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color(uiColor: .systemBackground),
+                    Color(uiColor: .secondarySystemBackground).opacity(0.7),
+                    Color.accentColor.opacity(0.06)
+                ],
+                startPoint: .top,
+                endPoint: .bottomTrailing
+            )
+            Circle()
+                .fill(Color.accentColor.opacity(0.18))
+                .frame(width: 320, height: 320)
+                .blur(radius: 90)
+                .offset(x: -130, y: -260)
+            Circle()
+                .fill(Color.purple.opacity(0.14))
+                .frame(width: 360, height: 360)
+                .blur(radius: 100)
+                .offset(x: 150, y: 300)
+        }
     }
 
     private func openAddress() {
@@ -493,14 +495,7 @@ private struct QuickActionButton: View {
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-            )
+            .liquidGlass(cornerRadius: 14, tint: .accentColor.opacity(0.08), interactive: true)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -537,14 +532,7 @@ private struct SectionCard<Content: View>: View {
                 .padding(.horizontal, 14)
                 .padding(.bottom, 12)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+        .liquidGlass(cornerRadius: 20, tint: .accentColor.opacity(0.04))
     }
 }
 
@@ -589,14 +577,7 @@ private struct HomeActionCard: View {
                 .foregroundStyle(.tertiary)
         }
         .padding(14)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Color(uiColor: .secondarySystemBackground).opacity(0.72))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(Color.primary.opacity(0.05), lineWidth: 1)
-        )
+        .liquidGlass(cornerRadius: 18, tint: tint.opacity(0.08), interactive: true)
         .contentShape(Rectangle())
     }
 }
