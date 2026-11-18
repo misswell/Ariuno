@@ -7,7 +7,6 @@ struct BrowserStartPageView: View {
     @EnvironmentObject private var coordinator: AppCoordinator
     @EnvironmentObject private var settings: AppSettings
     @State private var addressText = ""
-    @State private var showCapability = false
     @State private var showHistory = false
     @State private var showBookmarks = false
     @State private var showDownloads = false
@@ -23,34 +22,18 @@ struct BrowserStartPageView: View {
                     recentlyVisitedSection
                     recentlyClosedSection
                     bookmarkSection
-                    VStack(spacing: 12) {
-                        capabilityCard
-                        NavigationLink {
-                            DiagnosticsView()
-                        } label: {
-                            HomeActionCard(
-                                title: "诊断",
-                                subtitle: "会话状态、媒体事件与隐私化日志",
-                                systemImage: "waveform.path.ecg",
-                                tint: .teal,
-                                badge: coordinator.session.state.displayName
-                            )
-                        }
-                        .buttonStyle(.plain)
-
-                        NavigationLink {
-                            SettingsView()
-                        } label: {
-                            HomeActionCard(
-                                title: "设置",
-                                subtitle: "工具栏、PiP 控件、音频与网站数据",
-                                systemImage: "gearshape",
-                                tint: .indigo,
-                                badge: nil
-                            )
-                        }
-                        .buttonStyle(.plain)
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        HomeActionCard(
+                            title: "设置",
+                            subtitle: "工具栏、PiP 控件、音频与网站数据",
+                            systemImage: "gearshape",
+                            tint: .indigo,
+                            badge: nil
+                        )
                     }
+                    .buttonStyle(.plain)
                     footer
                 }
                 .padding(.horizontal, 20)
@@ -73,11 +56,6 @@ struct BrowserStartPageView: View {
             DownloadsView()
                 .environmentObject(coordinator)
         }
-        .sheet(isPresented: $showCapability) {
-            PiPCapabilityView()
-                .environmentObject(coordinator)
-                .environmentObject(coordinator.settings)
-        }
     }
 
     // MARK: - Header
@@ -97,34 +75,7 @@ struct BrowserStartPageView: View {
                 }
                 Spacer()
             }
-            if !isScreenshotMode {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(coordinator.pip.platformSupportsPiP ? Color.green : Color.orange)
-                        .frame(width: 7, height: 7)
-                    Text(coordinator.pip.platformSupportsPiP ? "系统支持画中画" : "当前环境不支持系统画中画")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    if coordinator.hasStartedBrowser {
-                    Text(coordinator.session.state.displayName)
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                            .background(Color.secondary.opacity(0.12), in: Capsule())
-                    }
-                }
-                .padding(.top, 2)
-            }
         }
-    }
-
-    private var isScreenshotMode: Bool {
-        #if DEBUG
-        return ProcessInfo.processInfo.arguments.contains("-CFScreenshotMode")
-        #else
-        return false
-        #endif
     }
 
     // MARK: - Address
@@ -155,6 +106,28 @@ struct BrowserStartPageView: View {
             .padding(12)
             .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
 
+            if addressFieldFocused, !addressSuggestions.isEmpty {
+                VStack(spacing: 0) {
+                    ForEach(addressSuggestions) { suggestion in
+                        Button {
+                            addressText = suggestion.urlString
+                            addressFieldFocused = false
+                            openAddress()
+                        } label: {
+                            AddressSuggestionRow(suggestion: suggestion)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(
+                            "\(suggestion.kind == .bookmark ? "书签" : "历史记录")，\(suggestion.displayTitle)，\(suggestion.displayHost)"
+                        )
+                        if suggestion.id != addressSuggestions.last?.id {
+                            Divider().opacity(0.35)
+                        }
+                    }
+                }
+                .liquidGlass(cornerRadius: 16, tint: .accentColor.opacity(0.05))
+            }
+
             Button {
                 coordinator.continueBrowsing()
             } label: {
@@ -184,10 +157,6 @@ struct BrowserStartPageView: View {
     private var quickActions: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                QuickActionButton(title: "新建", systemImage: "plus.square.on.square") {
-                    addressFieldFocused = false
-                    coordinator.createTab()
-                }
                 QuickActionButton(title: "书签", systemImage: "bookmark") {
                     showBookmarks = true
                 }
@@ -369,23 +338,6 @@ struct BrowserStartPageView: View {
         }
     }
 
-    // MARK: - Capability
-
-    private var capabilityCard: some View {
-        Button {
-            showCapability = true
-        } label: {
-            HomeActionCard(
-                title: "画中画能力检测",
-                subtitle: capabilitySubtitle,
-                systemImage: "pip",
-                tint: .blue,
-                badge: capabilityBadge
-            )
-        }
-        .buttonStyle(.plain)
-    }
-
     private var footer: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("非官方浏览器")
@@ -397,25 +349,6 @@ struct BrowserStartPageView: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.top, 6)
-    }
-
-    private var capabilityBadge: String? {
-        if isScreenshotMode { return nil }
-        if !coordinator.pip.platformSupportsPiP {
-            return "不支持"
-        }
-        if coordinator.media.lastSnapshotReceivedAt == nil {
-            return "待检测"
-        }
-        return coordinator.pip.availability.isAvailable ? "可用" : "不可用"
-    }
-
-    private var capabilitySubtitle: String {
-        if isScreenshotMode { return "平台、WebView 与网页视频三层能力检查" }
-        if !coordinator.pip.platformSupportsPiP {
-            return "此设备/模拟器不支持 PiP，检测仍会展示媒体结构"
-        }
-        return "平台、WebView 与网页视频三层能力检查"
     }
 
     private var background: some View {
@@ -440,6 +373,15 @@ struct BrowserStartPageView: View {
                 .blur(radius: 100)
                 .offset(x: 150, y: 300)
         }
+    }
+
+    private var addressSuggestions: [AddressSuggestion] {
+        guard !coordinator.browser.isPrivate else { return [] }
+        return AddressSuggestionProvider.suggestions(
+            query: addressText,
+            history: coordinator.library.history.entries,
+            bookmarks: coordinator.bookmarks.bookmarks
+        )
     }
 
     private func openAddress() {

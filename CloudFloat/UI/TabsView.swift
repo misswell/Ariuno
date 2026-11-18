@@ -10,6 +10,16 @@ struct TabsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section {
+                    Button {
+                        coordinator.openHome()
+                        dismiss()
+                    } label: {
+                        Label("返回主页", systemImage: "house")
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .accessibilityLabel("返回主页")
+                }
                 openedSection
                 if !coordinator.tabs.recentlyClosed.snapshots.isEmpty {
                     recentSection

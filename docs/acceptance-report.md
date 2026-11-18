@@ -20,8 +20,8 @@
 - 浏览器底座为系统 `WKWebView`，**没有**打包 Chromium/Gecko/独立 JS 引擎/第三方浏览器 SDK。
 - 第三方运行时依赖 **0**；`project.yml` 无 dependencies，包内无 `.framework`/`.dylib`。
 - 浏览器核心 **17 个 Swift 文件 / 2,889 行 / 136 KB**（目标 10～20 个文件，达标）。
-- 自动化测试 **222 项全部通过**（0 failures），其中相对 159 项基线新增 63 项浏览器/标签/PiP 生命周期测试。
-- 另有 **10 项 XCUITest**：9 项在模拟器上真实点击 UI 并通过（起始页入口、新建标签页/标签计数、书签/历史面板、地址栏输入 example.com 后出现真实 WKWebView、终止并重启后恢复标签元数据、单行/两行控制栏切换、全屏与退出全屏、工具栏收起为悬浮球并展开、横屏后悬浮球保持原边）；1 项设备专用 PiP 生命周期测试在模拟器跳过。
+- 自动化测试 **226 项全部通过**（0 failures），其中相对 159 项基线新增 63 项浏览器/标签/PiP 生命周期测试。
+- 另有 **13 项 XCUITest**：11 项在模拟器上真实点击 UI 并通过（起始页入口、新建标签页/标签计数、标签页返回主页、书签/历史面板、地址栏输入 example.com 后出现真实 WKWebView、历史地址建议、终止并重启后恢复标签元数据、单行控制栏原地编辑、全屏与退出全屏、工具栏收起为悬浮球并展开、横屏后悬浮球保持原边）；2 项设备专用测试在模拟器跳过。
 - Release Archive + IPA 导出成功：**IPA 723,820 字节（0.70 MB）**，`.app` 1.7 MB，主可执行文件 1,657,200 字节，Assets.car 76 KB。
 - 真机：最新 Debug 包已安装到 iPhone 15 Pro；设备锁定，无法启动，故**新架构真机 PiP 标签切换矩阵 UNVERIFIED**。
 - 历史真机 PiP 证据（重构前构建）仍保留：T01/T02/T03/T09 PASS；T04/T05 FAIL（服务器 -1022 空闲断开，未绕过）。
@@ -156,7 +156,7 @@
 |---|---|---|---|
 | 1 | 使用系统 WKWebView，不包含独立浏览器引擎 | PASS | 包内无 framework/dylib；仅 WebKit 系统框架 |
 | 2 | 没有大型第三方依赖 | PASS | 依赖数 0 |
-| 3 | 可以作为普通浏览器正常使用 | PASS（模拟器） | 模拟器安装启动、起始页/浏览器壳截图；11 项导航测试；9 项 XCUITest 真实点击通过 |
+| 3 | 可以作为普通浏览器正常使用 | PASS（模拟器） | 模拟器安装启动、起始页/浏览器壳截图；11 项导航测试；11 项 XCUITest 真实点击通过 |
 | 4 | 没有固定云游戏网址 | PASS | 全仓无 mihoyo/hoyoverse 业务地址；无 `gameURL` |
 | 5 | 地址栏支持搜索和网址输入 | PASS | `URLInputParserTests` 10 项 + 搜索引擎设置 |
 | 6 | 多标签真实切换正常 | PASS（模拟器） | 10 标签容器测试；切换 200 次 0.3 ms |
@@ -265,14 +265,16 @@ Executed 7 tests, with 1 test skipped and 0 failures (0 unexpected)
 
 | 测试 | 验证内容 | 结果 |
 |---|---|---|
-| testStartPageExposesBrowserEntryPoints | 首次启动显示 Ariuno 起始页、搜索框、新建/书签/历史/下载入口、常用网站 | PASS |
+| testStartPageExposesBrowserEntryPoints | 首次启动显示 Ariuno 起始页、搜索框、书签/历史/下载入口、常用网站 | PASS |
 | testNewTabStaysOnStartPageAndTabSheetCountsIt | 新建标签仍显示起始页（不自动打开游戏），标签面板显示数量 | PASS |
 | testBookmarksAndHistorySheetsOpenFromStartPage | 书签与历史入口可打开对应面板 | PASS |
 | testAddressBarNavigatesToTypedHost | 地址栏输入 `example.com` 后出现真实 WKWebView 且浏览器工具栏可见 | PASS |
 | testTabMetadataRestoresAfterRelaunch | 打开 example.com → 终止 App → 重启 → 标签列表中恢复该 URL | PASS |
-| testCompactChromeExpandsAndPageTapCollapses | 默认单行控制栏；点击地址栏展开两行；点击网页收回单行 | PASS |
+| testCompactChromeStaysSingleRowWhileEditing | 控制栏始终单行；点击地址在胶囊内原地编辑；点击网页收起键盘且不展开第二行 | PASS |
+| testAddressBarShowsHistorySuggestions | 访问 example.com 后回到首页输入 `exam`，历史建议出现并可打开 | PASS |
+| testTabsSheetCanReturnHome | 标签页列表点击“返回主页”回到浏览器首页 | PASS |
 | testFullscreenButtonCollapsesChromeAndBallRestoresIt | 单行控制栏的“全屏”按钮隐藏底部控制栏并显示悬浮球；点击小球退出全屏 | PASS |
-| testToolbarCollapsesToFloatingBallAndExpands | 展开两行后点“全屏”收起为悬浮球，3 秒后吸附右侧边缘；点击小球恢复工具栏 | PASS |
+| testToolbarCollapsesToFloatingBallAndExpands | 从更多菜单点“全屏”收起为悬浮球，3 秒后吸附右侧边缘；点小球打开全屏菜单，再退出全屏 | PASS |
 | testFloatingBallRemapsAfterOrientationChange | 竖屏吸附右侧，转横屏后仍吸附右侧（不因就近距离跳到下方） | PASS |
 | testLocalVideoPiPLifecycleOnDevice | 真机本地视频：进入 PiP → 新建 B → 切回 A → PiP 仍有效；用于机械验证，不替代云游戏 A–J | 设备专用；本轮未执行 |
 

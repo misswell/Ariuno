@@ -62,13 +62,19 @@ final class AppReviewDemoUITests: XCTestCase {
         }
         sleep(1)
 
-        // Fullscreen round-trip.
-        if app.buttons["全屏"].waitForExistence(timeout: 5) {
-            app.buttons["全屏"].tap()
-            sleep(2)
-            let ball = app.buttons["展开工具栏"]
-            if ball.waitForExistence(timeout: 5) {
-                ball.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
+        // Fullscreen round-trip (the compact bar keeps it in the more menu).
+        if more.waitForExistence(timeout: 5) {
+            more.tap()
+            if app.buttons["全屏"].waitForExistence(timeout: 3) {
+                app.buttons["全屏"].tap()
+                sleep(2)
+                let ball = app.buttons["全屏菜单"]
+                if ball.waitForExistence(timeout: 5) {
+                    ball.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+                    if app.buttons["退出全屏"].waitForExistence(timeout: 5) {
+                        app.buttons["退出全屏"].tap()
+                    }
+                }
             }
         }
         sleep(2)

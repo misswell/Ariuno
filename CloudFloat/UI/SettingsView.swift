@@ -89,6 +89,25 @@ struct SettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    PiPCapabilityView()
+                        .environmentObject(coordinator)
+                        .environmentObject(settings)
+                } label: {
+                    Label("画中画能力检测", systemImage: "pip")
+                }
+                NavigationLink {
+                    DiagnosticsView()
+                } label: {
+                    Label("会话诊断", systemImage: "waveform.path.ecg")
+                }
+            } header: {
+                Text("工具与诊断")
+            } footer: {
+                Text("能力检测用于排查 PiP 不可用的原因；会话诊断只保存在内存中，导出前会脱敏。两者都不再占用浏览器首页。")
+            }
+
+            Section {
                 Picker("搜索引擎", selection: $settings.searchEngine) {
                     ForEach(SearchEngine.allCases) { engine in
                         Text(engine.displayName).tag(engine)

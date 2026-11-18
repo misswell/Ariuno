@@ -15,7 +15,7 @@ final class BrowserUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["新建"].exists)
+        XCTAssertFalse(app.buttons["新建"].exists, "无可见效果的新建入口已移除")
         XCTAssertTrue(app.buttons["书签"].exists)
         XCTAssertTrue(app.buttons["历史"].exists)
         XCTAssertTrue(app.buttons["下载"].exists)
@@ -30,8 +30,17 @@ final class BrowserUITests: XCTestCase {
 
     func testNewTabStaysOnStartPageAndTabSheetCountsIt() {
         app.launch()
-        XCTAssertTrue(app.buttons["新建"].waitForExistence(timeout: 15))
-        app.buttons["新建"].tap()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let tabsButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
+        ).firstMatch
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 15))
+        tabsButton.tap()
+        XCTAssertTrue(app.buttons["新建标签页"].waitForExistence(timeout: 10))
+        app.buttons["新建标签页"].tap()
 
         // A fresh tab is a start page, never a hardcoded game page.
         XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 10))
@@ -40,9 +49,6 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(continueButton.waitForExistence(timeout: 10))
         continueButton.tap()
 
-        let tabsButton = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
-        ).firstMatch
         XCTAssertTrue(tabsButton.waitForExistence(timeout: 15))
         tabsButton.tap()
 
@@ -55,6 +61,54 @@ final class BrowserUITests: XCTestCase {
         shot.name = "appstore-tabs"
         shot.lifetime = .keepAlways
         add(shot)
+    }
+
+    func testAddressBarShowsHistorySuggestions() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 25))
+        sleep(2)
+
+        let tabsButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
+        ).firstMatch
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 10))
+        tabsButton.tap()
+        let home = app.buttons["返回主页"]
+        XCTAssertTrue(home.waitForExistence(timeout: 5))
+        home.tap()
+
+        let field = app.textFields["搜索或输入网址"]
+        XCTAssertTrue(field.waitForExistence(timeout: 10))
+        field.tap()
+        field.typeText("exam")
+
+        let suggestion = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "Example Domain")
+        ).firstMatch
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 10), "历史记录应出现地址建议")
+        suggestion.tap()
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 25))
+    }
+
+    func testTabsSheetCanReturnHome() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let tabsButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
+        ).firstMatch
+        XCTAssertTrue(tabsButton.waitForExistence(timeout: 15))
+        tabsButton.tap()
+
+        let home = app.buttons["返回主页"]
+        XCTAssertTrue(home.waitForExistence(timeout: 10), "标签页列表应提供返回主页")
+        home.tap()
+        XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 10), "应回到浏览器首页")
     }
 
     func testBookmarksAndHistorySheetsOpenFromStartPage() {
@@ -145,15 +199,14 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
 
-        let addressButton = app.buttons["地址栏，点击编辑"]
-        XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
-        addressButton.tap()
-
+        let more = app.buttons["更多操作"]
+        XCTAssertTrue(more.waitForExistence(timeout: 15))
+        more.tap()
         let fullscreen = app.buttons["全屏"]
         XCTAssertTrue(fullscreen.waitForExistence(timeout: 5))
         fullscreen.tap()
 
-        let ball = app.buttons["展开工具栏"]
+        let ball = app.buttons["全屏菜单"]
         XCTAssertTrue(ball.waitForExistence(timeout: 5), "全屏后应出现可点击的悬浮球")
         XCTAssertFalse(fullscreen.exists, "全屏模式下底部工具栏应隐藏")
         XCTAssertFalse(app.buttons["添加书签"].exists, "全屏模式下两行工具栏应隐藏")
@@ -172,8 +225,11 @@ final class BrowserUITests: XCTestCase {
         collapsed.lifetime = .keepAlways
         add(collapsed)
 
-        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.5)).tap()
-        XCTAssertTrue(app.buttons["添加书签"].waitForExistence(timeout: 5), "点击悬浮球应恢复工具栏")
+        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+        let exitFullscreen = app.buttons["退出全屏"]
+        XCTAssertTrue(exitFullscreen.waitForExistence(timeout: 5), "点击悬浮球应先打开全屏菜单")
+        exitFullscreen.tap()
+        XCTAssertTrue(app.buttons["地址栏，点击编辑"].waitForExistence(timeout: 5), "退出全屏后应恢复单行工具栏")
 
         let expanded = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         expanded.name = "floating-ball-expanded"
@@ -194,15 +250,14 @@ final class BrowserUITests: XCTestCase {
         XCTAssertLessThan(app.frame.width, app.frame.height, "设备应处于竖屏")
         start.tap()
 
-        let addressButton = app.buttons["地址栏，点击编辑"]
-        XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
-        addressButton.tap()
-
+        let more = app.buttons["更多操作"]
+        XCTAssertTrue(more.waitForExistence(timeout: 15))
+        more.tap()
         let fullscreen = app.buttons["全屏"]
         XCTAssertTrue(fullscreen.waitForExistence(timeout: 5))
         fullscreen.tap()
 
-        let ball = app.buttons["展开工具栏"]
+        let ball = app.buttons["全屏菜单"]
         XCTAssertTrue(ball.waitForExistence(timeout: 5))
         XCTAssertTrue(
             (ball.value as? String ?? "").contains("右侧"),
@@ -233,33 +288,39 @@ final class BrowserUITests: XCTestCase {
         add(landscapeShot)
     }
 
-    func testCompactChromeExpandsAndPageTapCollapses() {
+    func testCompactChromeStaysSingleRowWhileEditing() {
         app.launch()
         let start = app.buttons["开始浏览"]
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
 
         let addressButton = app.buttons["地址栏，点击编辑"]
-        XCTAssertTrue(addressButton.waitForExistence(timeout: 15), "默认应显示单行紧凑控制栏")
-        XCTAssertTrue(app.buttons["全屏"].exists, "单行控制栏应保留全屏入口")
-        XCTAssertFalse(app.buttons["添加书签"].exists, "单行模式不应显示完整工具栏")
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 15), "默认应显示单行控制栏")
+        XCTAssertTrue(app.buttons["更多操作"].exists, "单行控制栏应有独立更多按钮")
+        XCTAssertTrue(
+            app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")).firstMatch.exists,
+            "单行控制栏应有独立标签按钮"
+        )
+
         let compactShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         compactShot.name = "chrome-compact"
         compactShot.lifetime = .keepAlways
         add(compactShot)
 
         addressButton.tap()
-        XCTAssertTrue(app.buttons["添加书签"].waitForExistence(timeout: 5), "点击地址栏应展开两行工具栏")
-        let expandedShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        expandedShot.name = "chrome-expanded"
-        expandedShot.lifetime = .keepAlways
-        add(expandedShot)
+        XCTAssertTrue(app.textFields.firstMatch.waitForExistence(timeout: 5), "地址栏应原地进入编辑")
+        XCTAssertFalse(app.buttons["添加书签"].exists, "编辑时不应展开第二行工具栏")
+
+        let editingShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        editingShot.name = "chrome-editing"
+        editingShot.lifetime = .keepAlways
+        add(editingShot)
 
         let page = app.webViews.firstMatch
         XCTAssertTrue(page.waitForExistence(timeout: 10))
-        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4)).tap()
 
-        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击页面应收起为单行")
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击页面应收起键盘并保持单行")
         XCTAssertFalse(app.buttons["添加书签"].exists)
     }
 
@@ -272,16 +333,23 @@ final class BrowserUITests: XCTestCase {
         let addressButton = app.buttons["地址栏，点击编辑"]
         XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
 
+        let more = app.buttons["更多操作"]
+        XCTAssertTrue(more.exists, "单行控制栏应有更多按钮")
+        more.tap()
         let fullscreen = app.buttons["全屏"]
-        XCTAssertTrue(fullscreen.exists, "控制栏应提供明确的全屏按钮")
+        XCTAssertTrue(fullscreen.waitForExistence(timeout: 5), "更多菜单应提供全屏入口")
         fullscreen.tap()
 
-        let ball = app.buttons["展开工具栏"]
+        let ball = app.buttons["全屏菜单"]
         XCTAssertTrue(ball.waitForExistence(timeout: 5), "全屏后应出现悬浮球")
         XCTAssertFalse(addressButton.exists, "全屏后不应保留底部控制栏")
 
-        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.3, dy: 0.5)).tap()
-        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击悬浮球应退出全屏并恢复控制栏")
+        ball.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap()
+        XCTAssertFalse(addressButton.exists, "点击悬浮球不应直接退出全屏")
+        let exitFullscreen = app.buttons["退出全屏"]
+        XCTAssertTrue(exitFullscreen.waitForExistence(timeout: 5), "点击悬浮球应先打开全屏菜单")
+        exitFullscreen.tap()
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "从菜单选择退出全屏后应恢复控制栏")
     }
 
     func testAddressBarNavigatesToTypedHost() {

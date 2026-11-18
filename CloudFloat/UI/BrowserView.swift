@@ -12,7 +12,8 @@ struct BrowserView: View {
     @State private var activeAlert: GameAlert?
     @State private var addressText = ""
     @State private var isBallMode = false
-    @State private var chromeExpanded = false
+    @State private var showFullscreenMenu = false
+    @State private var isEditingAddress = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -29,12 +30,11 @@ struct BrowserView: View {
                 VStack(spacing: 0) {
                     ZStack {
                         webContent
-                        if chromeExpanded {
-                            // First tap on the page dismisses the expanded chrome/keyboard.
-                            // The page itself receives the next tap.
+                        if addressFieldFocused {
+                            // One row always: the first page tap just dismisses the keyboard.
                             Color.clear
                                 .contentShape(Rectangle())
-                                .onTapGesture { collapseChrome() }
+                                .onTapGesture { addressFieldFocused = false }
                                 .accessibilityHidden(true)
                         }
                     }
@@ -65,8 +65,8 @@ struct BrowserView: View {
                         icon: nil,
                         showsCenterDot: true,
                         showsPiPBadge: coordinator.isAnyPiPActive,
-                        accessibilityLabel: "展开工具栏",
-                        onTap: { expandToolbarFromBall() },
+                        accessibilityLabel: "全屏菜单",
+                        onTap: { showFullscreenMenu = true },
                         onMoved: { normalized in
                             coordinator.settings.floatingBallX = Double(normalized.x)
                             coordinator.settings.floatingBallY = Double(normalized.y)
@@ -79,6 +79,41 @@ struct BrowserView: View {
                 .transition(.scale.combined(with: .opacity))
             }
 
+        }
+        .confirmationDialog(
+            "全屏菜单",
+            isPresented: $showFullscreenMenu,
+            titleVisibility: .visible
+        ) {
+            Button("退出全屏") {
+                expandToolbarFromBall()
+            }
+            if coordinator.browser.canGoForward {
+                Button("前进") {
+                    coordinator.browser.goForward()
+                }
+            }
+            Button("刷新页面") {
+                coordinator.browser.reload()
+            }
+            Button("书签") {
+                activeSheet = .bookmarks
+            }
+            Button("历史记录") {
+                activeSheet = .history
+            }
+            Button("下载") {
+                activeSheet = .downloads
+            }
+            Button("主页") {
+                coordinator.openHome()
+            }
+            Button("退出会话", role: .destructive) {
+                showExitConfirmation = true
+            }
+            Button("取消", role: .cancel) {}
+        } message: {
+            Text("当前为全屏模式")
         }
         .statusBarHidden(coordinator.route == .game)
         .onAppear {
@@ -97,7 +132,6 @@ struct BrowserView: View {
             guard newRoute == .game else { return }
             withAnimation(.easeInOut(duration: 0.18)) {
                 toolbarVisible = true
-                chromeExpanded = false
             }
             if coordinator.settings.collapseToolbarToBallOnOpen {
                 isBallMode = true
@@ -161,245 +195,6 @@ struct BrowserView: View {
         }
     }
 
-    // MARK: - Address bar
-
-    private var addressBar: some View {
-        VStack(spacing: 6) {
-            if coordinator.browser.estimatedProgress < 0.995 {
-                ProgressView(value: coordinator.browser.estimatedProgress)
-                    .progressViewStyle(.linear)
-                    .tint(.accentColor)
-                    .padding(.horizontal, 2)
-            }
-
-            if !addressFieldFocused, !coordinator.browser.displayTitle.isEmpty {
-                Text(coordinator.browser.displayTitle)
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 4)
-            }
-
-            HStack(spacing: 8) {
-                if coordinator.browser.isPrivate {
-                    Label("隐私", systemImage: "mask")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 6)
-                        .background(Color.primary.opacity(0.06), in: Capsule())
-                }
-
-                navigationButton(
-                    systemName: "chevron.left",
-                    accessibilityLabel: "后退",
-                    disabled: !coordinator.browser.canGoBack
-                ) {
-                    coordinator.browser.goBack()
-                }
-                navigationButton(
-                    systemName: "chevron.right",
-                    accessibilityLabel: "前进",
-                    disabled: !coordinator.browser.canGoForward
-                ) {
-                    coordinator.browser.goForward()
-                }
-
-                HStack(spacing: 6) {
-                    Image(systemName: securityIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(securityIcon == "globe" ? .orange : .secondary)
-                    if let url = coordinator.browser.currentURL,
-                       url.scheme?.lowercased() == "http" {
-                        Text("不安全")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(.orange)
-                    }
-                    TextField(
-                        "搜索或输入网址",
-                        text: $addressText
-                    )
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .keyboardType(.URL)
-                    .submitLabel(.go)
-                    .focused($addressFieldFocused)
-                    .font(.system(size: 13, weight: .medium))
-                    .lineLimit(1)
-                    .onSubmit {
-                        openAddress()
-                    }
-                    if addressFieldFocused, !addressText.isEmpty {
-                        Button {
-                            addressText = ""
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("清空地址栏")
-                    }
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
-                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .frame(maxWidth: .infinity)
-                .contextMenu {
-                    if let url = coordinator.browser.currentURL,
-                       url.absoluteString != "about:blank" {
-                        Button {
-                            UIPasteboard.general.string = url.absoluteString
-                            coordinator.showToast("已复制网址", .info)
-                        } label: {
-                            Label("复制网址", systemImage: "doc.on.doc")
-                        }
-                    }
-                    Button {
-                        if let value = UIPasteboard.general.string, !value.isEmpty {
-                            addressText = value
-                            addressFieldFocused = true
-                        }
-                    } label: {
-                        Label("粘贴", systemImage: "doc.on.clipboard")
-                    }
-                    Button {
-                        addressText = ""
-                        addressFieldFocused = true
-                    } label: {
-                        Label("清空输入", systemImage: "xmark.circle")
-                    }
-                }
-
-                navigationButton(
-                    systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise",
-                    accessibilityLabel: coordinator.browser.isLoading ? "停止加载" : "重新加载",
-                    disabled: false
-                ) {
-                    if coordinator.browser.isLoading {
-                        coordinator.browser.stop()
-                    } else {
-                        coordinator.browser.reload()
-                    }
-                }
-                navigationButton(
-                    systemName: "square.on.square",
-                    accessibilityLabel: "标签页",
-                    disabled: false
-                ) {
-                    activeSheet = .tabs
-                }
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
-        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
-    }
-
-    private var bottomBar: some View {
-        HStack(spacing: 20) {
-            Button {
-                guard let url = coordinator.browser.currentURL,
-                      url.absoluteString != "about:blank" else { return }
-                coordinator.bookmarks.add(
-                    title: coordinator.browser.pageTitle,
-                    url: url
-                )
-                coordinator.showToast("已添加书签", .info)
-            } label: {
-                Image(systemName: "bookmark")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .buttonStyle(.plain)
-            .disabled(coordinator.browser.isShowingBlankPage)
-            .accessibilityLabel("添加书签")
-
-            if let url = coordinator.browser.currentURL,
-               url.absoluteString != "about:blank" {
-                ShareLink(item: url) {
-                    Image(systemName: "square.and.arrow.up")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .accessibilityLabel("分享当前网页")
-            }
-
-            Spacer(minLength: 0)
-
-            Button {
-                activeSheet = .bookmarks
-            } label: {
-                Image(systemName: "book")
-                    .font(.system(size: 16, weight: .semibold))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("书签")
-
-            tabsBarButton
-
-            fullscreenButton
-
-            Menu {
-                Button {
-                    activeSheet = .status
-                } label: {
-                    Label("会话状态", systemImage: "square.stack.3d.up")
-                }
-                Button {
-                    activeSheet = .capability
-                } label: {
-                    Label("画中画能力检测", systemImage: "pip")
-                }
-                Button {
-                    activeSheet = .bookmarks
-                } label: {
-                    Label("书签", systemImage: "book")
-                }
-                Button {
-                    activeSheet = .history
-                } label: {
-                    Label("历史记录", systemImage: "clock")
-                }
-                Button {
-                    activeSheet = .downloads
-                } label: {
-                    Label("下载", systemImage: "arrow.down.circle")
-                }
-                Button {
-                    activeSheet = .diagnostics
-                } label: {
-                    Label("诊断", systemImage: "waveform.path.ecg")
-                }
-                Divider()
-                Button {
-                    coordinator.openHome()
-                } label: {
-                    Label("主页", systemImage: "house")
-                }
-                Button {
-                    coordinator.requestUserReload()
-                } label: {
-                    Label("重新加载页面", systemImage: "arrow.clockwise")
-                }
-                Button(role: .destructive) {
-                    showExitConfirmation = true
-                } label: {
-                    Label("退出会话", systemImage: "xmark.circle")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 17, weight: .semibold))
-            }
-            .accessibilityLabel("更多操作")
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 9)
-        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
-        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
-        .padding(.bottom, 2)
-    }
-
     private var webContent: some View {
         GeometryReader { proxy in
             let insets = contentInsets
@@ -423,19 +218,11 @@ struct BrowserView: View {
                 }
                 .padding(.trailing, 12)
                 .padding(.vertical, 8)
-            } else if chromeExpanded {
-                VStack(spacing: 8) {
-                    sessionBanner
-                    addressBar
-                        .padding(.horizontal, 12)
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    bottomBar
-                        .padding(.horizontal, 12)
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 8)
             } else {
                 VStack(spacing: 4) {
+                    if addressFieldFocused, !addressSuggestions.isEmpty {
+                        addressSuggestionList
+                    }
                     sessionBanner
                     compactBar
                 }
@@ -457,97 +244,225 @@ struct BrowserView: View {
         }
     }
 
-    /// Safari-like single-row bar used whenever the chrome is not expanded.
-    private var compactBar: some View {
-        HStack(spacing: 10) {
-            navigationButton(
-                systemName: "chevron.left",
-                accessibilityLabel: "后退",
-                disabled: !coordinator.browser.canGoBack
-            ) {
-                coordinator.browser.goBack()
-            }
+    // MARK: - Address bar
 
-            Button {
-                expandChrome(focusAddress: true)
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: securityIcon)
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(securityIcon == "globe" ? .orange : .secondary)
+    private var compactBar: some View {
+        HStack(spacing: 8) {
+            compactBackButton
+            compactAddressPill
+            compactTabsButton
+            compactMoreButton
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+    }
+
+    private var compactBackButton: some View {
+        Button {
+            coordinator.browser.goBack()
+        } label: {
+            Image(systemName: "chevron.left")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .liquidGlassCircle(tint: .white.opacity(0.05), interactive: true)
+                .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
+        }
+        .buttonStyle(.plain)
+        .disabled(!coordinator.browser.canGoBack)
+        .opacity(coordinator.browser.canGoBack ? 1 : 0.4)
+        .accessibilityLabel("后退")
+    }
+
+    private var compactAddressPill: some View {
+        HStack(spacing: 6) {
+            Image(systemName: securityIcon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(securityIcon == "globe" ? .orange : .secondary)
+
+            if isEditingAddress {
+                TextField("搜索或输入网址", text: $addressText)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .keyboardType(.URL)
+                    .submitLabel(.go)
+                    .focused($addressFieldFocused)
+                    .font(.system(size: 13, weight: .medium))
+                    .lineLimit(1)
+                    .onSubmit { openAddress() }
+                    .onAppear {
+                        DispatchQueue.main.async {
+                            addressFieldFocused = true
+                        }
+                    }
+                    .onChange(of: addressFieldFocused) { _, focused in
+                        if !focused {
+                            isEditingAddress = false
+                        }
+                    }
+                if !addressText.isEmpty {
+                    Button {
+                        addressText = ""
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("清空地址栏")
+                }
+            } else {
+                Button {
+                    isEditingAddress = true
+                } label: {
                     Text(compactAddressText)
                         .font(.system(size: 13, weight: .medium))
                         .lineLimit(1)
-                    Spacer(minLength: 0)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
+                .accessibilityLabel("地址栏，点击编辑")
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("地址栏，点击编辑")
 
-            navigationButton(
-                systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise",
-                accessibilityLabel: coordinator.browser.isLoading ? "停止加载" : "重新加载",
-                disabled: false
-            ) {
+            Button {
                 if coordinator.browser.isLoading {
                     coordinator.browser.stop()
                 } else {
                     coordinator.browser.reload()
                 }
+            } label: {
+                Image(systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise")
+                    .font(.system(size: 13, weight: .semibold))
+                    .frame(width: 28, height: 28)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .accessibilityLabel(coordinator.browser.isLoading ? "停止加载" : "重新加载")
+        }
+        .padding(.leading, 12)
+        .padding(.trailing, 6)
+        .frame(maxWidth: .infinity)
+        .frame(height: 44)
+        .liquidGlassCapsule(tint: .white.opacity(0.05))
+        .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
+    }
 
-            fullscreenButton
+    private var compactTabsButton: some View {
+        Button {
+            activeSheet = .tabs
+        } label: {
+            Image(systemName: "square.on.square")
+                .font(.system(size: 16, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .liquidGlass(cornerRadius: 14, tint: .white.opacity(0.05), interactive: true)
+                .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
+    }
 
-            tabsBarButton
+    private var compactMoreButton: some View {
+        Menu {
+            Button {
+                collapseToolbarToBall()
+            } label: {
+                Label("全屏", systemImage: "arrow.up.left.and.arrow.down.right")
+            }
+            Button {
+                guard let url = coordinator.browser.currentURL,
+                      url.absoluteString != "about:blank" else { return }
+                coordinator.bookmarks.add(
+                    title: coordinator.browser.pageTitle,
+                    url: url
+                )
+                coordinator.showToast("已添加书签", .info)
+            } label: {
+                Label("添加书签", systemImage: "bookmark")
+            }
+            .disabled(coordinator.browser.isShowingBlankPage)
+            if let url = coordinator.browser.currentURL,
+               url.absoluteString != "about:blank" {
+                ShareLink(item: url) {
+                    Label("分享当前网页", systemImage: "square.and.arrow.up")
+                }
+            }
+            Divider()
+            if coordinator.browser.canGoForward {
+                Button {
+                    coordinator.browser.goForward()
+                } label: {
+                    Label("前进", systemImage: "chevron.right")
+                }
+            }
+            Divider()
+            Button {
+                activeSheet = .bookmarks
+            } label: {
+                Label("书签", systemImage: "book")
+            }
+            Button {
+                activeSheet = .history
+            } label: {
+                Label("历史记录", systemImage: "clock")
+            }
+            Button {
+                activeSheet = .downloads
+            } label: {
+                Label("下载", systemImage: "arrow.down.circle")
+            }
+            Divider()
+            Button {
+                coordinator.openHome()
+            } label: {
+                Label("主页", systemImage: "house")
+            }
+            Button(role: .destructive) {
+                showExitConfirmation = true
+            } label: {
+                Label("退出会话", systemImage: "xmark.circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 17, weight: .semibold))
+                .frame(width: 44, height: 44)
+                .liquidGlass(cornerRadius: 14, tint: .white.opacity(0.05), interactive: true)
+                .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
+        }
+        .accessibilityLabel("更多操作")
+    }
 
-            Menu {
-                if coordinator.browser.canGoForward {
+    private var addressSuggestions: [AddressSuggestion] {
+        guard !coordinator.browser.isPrivate else { return [] }
+        return AddressSuggestionProvider.suggestions(
+            query: addressText,
+            history: coordinator.library.history.entries,
+            bookmarks: coordinator.bookmarks.bookmarks
+        )
+    }
+
+    private var addressSuggestionList: some View {
+        ScrollView {
+            VStack(spacing: 0) {
+                ForEach(addressSuggestions) { suggestion in
                     Button {
-                        coordinator.browser.goForward()
+                        addressText = suggestion.urlString
+                        openAddress()
                     } label: {
-                        Label("前进", systemImage: "chevron.right")
+                        AddressSuggestionRow(suggestion: suggestion)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(
+                        "\(suggestion.kind == .bookmark ? "书签" : "历史记录")，\(suggestion.displayTitle)，\(suggestion.displayHost)"
+                    )
+                    if suggestion.id != addressSuggestions.last?.id {
+                        Divider().opacity(0.35)
                     }
                 }
-                Button {
-                    activeSheet = .bookmarks
-                } label: {
-                    Label("书签", systemImage: "book")
-                }
-                Button {
-                    activeSheet = .history
-                } label: {
-                    Label("历史记录", systemImage: "clock")
-                }
-                Button {
-                    activeSheet = .downloads
-                } label: {
-                    Label("下载", systemImage: "arrow.down.circle")
-                }
-                Divider()
-                Button {
-                    coordinator.openHome()
-                } label: {
-                    Label("主页", systemImage: "house")
-                }
-                Button(role: .destructive) {
-                    showExitConfirmation = true
-                } label: {
-                    Label("退出会话", systemImage: "xmark.circle")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.system(size: 17, weight: .semibold))
             }
-            .accessibilityLabel("更多操作")
         }
+        .frame(maxHeight: 210)
+        .liquidGlass(cornerRadius: 16, tint: .accentColor.opacity(0.05))
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .liquidGlass(cornerRadius: 18, tint: .accentColor.opacity(0.06))
-        .shadow(color: .black.opacity(0.22), radius: 12, y: 4)
     }
 
     private var compactAddressText: String {
@@ -560,33 +475,12 @@ struct BrowserView: View {
         return "搜索或输入网址"
     }
 
-    private var fullscreenButton: some View {
-        Button {
-            collapseToolbarToBall()
-        } label: {
-            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                .font(.system(size: 16, weight: .semibold))
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("全屏")
-        .accessibilityHint("收起工具栏并让网页铺满屏幕")
-    }
-
     private var tabsBarButton: some View {
         Button {
             activeSheet = .tabs
         } label: {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: "square.on.square")
-                    .font(.system(size: 16, weight: .semibold))
-                Text("\(coordinator.tabs.sessions.count)")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 4)
-                    .padding(.vertical, 1)
-                    .background(Color.accentColor, in: Capsule())
-                    .offset(x: 9, y: -7)
-            }
+            Image(systemName: "square.on.square")
+                .font(.system(size: 16, weight: .semibold))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
@@ -614,24 +508,6 @@ struct BrowserView: View {
             return "lock.fill"
         }
         return "globe"
-    }
-
-    private func navigationButton(
-        systemName: String,
-        accessibilityLabel: String,
-        disabled: Bool,
-        action: @escaping () -> Void
-    ) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.system(size: 14, weight: .semibold))
-                .frame(width: 32, height: 32)
-                .liquidGlassCircle(tint: .primary.opacity(0.04), interactive: true)
-        }
-        .buttonStyle(.plain)
-        .disabled(disabled)
-        .opacity(disabled ? 0.4 : 1)
-        .accessibilityLabel(accessibilityLabel)
     }
 
     private var toolbarHandle: some View {
@@ -725,36 +601,11 @@ struct BrowserView: View {
         addressFieldFocused = false
         coordinator.openAddressText(addressText)
         syncAddressText()
-        withAnimation(.easeInOut(duration: 0.2)) {
-            chromeExpanded = false
-        }
     }
 
     private func syncAddressText() {
         guard !addressFieldFocused else { return }
         addressText = coordinator.browser.currentURL?.absoluteString ?? ""
-    }
-
-    private func expandChrome(focusAddress: Bool = false) {
-        autoHideWorkItem?.cancel()
-        withAnimation(.easeInOut(duration: 0.2)) {
-            toolbarVisible = true
-            chromeExpanded = true
-        }
-        if focusAddress {
-            DispatchQueue.main.async {
-                addressFieldFocused = true
-            }
-        }
-        scheduleAutoHide()
-    }
-
-    private func collapseChrome() {
-        addressFieldFocused = false
-        withAnimation(.easeInOut(duration: 0.2)) {
-            chromeExpanded = false
-        }
-        scheduleAutoHide()
     }
 
     private func collapseToolbarToBall() {
