@@ -19,7 +19,8 @@
 | App Store 元数据 | 已填：副标题、描述、关键词、支持/营销/隐私 URL；分类 工具 + 效率；免费；174 个地区（不含中国大陆）；内容权利声明；审核联系人/备注 |
 | App Store 截图 | 已上传 3 张 iPhone 6.5" + 1 张 iPad 13" 截图 |
 | 年龄分级 | 已声明“无限制网页访问”；最终分级以 App Store Connect 计算为准 |
-| 待办 | 仅剩 App 隐私声明（需网页登录）；API 已确认其余提交条件通过 |
+| App 隐私 | 已发布“未收集数据” |
+| App Review | **已提交**：2026-11-18，submission `b9684975-1fcc-4b8d-9c1f-71e5de3ad816`，状态 `WAITING_FOR_REVIEW` |
 | Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
 
 ## 1. 创建 App Store Connect App 记录
