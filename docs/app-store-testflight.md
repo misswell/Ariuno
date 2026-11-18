@@ -7,13 +7,13 @@
 
 | 项目 | 状态 |
 |---|---|
-| App Store Connect API | `asc` 3.1.2，默认 profile `rork-admin`，Admin key `5KDZSQND5Q` |
+| App Store Connect API | `asc` 7.0.0，默认 profile `rork-admin`，Admin key `5KDZSQND5Q` |
 | Team ID | `U8U443D7ZL`（Guofeng Liu） |
 | 显式 App ID | 已创建：`com.misswell.Ariuno`，资源 ID `PJQF7UQ8T2` |
 | App Store 描述文件 | 已创建并安装：`Ariuno AppStore`（ID `U3V2UYVTYQ`，有效期至 2027-09-06） |
 | 分发证书 | `Apple Distribution: Guofeng Liu (U8U443D7ZL)`，证书资源 ID `J4Z29X3RMS` |
 | App Store Connect App 记录 | **已创建**：Ariuno，App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`，主要语言简体中文 |
-| App Store 版本 | iOS `1.0`（准备提交，尚未提交审核） |
+| App Store 版本 | iOS `1.0`（已提交审核） |
 | TestFlight 构建 | **已上传并处理完成**：版本 `1.0`，build `1`，`processingState=VALID`，`usesNonExemptEncryption=false` |
 | TestFlight 内部组 | 已创建「内部测试」；`misswell@foxmail.com` 已加入并发送邀请 |
 | App Store 元数据 | 已填：副标题、描述、关键词、支持/营销/隐私 URL；分类 工具 + 效率；免费；174 个地区（不含中国大陆）；内容权利声明；审核联系人/备注 |
@@ -22,6 +22,11 @@
 | App 隐私 | 已发布“未收集数据” |
 | App Review | **已提交**：2026-11-18，submission `b9684975-1fcc-4b8d-9c1f-71e5de3ad816`，状态 `WAITING_FOR_REVIEW` |
 | Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
+
+> **注意（2026-11-18）**：已在审核的 build `1.0 (1)` **不包含**提交后新增的单行控制栏、
+> Safari 式非全屏布局、PiP 占位提示条移除、悬浮球吸附边持久化等改动。这些改动已推送到
+> `main`。若希望它们出现在 App Store 版本中，需要递增 build 号上传 build 2，并在
+> App Store Connect 将版本重新提交审核（会替换当前审核中的 build）。
 
 ## 1. 创建 App Store Connect App 记录
 
