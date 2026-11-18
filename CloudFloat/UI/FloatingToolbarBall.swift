@@ -7,7 +7,7 @@ import SwiftUI
 /// rounded phones the safe-area top/bottom can be 60+ pt, which made a top/bottom-snapped
 /// ball look "far from the edge". A small fixed margin keeps all four edges consistent.
 enum FloatingBallGeometry {
-    enum Edge: Equatable {
+    enum Edge: String, Equatable {
         case left, right, top, bottom
     }
 
@@ -118,6 +118,7 @@ enum FloatingBallGeometry {
 struct FloatingEdgeControl: View {
     let containerSize: CGSize
     let normalizedPosition: CGPoint
+    let preferredEdge: FloatingBallGeometry.Edge?
     let diameter: CGFloat
     let tint: Color
     let icon: String?
@@ -126,6 +127,7 @@ struct FloatingEdgeControl: View {
     let accessibilityLabel: String
     let onTap: () -> Void
     let onMoved: (CGPoint) -> Void
+    let onEdgeChanged: (FloatingBallGeometry.Edge) -> Void
 
     @State private var position: CGPoint?
     @State private var normalizedAnchor: CGPoint?
@@ -183,6 +185,7 @@ struct FloatingEdgeControl: View {
                     dragOrigin = nil
                     let edge = FloatingBallGeometry.nearestEdge(currentPoint, in: containerSize)
                     lastEdge = edge
+                    onEdgeChanged(edge)
                     let snapped = FloatingBallGeometry.visibleEdgePoint(
                         currentPoint,
                         in: containerSize,
@@ -211,7 +214,7 @@ struct FloatingEdgeControl: View {
                     fromNormalized: normalizedPosition,
                     in: containerSize
                 )
-                let edge = FloatingBallGeometry.nearestEdge(mapped, in: containerSize)
+                let edge = preferredEdge ?? FloatingBallGeometry.nearestEdge(mapped, in: containerSize)
                 lastEdge = edge
                 position = FloatingBallGeometry.visibleEdgePoint(
                     mapped,
@@ -219,6 +222,7 @@ struct FloatingEdgeControl: View {
                     diameter: diameter,
                     edge: edge
                 )
+                onEdgeChanged(edge)
                 persist(position!)
             }
             scheduleIdleCollapse()
@@ -272,6 +276,30 @@ struct FloatingEdgeControl: View {
     /// position instead of jumping to a different edge.
     private func relayout(from oldSize: CGSize, to newSize: CGSize) {
         guard newSize.width > 0, newSize.height > 0 else { return }
+
+        // SwiftUI can deliver the first container-size change (for example when the keyboard
+        // dismisses as the toolbar collapses) before onAppear. Initialise from the persisted
+        // normalized anchor here instead of deriving an anchor from a stale old size.
+        if position == nil, lastEdge == nil {
+            normalizedAnchor = normalizedPosition
+            let mapped = FloatingBallGeometry.point(
+                fromNormalized: normalizedPosition,
+                in: newSize
+            )
+            let edge = preferredEdge ?? FloatingBallGeometry.nearestEdge(mapped, in: newSize)
+            lastEdge = edge
+            let placed = FloatingBallGeometry.visibleEdgePoint(
+                mapped,
+                in: newSize,
+                diameter: diameter,
+                edge: edge
+            )
+            position = placed
+            onEdgeChanged(edge)
+            persist(placed)
+            return
+        }
+
         let anchor: CGPoint
         if let stored = normalizedAnchor {
             anchor = stored
@@ -281,23 +309,34 @@ struct FloatingEdgeControl: View {
             anchor = normalizedPosition
         }
         let mapped = FloatingBallGeometry.point(fromNormalized: anchor, in: newSize)
-        withAnimation(.easeInOut(duration: 0.2)) {
-            if isIdleCollapsed {
-                position = FloatingBallGeometry.idleEdgePoint(
-                    mapped,
-                    in: newSize,
-                    diameter: diameter,
-                    edge: lastEdge
-                )
-            } else {
-                position = FloatingBallGeometry.clamp(
-                    mapped,
-                    in: newSize,
-                    diameter: diameter
-                )
-            }
+        let finalPoint: CGPoint
+        if isIdleCollapsed {
+            finalPoint = FloatingBallGeometry.idleEdgePoint(
+                mapped,
+                in: newSize,
+                diameter: diameter,
+                edge: lastEdge
+            )
+        } else if let edge = lastEdge {
+            // Keep the ball hugging the same screen edge after portrait/landscape/PiP
+            // changes; only the position along that edge follows the normalized anchor.
+            finalPoint = FloatingBallGeometry.visibleEdgePoint(
+                mapped,
+                in: newSize,
+                diameter: diameter,
+                edge: edge
+            )
+        } else {
+            finalPoint = FloatingBallGeometry.clamp(
+                mapped,
+                in: newSize,
+                diameter: diameter
+            )
         }
-        let normalized = FloatingBallGeometry.normalized(mapped, in: newSize)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            position = finalPoint
+        }
+        let normalized = FloatingBallGeometry.normalized(finalPoint, in: newSize)
         normalizedAnchor = normalized
         onMoved(normalized)
     }

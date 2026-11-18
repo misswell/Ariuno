@@ -13,52 +13,41 @@ struct BrowserView: View {
     @State private var activeAlert: GameAlert?
     @State private var addressText = ""
     @State private var isBallMode = false
+    @State private var chromeExpanded = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
         ZStack(alignment: .top) {
             Color.black.ignoresSafeArea()
 
-            GeometryReader { proxy in
-                let insets = contentInsets
-                let width = max(1, proxy.size.width - insets.leading - insets.trailing)
-                let height = max(1, proxy.size.height - insets.top - insets.bottom)
-                BrowserTabHostView(
-                    sessions: coordinator.tabs.sessions,
-                    activeSessionID: coordinator.tabs.activeSessionID
-                )
-                .frame(width: width, height: height)
-                .position(x: insets.leading + width / 2, y: insets.top + height / 2)
+            if isBallMode {
+                webContent
+                    .ignoresSafeArea()
+            } else {
+                // Safari-like non-fullscreen layout: the chrome takes its own space below the
+                // page instead of overlaying it. The page only becomes edge-to-edge after the
+                // user explicitly collapses the toolbar to the floating ball.
+                VStack(spacing: 0) {
+                    ZStack {
+                        webContent
+                        if chromeExpanded {
+                            // First tap on the page dismisses the expanded chrome/keyboard.
+                            // The page itself receives the next tap.
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { collapseChrome() }
+                                .accessibilityHidden(true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    chromeBar
+                }
+                .ignoresSafeArea(edges: .top)
+                .transition(.opacity)
             }
-            .ignoresSafeArea()
 
             if shouldShowLoadingOverlay {
                 loadingOverlay
-            }
-
-            if !isBallMode {
-                VStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    sessionBanner
-                    if toolbarVisible {
-                        addressBar
-                            .padding(.horizontal, 12)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                    } else {
-                        // The reveal control stays on the trailing edge instead of floating in
-                        // the middle of the page, so it is easy to find without covering content.
-                        HStack {
-                            Spacer()
-                            toolbarHandle
-                        }
-                        .padding(.trailing, 12)
-                    }
-                    bottomBar
-                        .padding(.horizontal, 12)
-                }
-                .padding(.top, 6)
-                .padding(.bottom, 8)
-                .transition(.opacity)
             }
 
             if isBallMode {
@@ -68,6 +57,9 @@ struct BrowserView: View {
                         normalizedPosition: CGPoint(
                             x: coordinator.settings.floatingBallX,
                             y: coordinator.settings.floatingBallY
+                        ),
+                        preferredEdge: FloatingBallGeometry.Edge(
+                            rawValue: coordinator.settings.floatingBallEdge
                         ),
                         diameter: CGFloat(coordinator.settings.floatingBallDiameter),
                         tint: .accentColor,
@@ -79,6 +71,9 @@ struct BrowserView: View {
                         onMoved: { normalized in
                             coordinator.settings.floatingBallX = Double(normalized.x)
                             coordinator.settings.floatingBallY = Double(normalized.y)
+                        },
+                        onEdgeChanged: { edge in
+                            coordinator.settings.floatingBallEdge = edge.rawValue
                         }
                     )
                 }
@@ -94,6 +89,9 @@ struct BrowserView: View {
                             x: coordinator.settings.floatingPiPX,
                             y: coordinator.settings.floatingPiPY
                         ),
+                        preferredEdge: FloatingBallGeometry.Edge(
+                            rawValue: coordinator.settings.floatingPiPEdge
+                        ),
                         diameter: CGFloat(coordinator.settings.floatingBallDiameter) * 0.84,
                         tint: coordinator.isAnyPiPActive ? .green : .accentColor,
                         icon: "pip",
@@ -105,6 +103,9 @@ struct BrowserView: View {
                         onMoved: { normalized in
                             coordinator.settings.floatingPiPX = Double(normalized.x)
                             coordinator.settings.floatingPiPY = Double(normalized.y)
+                        },
+                        onEdgeChanged: { edge in
+                            coordinator.settings.floatingPiPEdge = edge.rawValue
                         }
                     )
                 }
@@ -128,6 +129,7 @@ struct BrowserView: View {
             guard newRoute == .game else { return }
             withAnimation(.easeInOut(duration: 0.18)) {
                 toolbarVisible = true
+                chromeExpanded = false
             }
             if coordinator.settings.collapseToolbarToBallOnOpen {
                 isBallMode = true
@@ -321,23 +323,6 @@ struct BrowserView: View {
                     activeSheet = .tabs
                 }
             }
-
-            if !isScreenshotMode, !pipAvailability.isAvailable, !coordinator.session.pipVisible,
-               let reason = pipAvailability.reason {
-                HStack(spacing: 5) {
-                    Image(systemName: "info.circle.fill")
-                        .font(.system(size: 9, weight: .semibold))
-                    Text(reason.userMessage)
-                        .lineLimit(2)
-                    Spacer(minLength: 0)
-                }
-                .font(.system(size: 10, weight: .medium))
-                .foregroundStyle(.orange)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 5)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .padding(.horizontal, 2)
-            }
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
@@ -387,23 +372,7 @@ struct BrowserView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("书签")
 
-            Button {
-                activeSheet = .tabs
-            } label: {
-                ZStack(alignment: .topTrailing) {
-                    Image(systemName: "square.on.square")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("\(coordinator.tabs.sessions.count)")
-                        .font(.system(size: 9, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.accentColor, in: Capsule())
-                        .offset(x: 9, y: -7)
-                }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
+            tabsBarButton
 
             Button {
                 collapseToolbarToBall()
@@ -476,6 +445,182 @@ struct BrowserView: View {
         )
         .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
         .padding(.bottom, 2)
+    }
+
+    private var webContent: some View {
+        GeometryReader { proxy in
+            let insets = contentInsets
+            let width = max(1, proxy.size.width - insets.leading - insets.trailing)
+            let height = max(1, proxy.size.height - insets.top - insets.bottom)
+            BrowserTabHostView(
+                sessions: coordinator.tabs.sessions,
+                activeSessionID: coordinator.tabs.activeSessionID
+            )
+            .frame(width: width, height: height)
+            .position(x: insets.leading + width / 2, y: insets.top + height / 2)
+        }
+    }
+
+    private var chromeBar: some View {
+        Group {
+            if !toolbarVisible {
+                HStack {
+                    Spacer()
+                    toolbarHandle
+                }
+                .padding(.trailing, 12)
+                .padding(.vertical, 8)
+            } else if chromeExpanded {
+                VStack(spacing: 8) {
+                    sessionBanner
+                    addressBar
+                        .padding(.horizontal, 12)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                    bottomBar
+                        .padding(.horizontal, 12)
+                }
+                .padding(.top, 6)
+                .padding(.bottom, 8)
+            } else {
+                VStack(spacing: 4) {
+                    sessionBanner
+                    compactBar
+                }
+                .padding(.top, 4)
+                .padding(.bottom, 8)
+            }
+        }
+        .background(Color.black)
+    }
+
+    /// Safari-like single-row bar used whenever the chrome is not expanded.
+    private var compactBar: some View {
+        HStack(spacing: 10) {
+            navigationButton(
+                systemName: "chevron.left",
+                accessibilityLabel: "后退",
+                disabled: !coordinator.browser.canGoBack
+            ) {
+                coordinator.browser.goBack()
+            }
+
+            Button {
+                expandChrome(focusAddress: true)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: securityIcon)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(securityIcon == "globe" ? .orange : .secondary)
+                    Text(compactAddressText)
+                        .font(.system(size: 13, weight: .medium))
+                        .lineLimit(1)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 8)
+                .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("地址栏，点击编辑")
+
+            navigationButton(
+                systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise",
+                accessibilityLabel: coordinator.browser.isLoading ? "停止加载" : "重新加载",
+                disabled: false
+            ) {
+                if coordinator.browser.isLoading {
+                    coordinator.browser.stop()
+                } else {
+                    coordinator.browser.reload()
+                }
+            }
+
+            tabsBarButton
+
+            Menu {
+                if coordinator.browser.canGoForward {
+                    Button {
+                        coordinator.browser.goForward()
+                    } label: {
+                        Label("前进", systemImage: "chevron.right")
+                    }
+                }
+                Button {
+                    activeSheet = .bookmarks
+                } label: {
+                    Label("书签", systemImage: "book")
+                }
+                Button {
+                    activeSheet = .history
+                } label: {
+                    Label("历史记录", systemImage: "clock")
+                }
+                Button {
+                    activeSheet = .downloads
+                } label: {
+                    Label("下载", systemImage: "arrow.down.circle")
+                }
+                Divider()
+                Button {
+                    coordinator.openHome()
+                } label: {
+                    Label("主页", systemImage: "house")
+                }
+                Button {
+                    collapseToolbarToBall()
+                } label: {
+                    Label("收起为悬浮球", systemImage: "rectangle.compress.vertical")
+                }
+                Button(role: .destructive) {
+                    showExitConfirmation = true
+                } label: {
+                    Label("退出会话", systemImage: "xmark.circle")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .accessibilityLabel("更多操作")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
+    }
+
+    private var compactAddressText: String {
+        if let host = coordinator.browser.currentHost, !host.isEmpty {
+            return host
+        }
+        if let url = coordinator.browser.currentURL, url.absoluteString != "about:blank" {
+            return url.absoluteString
+        }
+        return "搜索或输入网址"
+    }
+
+    private var tabsBarButton: some View {
+        Button {
+            activeSheet = .tabs
+        } label: {
+            ZStack(alignment: .topTrailing) {
+                Image(systemName: "square.on.square")
+                    .font(.system(size: 16, weight: .semibold))
+                Text("\(coordinator.tabs.sessions.count)")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 4)
+                    .padding(.vertical, 1)
+                    .background(Color.accentColor, in: Capsule())
+                    .offset(x: 9, y: -7)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
     }
 
     private var isScreenshotMode: Bool {
@@ -632,11 +777,36 @@ struct BrowserView: View {
         addressFieldFocused = false
         coordinator.openAddressText(addressText)
         syncAddressText()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            chromeExpanded = false
+        }
     }
 
     private func syncAddressText() {
         guard !addressFieldFocused else { return }
         addressText = coordinator.browser.currentURL?.absoluteString ?? ""
+    }
+
+    private func expandChrome(focusAddress: Bool = false) {
+        autoHideWorkItem?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) {
+            toolbarVisible = true
+            chromeExpanded = true
+        }
+        if focusAddress {
+            DispatchQueue.main.async {
+                addressFieldFocused = true
+            }
+        }
+        scheduleAutoHide()
+    }
+
+    private func collapseChrome() {
+        addressFieldFocused = false
+        withAnimation(.easeInOut(duration: 0.2)) {
+            chromeExpanded = false
+        }
+        scheduleAutoHide()
     }
 
     private func collapseToolbarToBall() {

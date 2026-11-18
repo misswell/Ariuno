@@ -80,6 +80,25 @@ final class HistoryStore: ObservableObject {
         }
     }
 
+    /// Writes the current entries synchronously with atomic replacement. Used by tests and
+    /// when the app is about to suspend, so persistence is deterministic.
+    func flush() {
+        let url = fileURL
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(entries)
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            // History is a convenience; a failed write must not break browsing.
+        }
+    }
+
     private func persistAsync() {
         let entries = self.entries
         let url = fileURL

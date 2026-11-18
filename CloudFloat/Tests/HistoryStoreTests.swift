@@ -33,13 +33,8 @@ final class HistoryStoreTests: XCTestCase {
         first.record(title: "示例页面", url: URL(string: "https://example.com/page")!)
         XCTAssertFalse(first.entries.isEmpty)
 
-        // Persistence is async/atomic; wait briefly for the writer task to finish.
-        let targetURL = try XCTUnwrap(fileURL)
-        let deadline = Date().addingTimeInterval(3)
-        while !FileManager.default.fileExists(atPath: targetURL.path) {
-            guard Date() < deadline else { break }
-            try await Task.sleep(nanoseconds: 20_000_000)
-        }
+        // Flush synchronously so the test is not racing the async writer.
+        first.flush()
 
         let second = HistoryStore(fileURL: fileURL)
         XCTAssertEqual(second.entries.count, 1)

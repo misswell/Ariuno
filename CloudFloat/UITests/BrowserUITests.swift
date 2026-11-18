@@ -145,8 +145,12 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
 
+        let addressButton = app.buttons["地址栏，点击编辑"]
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
+        addressButton.tap()
+
         let collapse = app.buttons["收起为悬浮球"]
-        XCTAssertTrue(collapse.waitForExistence(timeout: 15))
+        XCTAssertTrue(collapse.waitForExistence(timeout: 5))
         collapse.tap()
 
         let ball = app.buttons["展开工具栏"]
@@ -177,17 +181,32 @@ final class BrowserUITests: XCTestCase {
     }
 
     func testFloatingBallRemapsAfterOrientationChange() {
+        XCUIDevice.shared.orientation = .portrait
+        app.launchArguments = ["-CFResetFloatingBall"]
         app.launch()
         let start = app.buttons["开始浏览"]
         XCTAssertTrue(start.waitForExistence(timeout: 15))
+        let portraitDeadline = Date().addingTimeInterval(5)
+        while app.frame.width >= app.frame.height, Date() < portraitDeadline {
+            usleep(200_000)
+        }
+        XCTAssertLessThan(app.frame.width, app.frame.height, "设备应处于竖屏")
         start.tap()
 
+        let addressButton = app.buttons["地址栏，点击编辑"]
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 15))
+        addressButton.tap()
+
         let collapse = app.buttons["收起为悬浮球"]
-        XCTAssertTrue(collapse.waitForExistence(timeout: 15))
+        XCTAssertTrue(collapse.waitForExistence(timeout: 5))
         collapse.tap()
 
         let ball = app.buttons["展开工具栏"]
         XCTAssertTrue(ball.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            (ball.value as? String ?? "").contains("右侧"),
+            "竖屏收起后悬浮球应吸附右侧，实际：\(ball.value as? String ?? "")"
+        )
 
         XCUIDevice.shared.orientation = .landscapeLeft
         defer { XCUIDevice.shared.orientation = .portrait }
@@ -211,6 +230,35 @@ final class BrowserUITests: XCTestCase {
         landscapeShot.name = "floating-ball-landscape"
         landscapeShot.lifetime = .keepAlways
         add(landscapeShot)
+    }
+
+    func testCompactChromeExpandsAndPageTapCollapses() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let addressButton = app.buttons["地址栏，点击编辑"]
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 15), "默认应显示单行紧凑控制栏")
+        XCTAssertFalse(app.buttons["收起为悬浮球"].exists, "单行模式不应显示完整工具栏")
+        let compactShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        compactShot.name = "chrome-compact"
+        compactShot.lifetime = .keepAlways
+        add(compactShot)
+
+        addressButton.tap()
+        XCTAssertTrue(app.buttons["收起为悬浮球"].waitForExistence(timeout: 5), "点击地址栏应展开两行工具栏")
+        let expandedShot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        expandedShot.name = "chrome-expanded"
+        expandedShot.lifetime = .keepAlways
+        add(expandedShot)
+
+        let page = app.webViews.firstMatch
+        XCTAssertTrue(page.waitForExistence(timeout: 10))
+        page.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)).tap()
+
+        XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "点击页面应收起为单行")
+        XCTAssertFalse(app.buttons["收起为悬浮球"].exists)
     }
 
     func testAddressBarNavigatesToTypedHost() {

@@ -11,6 +11,7 @@ final class AppSettings: ObservableObject {
         static let floatingBallX = "cf.settings.floatingBallX"
         static let floatingBallY = "cf.settings.floatingBallY"
         static let floatingBallDiameter = "cf.settings.floatingBallDiameter"
+        static let floatingBallEdge = "cf.settings.floatingBallEdge"
         static let fullscreenInsetTop = "cf.settings.fullscreenInsetTop"
         static let fullscreenInsetBottom = "cf.settings.fullscreenInsetBottom"
         static let fullscreenInsetLeft = "cf.settings.fullscreenInsetLeft"
@@ -18,6 +19,7 @@ final class AppSettings: ObservableObject {
         static let showFloatingPiPButton = "cf.settings.showFloatingPiPButton"
         static let floatingPiPX = "cf.settings.floatingPiPX"
         static let floatingPiPY = "cf.settings.floatingPiPY"
+        static let floatingPiPEdge = "cf.settings.floatingPiPEdge"
         static let enableInPagePiPButton = "cf.settings.enableInPagePiPButton"
         static let enableBackgroundAudio = "cf.settings.enableBackgroundAudio"
         static let verboseDiagnostics = "cf.settings.verboseDiagnostics"
@@ -59,6 +61,16 @@ final class AppSettings: ObservableObject {
 
     @Published var floatingBallY: Double {
         didSet { defaults.set(floatingBallY, forKey: Key.floatingBallY) }
+    }
+
+    /// Last edge the floating ball snapped to. Persisting it keeps the ball on the same side
+    /// across launches and orientation changes instead of re-picking by nearest distance.
+    @Published var floatingBallEdge: String {
+        didSet { defaults.set(floatingBallEdge, forKey: Key.floatingBallEdge) }
+    }
+
+    @Published var floatingPiPEdge: String {
+        didSet { defaults.set(floatingPiPEdge, forKey: Key.floatingPiPEdge) }
     }
 
     /// Floating-ball diameter in points (40...80). Persisted so the chosen size survives launches.
@@ -167,6 +179,14 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if ProcessInfo.processInfo.arguments.contains("-CFResetFloatingBall") {
+            for key in [
+                Key.floatingBallX, Key.floatingBallY, Key.floatingBallEdge,
+                Key.floatingPiPX, Key.floatingPiPY, Key.floatingPiPEdge
+            ] {
+                defaults.removeObject(forKey: key)
+            }
+        }
         // Keep the browser toolbar visible by default. Auto-hide was previously on and made
         // bookmark/share/tab buttons hard to find; only honour it when the user chose it.
         let explicitlySet = defaults.bool(forKey: Key.autoHideToolbarExplicit)
@@ -183,6 +203,7 @@ final class AppSettings: ObservableObject {
             min(max(defaults.object(forKey: Key.floatingBallY) as? Double ?? 0.62, 0.08), 0.92)
         self.floatingBallDiameter =
             min(max(defaults.object(forKey: Key.floatingBallDiameter) as? Double ?? 56, 40), 80)
+        self.floatingBallEdge = defaults.string(forKey: Key.floatingBallEdge) ?? "right"
         self.fullscreenInsetTop = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetTop) as? Double ?? 0)
         self.fullscreenInsetBottom = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetBottom) as? Double ?? 0)
         self.fullscreenInsetLeft = Self.clampInset(defaults.object(forKey: Key.fullscreenInsetLeft) as? Double ?? 0)
@@ -190,6 +211,7 @@ final class AppSettings: ObservableObject {
         self.showFloatingPiPButton = defaults.object(forKey: Key.showFloatingPiPButton) as? Bool ?? true
         self.floatingPiPX = min(max(defaults.object(forKey: Key.floatingPiPX) as? Double ?? 0.72, 0.05), 0.95)
         self.floatingPiPY = min(max(defaults.object(forKey: Key.floatingPiPY) as? Double ?? 0.42, 0.08), 0.92)
+        self.floatingPiPEdge = defaults.string(forKey: Key.floatingPiPEdge) ?? "right"
         self.enableInPagePiPButton =
             defaults.object(forKey: Key.enableInPagePiPButton) as? Bool ?? true
         self.enableBackgroundAudio =
