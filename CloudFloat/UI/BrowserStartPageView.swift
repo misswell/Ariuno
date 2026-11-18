@@ -191,7 +191,7 @@ struct BrowserStartPageView: View {
     private var quickActions: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 10) {
-                QuickActionButton(title: "新建标签页", systemImage: "plus.square.on.square") {
+                QuickActionButton(title: "新建", systemImage: "plus.square.on.square") {
                     addressFieldFocused = false
                     coordinator.createTab()
                 }
@@ -459,8 +459,8 @@ struct BrowserStartPageView: View {
 
 // MARK: - Building blocks
 
-/// Generic popular destinations shown on the start page. These are ordinary websites, not a
-/// hardcoded cloud-game entry; users can also add their own bookmarks and shortcuts.
+/// Built-in start-page shortcuts. This list is compiled into the app (it is not user-editable);
+/// user-managed destinations live in Bookmarks and History.
 struct StartPageShortcut: Identifiable, Equatable {
     let id: String
     let title: String
@@ -470,12 +470,9 @@ struct StartPageShortcut: Identifiable, Equatable {
     var url: URL { URL(string: urlString)! }
 
     static let defaults: [StartPageShortcut] = [
-        StartPageShortcut(id: "google", title: "Google", systemImage: "magnifyingglass", urlString: "https://www.google.com"),
         StartPageShortcut(id: "bing", title: "Bing", systemImage: "b.circle", urlString: "https://www.bing.com"),
-        StartPageShortcut(id: "duckduckgo", title: "DuckDuckGo", systemImage: "shield.lefthalf.filled", urlString: "https://duckduckgo.com"),
-        StartPageShortcut(id: "youtube", title: "YouTube", systemImage: "play.rectangle", urlString: "https://www.youtube.com"),
-        StartPageShortcut(id: "wikipedia", title: "Wikipedia", systemImage: "book.closed", urlString: "https://zh.wikipedia.org"),
-        StartPageShortcut(id: "github", title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right", urlString: "https://github.com")
+        StartPageShortcut(id: "github", title: "GitHub", systemImage: "chevron.left.forwardslash.chevron.right", urlString: "https://github.com"),
+        StartPageShortcut(id: "starrail-cloud", title: "云星穹铁道", systemImage: "cloud.fill", urlString: "https://sr.mihoyo.com/cloud/")
     ]
 }
 

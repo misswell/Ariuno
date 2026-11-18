@@ -265,7 +265,7 @@ Executed 7 tests, with 1 test skipped and 0 failures (0 unexpected)
 
 | 测试 | 验证内容 | 结果 |
 |---|---|---|
-| testStartPageExposesBrowserEntryPoints | 首次启动显示 Ariuno 起始页、搜索框、新建标签/书签/历史/下载入口、常用网站 | PASS |
+| testStartPageExposesBrowserEntryPoints | 首次启动显示 Ariuno 起始页、搜索框、新建/书签/历史/下载入口、常用网站 | PASS |
 | testNewTabStaysOnStartPageAndTabSheetCountsIt | 新建标签仍显示起始页（不自动打开游戏），标签面板显示数量 | PASS |
 | testBookmarksAndHistorySheetsOpenFromStartPage | 书签与历史入口可打开对应面板 | PASS |
 | testAddressBarNavigatesToTypedHost | 地址栏输入 `example.com` 后出现真实 WKWebView 且浏览器工具栏可见 | PASS |

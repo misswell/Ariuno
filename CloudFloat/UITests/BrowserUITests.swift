@@ -15,7 +15,7 @@ final class BrowserUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 15))
-        XCTAssertTrue(app.buttons["新建标签页"].exists)
+        XCTAssertTrue(app.buttons["新建"].exists)
         XCTAssertTrue(app.buttons["书签"].exists)
         XCTAssertTrue(app.buttons["历史"].exists)
         XCTAssertTrue(app.buttons["下载"].exists)
@@ -30,8 +30,8 @@ final class BrowserUITests: XCTestCase {
 
     func testNewTabStaysOnStartPageAndTabSheetCountsIt() {
         app.launch()
-        XCTAssertTrue(app.buttons["新建标签页"].waitForExistence(timeout: 15))
-        app.buttons["新建标签页"].tap()
+        XCTAssertTrue(app.buttons["新建"].waitForExistence(timeout: 15))
+        app.buttons["新建"].tap()
 
         // A fresh tab is a start page, never a hardcoded game page.
         XCTAssertTrue(app.staticTexts["Ariuno"].waitForExistence(timeout: 10))
