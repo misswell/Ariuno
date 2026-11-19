@@ -16,7 +16,6 @@ struct BrowserView: View {
     @State private var showFullscreenMenu = false
     @State private var isEditingAddress = false
     @State private var topSafeAreaInset: CGFloat = 0
-    @State private var bottomSafeAreaInset: CGFloat = 0
     @State private var compactChrome = false
     @State private var scrollSubscription: AnyCancellable?
     @State private var pageFitSubscription: AnyCancellable?
@@ -49,7 +48,7 @@ struct BrowserView: View {
                         }
                     chromeBar
                 }
-                .ignoresSafeArea(edges: .top)
+                .ignoresSafeArea(edges: [.top, .bottom])
                 .transition(.opacity)
             }
 
@@ -128,13 +127,9 @@ struct BrowserView: View {
                 Color.clear
                     .onAppear {
                         topSafeAreaInset = proxy.safeAreaInsets.top
-                        bottomSafeAreaInset = proxy.safeAreaInsets.bottom
                     }
                     .onChange(of: proxy.safeAreaInsets.top) { _, newValue in
                         topSafeAreaInset = newValue
-                    }
-                    .onChange(of: proxy.safeAreaInsets.bottom) { _, newValue in
-                        bottomSafeAreaInset = newValue
                     }
             }
         }
@@ -276,7 +271,7 @@ struct BrowserView: View {
         }
         .background(Color.clear)
         .environment(\.colorScheme, .dark)
-        .offset(y: bottomChromeLift)
+        .padding(.bottom, 12)
         .zIndex(10)
     }
 
@@ -298,12 +293,9 @@ struct BrowserView: View {
     private var barIconSize: CGFloat { compactChrome ? 15 : 17 }
     private var barAddressFont: CGFloat { compactChrome ? 12 : 13 }
     private var barReloadSize: CGFloat { compactChrome ? 24 : 28 }
-    private var bottomChromeHeight: CGFloat { compactChrome ? 46 : 60 }
-    /// Keep a small gap above the home indicator instead of a full 34pt safe-area band.
-    private var bottomChromeLift: CGFloat { max(0, bottomSafeAreaInset - 12) }
-    private var bottomChromeContentInset: CGFloat {
-        max(0, bottomChromeHeight - bottomChromeLift)
-    }
+    private var bottomChromeHeight: CGFloat { compactChrome ? 50 : 72 }
+    private var bottomChromeMargin: CGFloat { 12 }
+    private var bottomChromeContentInset: CGFloat { bottomChromeHeight + bottomChromeMargin }
 
     private var compactBackButton: some View {
         Button {
