@@ -236,7 +236,7 @@ struct BrowserView: View {
             // elements stay above it). Long pages run under the floating chrome and use a
             // scroll content inset instead.
             let bottomFrameInset = (!isBallMode && pageFitsOneScreen)
-                ? bottomChromeHeight
+                ? bottomChromeContentInset
                 : 0
             let width = max(1, proxy.size.width - insets.leading - insets.trailing)
             let height = max(1, proxy.size.height - insets.top - insets.bottom - bottomFrameInset)
@@ -246,7 +246,7 @@ struct BrowserView: View {
                 topContentInset: isBallMode ? 0 : topSafeAreaInset,
                 bottomContentInset: isBallMode
                     ? 0
-                    : (pageFitsOneScreen ? 0 : bottomChromeHeight)
+                    : (pageFitsOneScreen ? 0 : bottomChromeContentInset)
             )
             .frame(width: width, height: height)
             .position(x: insets.leading + width / 2, y: insets.top + height / 2)
@@ -276,6 +276,7 @@ struct BrowserView: View {
         }
         .background(Color.clear)
         .environment(\.colorScheme, .dark)
+        .offset(y: bottomChromeLift)
         .zIndex(10)
     }
 
@@ -298,6 +299,11 @@ struct BrowserView: View {
     private var barAddressFont: CGFloat { compactChrome ? 12 : 13 }
     private var barReloadSize: CGFloat { compactChrome ? 24 : 28 }
     private var bottomChromeHeight: CGFloat { compactChrome ? 46 : 60 }
+    /// Keep a small gap above the home indicator instead of a full 34pt safe-area band.
+    private var bottomChromeLift: CGFloat { max(0, bottomSafeAreaInset - 12) }
+    private var bottomChromeContentInset: CGFloat {
+        max(0, bottomChromeHeight - bottomChromeLift)
+    }
 
     private var compactBackButton: some View {
         Button {
@@ -306,7 +312,7 @@ struct BrowserView: View {
             Image(systemName: "chevron.left")
                 .font(.system(size: barIconSize, weight: .semibold))
                 .frame(width: barSegmentSize, height: barSegmentSize)
-                .liquidGlassCircle(tint: .black.opacity(0.30), interactive: true)
+                .liquidGlassCircle(tint: .black.opacity(0.44), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .buttonStyle(.plain)
@@ -387,7 +393,7 @@ struct BrowserView: View {
         .padding(.trailing, 6)
         .frame(maxWidth: .infinity)
         .frame(height: barSegmentSize)
-        .liquidGlassCapsule(tint: .black.opacity(0.30))
+        .liquidGlassCapsule(tint: .black.opacity(0.44))
         .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
     }
 
@@ -399,7 +405,7 @@ struct BrowserView: View {
                 .font(.system(size: barIconSize, weight: .semibold))
                 .frame(width: barSegmentSize, height: barSegmentSize)
                 .contentShape(Rectangle())
-                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.30), interactive: true)
+                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.44), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .buttonStyle(.plain)
@@ -481,7 +487,7 @@ struct BrowserView: View {
             Image(systemName: "ellipsis")
                 .font(.system(size: barIconSize, weight: .semibold))
                 .frame(width: barSegmentSize, height: barSegmentSize)
-                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.30), interactive: true)
+                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.44), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .accessibilityLabel("更多操作")
