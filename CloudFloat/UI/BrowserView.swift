@@ -236,7 +236,7 @@ struct BrowserView: View {
             // elements stay above it). Long pages run under the floating chrome and use a
             // scroll content inset instead.
             let bottomFrameInset = (!isBallMode && pageFitsOneScreen)
-                ? bottomChromeHeight + bottomSafeAreaInset
+                ? bottomChromeHeight
                 : 0
             let width = max(1, proxy.size.width - insets.leading - insets.trailing)
             let height = max(1, proxy.size.height - insets.top - insets.bottom - bottomFrameInset)
@@ -246,7 +246,7 @@ struct BrowserView: View {
                 topContentInset: isBallMode ? 0 : topSafeAreaInset,
                 bottomContentInset: isBallMode
                     ? 0
-                    : (pageFitsOneScreen ? 0 : bottomChromeHeight + bottomSafeAreaInset)
+                    : (pageFitsOneScreen ? 0 : bottomChromeHeight)
             )
             .frame(width: width, height: height)
             .position(x: insets.leading + width / 2, y: insets.top + height / 2)
