@@ -60,6 +60,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var hasCommittedPage = false
     @Published private(set) var currentHost: String?
     @Published private(set) var pageTitle: String = ""
+    @Published private(set) var isScrollingDown = false
     @Published private(set) var lastVisitedAt: Date
     @Published private(set) var isClosed = false
     @Published private(set) var lastNavigationFailure: BrowserNavigationFailure?
@@ -77,6 +78,10 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var backForwardObservation: NSKeyValueObservation?
     private var progressObservation: NSKeyValueObservation?
     private var securityObservation: NSKeyValueObservation?
+    private var scrollObservation: NSKeyValueObservation?
+    private var lastScrollOffsetY: CGFloat = 0
+    private var pendingScrollDown: Bool?
+    private var pendingScrollSince: Date?
     private var objectWillChangeObservation: AnyCancellable?
     private let now: () -> Date
     /// Suppresses delegate-driven session events while the page is being torn down with
@@ -151,6 +156,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         mediaDetector.attach(webView: webView)
         cookieStore.start()
         observeWebView()
+        observeScrollDirection()
         objectWillChangeObservation = objectWillChange.sink { [weak self] _ in
             self?.onAnyChange?()
         }
@@ -456,6 +462,53 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     }
 
     // MARK: - KVO
+
+    private func observeScrollDirection() {
+        scrollObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in
+            let y = scrollView.contentOffset.y
+            let top = -scrollView.adjustedContentInset.top
+            let velocity = scrollView.panGestureRecognizer.velocity(in: scrollView).y
+            Task { @MainActor in
+                guard let self else { return }
+                self.lastScrollOffsetY = y
+                if y <= top + 4 {
+                    self.pendingScrollDown = nil
+                    self.pendingScrollSince = nil
+                    self.setScrollingDown(false)
+                    return
+                }
+                let candidate: Bool?
+                if velocity < -150 {
+                    candidate = true
+                } else if velocity > 150 {
+                    candidate = false
+                } else {
+                    candidate = nil
+                }
+                if candidate != self.pendingScrollDown {
+                    self.pendingScrollDown = candidate
+                    self.pendingScrollSince = candidate == nil ? nil : Date()
+                }
+                if let candidate,
+                   let since = self.pendingScrollSince,
+                   Date().timeIntervalSince(since) > 0.12 {
+                    self.pendingScrollDown = nil
+                    self.pendingScrollSince = nil
+                    self.setScrollingDown(candidate)
+                }
+            }
+        }
+    }
+
+    private func setScrollingDown(_ value: Bool) {
+        guard isScrollingDown != value else { return }
+        isScrollingDown = value
+    }
+
+    func resetScrollDirection() {
+        lastScrollOffsetY = webView.scrollView.contentOffset.y
+        setScrollingDown(false)
+    }
 
     private func observeWebView() {
         titleObservation = webView.observe(\.title, options: [.new]) { [weak self] webView, _ in

@@ -22,9 +22,23 @@ final class StartPageShortcutStoreTests: XCTestCase {
         super.tearDown()
     }
 
-    func testSeedsBuiltInsOnFirstLaunch() {
+    func testStartsEmptyOnFirstLaunch() {
         let store = StartPageShortcutStore(defaults: defaults)
-        XCTAssertEqual(store.shortcuts.map(\.title), ["Bing", "GitHub", "云星穹铁道"])
+        XCTAssertTrue(store.shortcuts.isEmpty)
+    }
+
+    func testLegacyStoreIsClearedOnceOnUpgrade() throws {
+        let legacy = [
+            StartPageShortcut(title: "Old A", systemImage: "globe", urlString: "https://old-a.example"),
+            StartPageShortcut(title: "Old B", systemImage: "star", urlString: "https://old-b.example")
+        ]
+        defaults.set(try JSONEncoder().encode(legacy), forKey: "cf.shortcuts.v1")
+        let migrated = StartPageShortcutStore(defaults: defaults)
+        XCTAssertTrue(migrated.shortcuts.isEmpty, "pre-schema-2 lists are cleared")
+
+        migrated.add(title: "My Site", urlString: "example.com", systemImage: "star")
+        let reloaded = StartPageShortcutStore(defaults: defaults)
+        XCTAssertEqual(reloaded.shortcuts.map(\.title), ["My Site"], "post-migration edits persist")
     }
 
     func testAddUpdateAndRemovePersist() {
@@ -42,11 +56,15 @@ final class StartPageShortcutStoreTests: XCTestCase {
         XCTAssertEqual(store.shortcuts.last?.title, "Example 2")
         XCTAssertEqual(store.shortcuts.last?.systemImage, "star")
 
+        let afterUpdate = StartPageShortcutStore(defaults: defaults)
+        XCTAssertEqual(afterUpdate.shortcuts.count, 1)
+        XCTAssertEqual(afterUpdate.shortcuts.first?.title, "Example 2")
+
         store.remove(id: id)
         XCTAssertFalse(store.shortcuts.contains { $0.id == id })
 
         let reloaded = StartPageShortcutStore(defaults: defaults)
-        XCTAssertEqual(reloaded.shortcuts.count, 3)
+        XCTAssertTrue(reloaded.shortcuts.isEmpty)
     }
 
     func testDeletingAllDoesNotReseed() {

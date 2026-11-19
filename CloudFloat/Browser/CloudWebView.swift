@@ -6,13 +6,26 @@ import WebKit
 /// would lose the game session and the PiP relationship.
 struct CloudWebView: UIViewRepresentable {
     let webView: WKWebView
+    /// Safari-like safe areas: content is inset at rest but can scroll under the status bar
+    /// and behind the floating bottom chrome.
+    var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
 
     func makeUIView(context: Context) -> WKWebView {
         webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        // Intentionally empty: state lives in BrowserSession, not in the view.
+        let top = max(0, topContentInset)
+        let bottom = max(0, bottomContentInset)
+        guard abs(uiView.scrollView.contentInset.top - top) > 0.5
+                || abs(uiView.scrollView.contentInset.bottom - bottom) > 0.5 else { return }
+        var inset = uiView.scrollView.contentInset
+        inset.top = top
+        inset.bottom = bottom
+        uiView.scrollView.contentInset = inset
+        uiView.scrollView.verticalScrollIndicatorInsets.top = top
+        uiView.scrollView.verticalScrollIndicatorInsets.bottom = bottom
     }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: ()) {
@@ -26,12 +39,18 @@ struct CloudWebView: UIViewRepresentable {
 struct BrowserTabHostView: View {
     let sessions: [BrowserSession]
     let activeSessionID: UUID
+    var topContentInset: CGFloat = 0
+    var bottomContentInset: CGFloat = 0
 
     var body: some View {
         ZStack {
             ForEach(sessions) { session in
                 let isActive = session.id == activeSessionID
-                CloudWebView(webView: session.webView)
+                CloudWebView(
+                    webView: session.webView,
+                    topContentInset: topContentInset,
+                    bottomContentInset: bottomContentInset
+                )
                     .opacity(isActive ? 1 : 0)
                     .allowsHitTesting(isActive)
                     .disabled(!isActive)

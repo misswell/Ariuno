@@ -75,36 +75,29 @@ final class StartPageShortcutStore: ObservableObject {
 
     private let defaults: UserDefaults
     private let storageKey = "cf.shortcuts.v1"
+    private let schemaKey = "cf.shortcuts.schema"
+    private let currentSchema = 2
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if let data = defaults.data(forKey: storageKey),
            let decoded = try? JSONDecoder().decode([StartPageShortcut].self, from: data) {
             shortcuts = decoded
+            migrateLegacySeedIfNeeded()
         } else {
-            shortcuts = Self.seedDefaults
+            shortcuts = []
             persist()
         }
+        defaults.set(currentSchema, forKey: schemaKey)
     }
 
-    static let seedDefaults: [StartPageShortcut] = [
-        StartPageShortcut(
-            title: "Bing",
-            systemImage: "b.circle",
-            urlString: "https://www.bing.com"
-        ),
-        StartPageShortcut(
-            title: "GitHub",
-            systemImage: "chevron.left.forwardslash.chevron.right",
-            urlString: "https://github.com"
-        ),
-        StartPageShortcut(
-            title: "云星穹铁道",
-            systemImage: "cloud.fill",
-            urlString: "https://sr.mihoyo.com/cloud/"
-        )
-    ]
-
+    /// Builds 1–9 seeded a default list. The product now starts empty, so clear any list
+    /// written before schema 2 once. After that, the user's list is authoritative.
+    private func migrateLegacySeedIfNeeded() {
+        guard defaults.integer(forKey: schemaKey) < currentSchema else { return }
+        shortcuts = []
+        persist()
+    }
     @discardableResult
     func add(title: String, urlString: String, systemImage: String) -> StartPageShortcut? {
         guard let urlString = Self.normalizedURLString(urlString) else { return nil }

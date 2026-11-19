@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 import UIKit
 import WebKit
@@ -14,6 +15,10 @@ struct BrowserView: View {
     @State private var isBallMode = false
     @State private var showFullscreenMenu = false
     @State private var isEditingAddress = false
+    @State private var topSafeAreaInset: CGFloat = 0
+    @State private var bottomSafeAreaInset: CGFloat = 0
+    @State private var compactChrome = false
+    @State private var scrollSubscription: AnyCancellable?
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -24,21 +29,22 @@ struct BrowserView: View {
                 webContent
                     .ignoresSafeArea()
             } else {
-                // Safari-like non-fullscreen layout: the chrome takes its own space below the
-                // page instead of overlaying it. The page only becomes edge-to-edge after the
-                // user explicitly collapses the toolbar to the floating ball.
-                VStack(spacing: 0) {
-                    ZStack {
-                        webContent
-                        if addressFieldFocused {
-                            // One row always: the first page tap just dismisses the keyboard.
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture { addressFieldFocused = false }
-                                .accessibilityHidden(true)
+                // Safari-like layout: the page runs edge to edge; the floating glass chrome
+                // overlays it. Scroll views keep a top/bottom content inset so content starts
+                // clear of the status bar and chrome, then scrolls underneath.
+                ZStack(alignment: .bottom) {
+                    webContent
+                        .overlay {
+                            if addressFieldFocused {
+                                Color.clear
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                    addressFieldFocused = false
+                                    isEditingAddress = false
+                                }
+                                    .accessibilityHidden(true)
+                            }
                         }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                     chromeBar
                 }
                 .ignoresSafeArea(edges: .top)
@@ -115,9 +121,24 @@ struct BrowserView: View {
         } message: {
             Text("当前为全屏模式")
         }
-        .statusBarHidden(coordinator.route == .game)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear {
+                        topSafeAreaInset = proxy.safeAreaInsets.top
+                        bottomSafeAreaInset = proxy.safeAreaInsets.bottom
+                    }
+                    .onChange(of: proxy.safeAreaInsets.top) { _, newValue in
+                        topSafeAreaInset = newValue
+                    }
+                    .onChange(of: proxy.safeAreaInsets.bottom) { _, newValue in
+                        bottomSafeAreaInset = newValue
+                    }
+            }
+        }
         .onAppear {
             syncAddressText()
+            bindScrollDirection()
             if coordinator.route == .game, coordinator.settings.collapseToolbarToBallOnOpen {
                 isBallMode = true
             }
@@ -127,6 +148,7 @@ struct BrowserView: View {
         }
         .onDisappear {
             autoHideWorkItem?.cancel()
+            scrollSubscription?.cancel()
         }
         .onChange(of: coordinator.route) { _, newRoute in
             guard newRoute == .game else { return }
@@ -143,7 +165,13 @@ struct BrowserView: View {
             syncAddressText()
         }
         .onChange(of: coordinator.tabs.activeSessionID) { _, _ in
+            compactChrome = false
+            isEditingAddress = false
             syncAddressText()
+            bindScrollDirection()
+        }
+        .onChange(of: addressFieldFocused) { _, focused in
+            if focused { compactChrome = false }
         }
         .onChange(of: coordinator.settings.autoHideToolbar) { _, _ in
             scheduleAutoHide()
@@ -197,12 +225,17 @@ struct BrowserView: View {
 
     private var webContent: some View {
         GeometryReader { proxy in
-            let insets = contentInsets
+            // Fullscreen uses the user's explicit safe margins as a frame inset. Normal
+            // browsing uses scroll content insets instead, so content can scroll underneath
+            // the status bar and bottom chrome.
+            let insets = isBallMode ? contentInsets : EdgeInsets()
             let width = max(1, proxy.size.width - insets.leading - insets.trailing)
             let height = max(1, proxy.size.height - insets.top - insets.bottom)
             BrowserTabHostView(
                 sessions: coordinator.tabs.sessions,
-                activeSessionID: coordinator.tabs.activeSessionID
+                activeSessionID: coordinator.tabs.activeSessionID,
+                topContentInset: isBallMode ? 0 : topSafeAreaInset,
+                bottomContentInset: isBallMode ? 0 : bottomChromeHeight + bottomSafeAreaInset
             )
             .frame(width: width, height: height)
             .position(x: insets.leading + width / 2, y: insets.top + height / 2)
@@ -226,22 +259,13 @@ struct BrowserView: View {
                     sessionBanner
                     compactBar
                 }
-                .padding(.top, 4)
-                .padding(.bottom, 8)
+                .padding(.top, compactChrome ? 2 : 4)
+                .padding(.bottom, compactChrome ? 4 : 8)
             }
         }
-        .background(
-            LinearGradient(
-                colors: [Color(white: 0.09), Color.black],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(.white.opacity(0.06))
-                .frame(height: 0.5)
-        }
+        .background(Color.clear)
+        .environment(\.colorScheme, .dark)
+        .zIndex(10)
     }
 
     // MARK: - Address bar
@@ -254,17 +278,24 @@ struct BrowserView: View {
             compactMoreButton
         }
         .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.vertical, barVerticalPadding)
     }
+
+    private var barSegmentSize: CGFloat { compactChrome ? 34 : 44 }
+    private var barVerticalPadding: CGFloat { compactChrome ? 5 : 8 }
+    private var barIconSize: CGFloat { compactChrome ? 15 : 17 }
+    private var barAddressFont: CGFloat { compactChrome ? 12 : 13 }
+    private var barReloadSize: CGFloat { compactChrome ? 24 : 28 }
+    private var bottomChromeHeight: CGFloat { compactChrome ? 46 : 60 }
 
     private var compactBackButton: some View {
         Button {
             coordinator.browser.goBack()
         } label: {
             Image(systemName: "chevron.left")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .liquidGlassCircle(tint: .white.opacity(0.05), interactive: true)
+                .font(.system(size: barIconSize, weight: .semibold))
+                .frame(width: barSegmentSize, height: barSegmentSize)
+                .liquidGlassCircle(tint: .black.opacity(0.30), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .buttonStyle(.plain)
@@ -286,7 +317,7 @@ struct BrowserView: View {
                     .keyboardType(.URL)
                     .submitLabel(.go)
                     .focused($addressFieldFocused)
-                    .font(.system(size: 13, weight: .medium))
+                    .font(.system(size: barAddressFont, weight: .medium))
                     .lineLimit(1)
                     .onSubmit { openAddress() }
                     .onAppear {
@@ -312,16 +343,18 @@ struct BrowserView: View {
                 }
             } else {
                 Button {
+                    compactChrome = false
                     isEditingAddress = true
                 } label: {
                     Text(compactAddressText)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(.system(size: barAddressFont, weight: .medium))
                         .lineLimit(1)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("地址栏，点击编辑")
+                .accessibilityValue(compactChrome ? "compact" : "full")
             }
 
             Button {
@@ -333,7 +366,7 @@ struct BrowserView: View {
             } label: {
                 Image(systemName: coordinator.browser.isLoading ? "xmark" : "arrow.clockwise")
                     .font(.system(size: 13, weight: .semibold))
-                    .frame(width: 28, height: 28)
+                    .frame(width: barReloadSize, height: barReloadSize)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -342,8 +375,8 @@ struct BrowserView: View {
         .padding(.leading, 12)
         .padding(.trailing, 6)
         .frame(maxWidth: .infinity)
-        .frame(height: 44)
-        .liquidGlassCapsule(tint: .white.opacity(0.05))
+        .frame(height: barSegmentSize)
+        .liquidGlassCapsule(tint: .black.opacity(0.30))
         .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
     }
 
@@ -352,12 +385,15 @@ struct BrowserView: View {
             activeSheet = .tabs
         } label: {
             Image(systemName: "square.on.square")
-                .font(.system(size: 16, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .liquidGlass(cornerRadius: 14, tint: .white.opacity(0.05), interactive: true)
+                .font(.system(size: barIconSize, weight: .semibold))
+                .frame(width: barSegmentSize, height: barSegmentSize)
+                .contentShape(Rectangle())
+                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.30), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .buttonStyle(.plain)
+        .contentShape(Rectangle())
+        .zIndex(2)
         .accessibilityLabel("标签页，共 \(coordinator.tabs.sessions.count) 个")
     }
 
@@ -423,9 +459,9 @@ struct BrowserView: View {
             }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 17, weight: .semibold))
-                .frame(width: 44, height: 44)
-                .liquidGlass(cornerRadius: 14, tint: .white.opacity(0.05), interactive: true)
+                .font(.system(size: barIconSize, weight: .semibold))
+                .frame(width: barSegmentSize, height: barSegmentSize)
+                .liquidGlass(cornerRadius: compactChrome ? 12 : 14, tint: .black.opacity(0.30), interactive: true)
                 .shadow(color: .black.opacity(0.18), radius: 9, y: 3)
         }
         .accessibilityLabel("更多操作")
@@ -599,8 +635,22 @@ struct BrowserView: View {
 
     private func openAddress() {
         addressFieldFocused = false
+        isEditingAddress = false
         coordinator.openAddressText(addressText)
         syncAddressText()
+    }
+
+    private func bindScrollDirection() {
+        scrollSubscription?.cancel()
+        scrollSubscription = coordinator.browser.$isScrollingDown
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { isDown in
+                guard !isBallMode, !addressFieldFocused else { return }
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    compactChrome = isDown
+                }
+            }
     }
 
     private func syncAddressText() {
@@ -610,6 +660,7 @@ struct BrowserView: View {
 
     private func collapseToolbarToBall() {
         addressFieldFocused = false
+        isEditingAddress = false
         autoHideWorkItem?.cancel()
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true

@@ -362,7 +362,7 @@ final class BrowserUITests: XCTestCase {
         let field = app.textFields["搜索或输入网址"]
         XCTAssertTrue(field.waitForExistence(timeout: 15))
         field.tap()
-        field.typeText("www.wikipedia.org\n")
+        field.typeText("https://cn.bing.com/search?q=vv\n")
 
         XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout: 20))
         let tabsButton = app.buttons.matching(
@@ -374,5 +374,37 @@ final class BrowserUITests: XCTestCase {
         shot.name = "appstore-browser"
         shot.lifetime = .keepAlways
         add(shot)
+
+        sleep(4)
+        let topSafeArea = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        topSafeArea.name = "top-safe-area-rest"
+        topSafeArea.lifetime = .keepAlways
+        add(topSafeArea)
+
+        let addressButton = app.buttons["地址栏，点击编辑"]
+        XCTAssertTrue(addressButton.exists)
+        XCTAssertEqual(addressButton.value as? String, "full", "初始控制栏应为展开尺寸")
+
+        app.webViews.firstMatch.swipeUp()
+        let compactDeadline = Date().addingTimeInterval(3)
+        while (addressButton.value as? String) != "compact", Date() < compactDeadline {
+            usleep(100_000)
+        }
+        XCTAssertEqual(addressButton.value as? String, "compact", "向下滚动后控制栏应收缩")
+        let scrolled = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        scrolled.name = "top-safe-area-scrolled"
+        scrolled.lifetime = .keepAlways
+        add(scrolled)
+
+        app.webViews.firstMatch.swipeDown()
+        let fullDeadline = Date().addingTimeInterval(3)
+        while (addressButton.value as? String) != "full", Date() < fullDeadline {
+            usleep(100_000)
+        }
+        XCTAssertEqual(addressButton.value as? String, "full", "向上滚动后控制栏应恢复")
+        let expanded = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        expanded.name = "top-safe-area-expanded"
+        expanded.lifetime = .keepAlways
+        add(expanded)
     }
 }

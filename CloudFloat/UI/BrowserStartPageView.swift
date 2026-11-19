@@ -20,7 +20,6 @@ struct BrowserStartPageView: View {
                     addressCard
                     quickActions
                     recentlyVisitedSection
-                    recentlyClosedSection
                     bookmarkSection
                     NavigationLink {
                         SettingsView()
@@ -252,51 +251,6 @@ struct BrowserStartPageView: View {
                         }
                         .buttonStyle(.plain)
                     }
-                }
-            }
-        }
-    }
-
-    // MARK: - Recently closed tabs
-
-    private var recentlyClosedSection: some View {
-        SectionCard(header: "最近关闭的标签页") {
-            // informational header
-        } content: {
-            let snapshots = coordinator.tabs.recentlyClosed.snapshots.prefix(3)
-            if snapshots.isEmpty {
-                Text("暂无最近关闭的标签页")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(alignment: .leading, spacing: 8) {
-                    ForEach(Array(snapshots)) { snapshot in
-                        HStack(spacing: 10) {
-                            Image(systemName: "arrow.uturn.backward.circle")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(.tint)
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(snapshot.title.isEmpty ? snapshot.urlString : snapshot.title)
-                                    .font(.subheadline.weight(.medium))
-                                    .lineLimit(1)
-                                Text(snapshot.urlString)
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Spacer()
-                        }
-                    }
-                    Button {
-                        coordinator.restoreRecentlyClosedTab()
-                    } label: {
-                        Label("恢复关闭的标签页", systemImage: "arrow.uturn.backward")
-                            .font(.subheadline.weight(.semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
-                            .background(Color.accentColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    }
-                    .buttonStyle(.plain)
                 }
             }
         }
