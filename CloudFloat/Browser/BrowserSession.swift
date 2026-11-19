@@ -61,6 +61,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var currentHost: String?
     @Published private(set) var pageTitle: String = ""
     @Published private(set) var isScrollingDown = false
+    @Published private(set) var pageFitsOneScreen = false
     @Published private(set) var lastVisitedAt: Date
     @Published private(set) var isClosed = false
     @Published private(set) var lastNavigationFailure: BrowserNavigationFailure?
@@ -79,6 +80,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var progressObservation: NSKeyValueObservation?
     private var securityObservation: NSKeyValueObservation?
     private var scrollObservation: NSKeyValueObservation?
+    private var contentSizeObservation: NSKeyValueObservation?
+    private var contentInsetObservation: NSKeyValueObservation?
     private var lastScrollOffsetY: CGFloat = 0
     private var pendingScrollDown: Bool?
     private var pendingScrollSince: Date?
@@ -94,6 +97,9 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var restoredTitle = ""
     private var restoredURL: URL?
     private var pendingRestoredURL: URL?
+    private(set) var desktopModeEnabled = false
+    private(set) var desktopViewportWidth = 1280
+    private var desktopViewportBaseInstalled = false
 
     init(
         id: UUID = UUID(),
@@ -104,10 +110,14 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         isPrivate: Bool = false,
         injectedConfiguration: WKWebViewConfiguration? = nil,
         downloadManager: DownloadManager? = nil,
+        desktopModeEnabled: Bool = false,
+        desktopViewportWidth: Int = 1280,
         now: @escaping () -> Date = Date.init
     ) {
         self.id = id
         self.downloadManager = downloadManager ?? DownloadManager()
+        self.desktopModeEnabled = desktopModeEnabled
+        self.desktopViewportWidth = min(max(desktopViewportWidth, 800), 1920)
         self.now = now
         self.lastVisitedAt = now()
         self.isPrivate = isPrivate || (injectedConfiguration?.websiteDataStore.isPersistent == false)
@@ -146,17 +156,23 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.backgroundColor = .black
         webView.isOpaque = true
-        // Keep the system mobile User-Agent. Do not spoof a desktop browser or bypass any
-        // device checks performed by the official page.
-        webView.customUserAgent = nil
+        // Mobile by default. Desktop mode is an explicit user choice (Safari-style
+        // "Request Desktop Website"), applied below with a desktop UA and viewport width.
+        webView.customUserAgent = desktopModeEnabled ? Self.desktopUserAgent : nil
         #if DEBUG
         webView.isInspectable = true
         #endif
 
+        applyDesktopMode(
+            enabled: desktopModeEnabled,
+            viewportWidth: self.desktopViewportWidth,
+            reload: false
+        )
         mediaDetector.attach(webView: webView)
         cookieStore.start()
         observeWebView()
         observeScrollDirection()
+        observePageFit()
         objectWillChangeObservation = objectWillChange.sink { [weak self] _ in
             self?.onAnyChange?()
         }
@@ -165,6 +181,77 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     var pictureInPictureAllowedByConfiguration: Bool {
         configuration.allowsPictureInPictureMediaPlayback
     }
+
+    private static let desktopUserAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
+
+    /// Applies Safari-style desktop mode. The viewport script is replaced rather than
+    /// accumulated, and the caller decides whether to reload the page.
+    func applyDesktopMode(enabled: Bool, viewportWidth: Int, reload: Bool) {
+        desktopModeEnabled = enabled
+        desktopViewportWidth = min(max(viewportWidth, 800), 1920)
+        webView.customUserAgent = enabled ? Self.desktopUserAgent : nil
+        webView.configuration.defaultWebpagePreferences.preferredContentMode =
+            enabled ? .desktop : .mobile
+
+        if enabled, !desktopViewportBaseInstalled {
+            let script = WKUserScript(
+                source: Self.desktopViewportBaseSource,
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+            webView.configuration.userContentController.addUserScript(script)
+            desktopViewportBaseInstalled = true
+        }
+        // A small setter script is appended for every change; the newest one wins because
+        // WKUserContentController executes scripts in insertion order. Mobile-only sessions
+        // keep exactly the MediaProbe script (and no desktop scripts).
+        if enabled || desktopViewportBaseInstalled {
+            let setter = WKUserScript(
+                source: "window.__cfDesktopWidth = \(enabled ? desktopViewportWidth : 0); window.dispatchEvent(new Event('cf-desktop-viewport'));",
+                injectionTime: .atDocumentStart,
+                forMainFrameOnly: true
+            )
+            webView.configuration.userContentController.addUserScript(setter)
+        }
+
+        if reload {
+            webView.reload()
+        }
+    }
+
+    private static let desktopViewportBaseSource = """
+    (function() {
+      if (window.__cfDesktopViewportInstalled) { return; }
+      window.__cfDesktopViewportInstalled = true;
+      function apply() {
+        var width = window.__cfDesktopWidth || 0;
+        var meta = document.querySelector('meta[name="viewport"]');
+        if (width > 0) {
+          if (window.__cfDesktopOriginalViewport === undefined) {
+            window.__cfDesktopOriginalViewport = meta ? meta.getAttribute('content') : null;
+          }
+          if (!meta) {
+            meta = document.createElement('meta');
+            meta.setAttribute('name', 'viewport');
+            (document.head || document.documentElement).appendChild(meta);
+          }
+          meta.setAttribute('content', 'width=' + width + ', initial-scale=1, maximum-scale=5');
+        } else if (window.__cfDesktopOriginalViewport !== undefined) {
+          if (window.__cfDesktopOriginalViewport === null) {
+            if (meta) { meta.remove(); }
+          } else if (meta) {
+            meta.setAttribute('content', window.__cfDesktopOriginalViewport);
+          }
+          window.__cfDesktopOriginalViewport = undefined;
+        }
+      }
+      window.addEventListener('cf-desktop-viewport', apply);
+      document.addEventListener('DOMContentLoaded', apply);
+      window.addEventListener('load', apply);
+      new MutationObserver(apply).observe(document.documentElement, { childList: true, subtree: true });
+    })();
+    """
 
     /// Developer test-page access is a runtime switch, but only ever enabled in DEBUG builds.
     func updateLocalTestAccess(enabled: Bool) {
@@ -454,6 +541,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         backForwardObservation = nil
         progressObservation = nil
         securityObservation = nil
+        contentSizeObservation = nil
+        contentInsetObservation = nil
         objectWillChangeObservation = nil
         onEvent = nil
         onCreateWindow = nil
@@ -462,6 +551,36 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     }
 
     // MARK: - KVO
+
+    private func observePageFit() {
+        contentSizeObservation = webView.scrollView.observe(\.contentSize, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.updatePageFit() }
+        }
+        contentInsetObservation = webView.scrollView.observe(\.contentInset, options: [.new]) { [weak self] _, _ in
+            Task { @MainActor in self?.updatePageFit() }
+        }
+    }
+
+    private func updatePageFit() {
+        let scrollView = webView.scrollView
+        // Compare the document height with the full screen, not the current web-view frame:
+        // after we reserve the bottom safe area the frame shrinks and would otherwise flip
+        // the classification back to "scrollable" immediately.
+        let referenceHeight = max(
+            scrollView.bounds.height,
+            webView.window?.bounds.height ?? 0
+        )
+        guard scrollView.contentSize.height > 0, referenceHeight > 0 else {
+            setPageFitsOneScreen(false)
+            return
+        }
+        setPageFitsOneScreen(scrollView.contentSize.height <= referenceHeight + 2)
+    }
+
+    private func setPageFitsOneScreen(_ value: Bool) {
+        guard pageFitsOneScreen != value else { return }
+        pageFitsOneScreen = value
+    }
 
     private func observeScrollDirection() {
         scrollObservation = webView.scrollView.observe(\.contentOffset, options: [.new]) { [weak self] scrollView, _ in

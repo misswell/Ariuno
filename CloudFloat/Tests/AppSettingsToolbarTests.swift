@@ -68,6 +68,21 @@ final class AppSettingsToolbarTests: XCTestCase {
         XCTAssertEqual(reloaded.fullscreenInsetRight, 80, accuracy: 0.001)
     }
 
+    func testDesktopModeDefaultsPersistAndClamp() {
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.requestDesktopSite)
+        XCTAssertEqual(settings.desktopViewportWidth, 1280, accuracy: 0.001)
+
+        settings.requestDesktopSite = true
+        settings.desktopViewportWidth = 1440
+        let reloaded = AppSettings(defaults: defaults)
+        XCTAssertTrue(reloaded.requestDesktopSite)
+        XCTAssertEqual(reloaded.desktopViewportWidth, 1440, accuracy: 0.001)
+
+        settings.desktopViewportWidth = 5000
+        XCTAssertEqual(settings.desktopViewportWidth, 1920, accuracy: 0.001)
+    }
+
     func testFullscreenInsetsAreClampedOnLoad() {
         defaults.set(200.0, forKey: "cf.settings.fullscreenInsetTop")
         defaults.set(-20.0, forKey: "cf.settings.fullscreenInsetLeft")

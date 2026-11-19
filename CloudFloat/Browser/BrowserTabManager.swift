@@ -26,6 +26,8 @@ final class BrowserTabManager: ObservableObject {
     private let navigationPolicy: NavigationPolicy
     private let inPageControlEnabled: Bool
     private let javaScriptCanOpenWindowsAutomatically: Bool
+    private var desktopModeEnabled: Bool
+    private var desktopViewportWidth: Int
     private var sessionObservations: [UUID: AnyCancellable] = [:]
 
     var activeSession: BrowserSession {
@@ -36,6 +38,8 @@ final class BrowserTabManager: ObservableObject {
         navigationPolicy: NavigationPolicy = NavigationPolicy(),
         inPageControlEnabled: Bool = true,
         javaScriptCanOpenWindowsAutomatically: Bool = true,
+        desktopModeEnabled: Bool = false,
+        desktopViewportWidth: Int = 1280,
         recentlyClosed: RecentlyClosedStore? = nil,
         persistence: TabSessionStore? = nil,
         restorePersistedTabs: Bool = true
@@ -43,6 +47,8 @@ final class BrowserTabManager: ObservableObject {
         self.navigationPolicy = navigationPolicy
         self.inPageControlEnabled = inPageControlEnabled
         self.javaScriptCanOpenWindowsAutomatically = javaScriptCanOpenWindowsAutomatically
+        self.desktopModeEnabled = desktopModeEnabled
+        self.desktopViewportWidth = min(max(desktopViewportWidth, 800), 1920)
         self.recentlyClosed = recentlyClosed ?? RecentlyClosedStore()
         self.persistence = persistence
         self.activeSessionID = UUID()
@@ -106,6 +112,23 @@ final class BrowserTabManager: ObservableObject {
         onAnyChange?()
         schedulePersist()
         return session
+    }
+
+    /// Applies desktop mode to every open tab. Only the active page reloads immediately;
+    /// background tabs pick it up on their next navigation.
+    func applyDesktopMode(enabled: Bool, viewportWidth: Int, reloadActive: Bool) {
+        desktopModeEnabled = enabled
+        desktopViewportWidth = min(max(viewportWidth, 800), 1920)
+        for session in sessions {
+            session.applyDesktopMode(
+                enabled: enabled,
+                viewportWidth: desktopViewportWidth,
+                reload: false
+            )
+        }
+        if reloadActive {
+            activeSession.reload()
+        }
     }
 
     func session(withID id: UUID) -> BrowserSession? {
@@ -203,7 +226,9 @@ final class BrowserTabManager: ObservableObject {
             javaScriptCanOpenWindowsAutomatically: javaScriptCanOpenWindowsAutomatically,
             isPrivate: isPrivate,
             injectedConfiguration: configuration,
-            downloadManager: downloadManager
+            downloadManager: downloadManager,
+            desktopModeEnabled: desktopModeEnabled,
+            desktopViewportWidth: desktopViewportWidth
         )
         configure(session)
         onSessionCreated?(session)
@@ -298,7 +323,9 @@ final class BrowserTabManager: ObservableObject {
             javaScriptCanOpenWindowsAutomatically: javaScriptCanOpenWindowsAutomatically,
             websiteDataStore: isPrivate ? privateDataStore : .default(),
             isPrivate: isPrivate,
-            downloadManager: downloadManager
+            downloadManager: downloadManager,
+            desktopModeEnabled: desktopModeEnabled,
+            desktopViewportWidth: desktopViewportWidth
         )
         configure(session)
         onSessionCreated?(session)

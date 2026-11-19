@@ -22,6 +22,8 @@ final class AppSettings: ObservableObject {
         static let allowLocalTestPages = "cf.settings.allowLocalTestPages"
         static let hasCompletedFirstRun = "cf.settings.hasCompletedFirstRun"
         static let searchEngine = "cf.settings.searchEngine"
+        static let requestDesktopSite = "cf.settings.requestDesktopSite"
+        static let desktopViewportWidth = "cf.settings.desktopViewportWidth"
     }
 
     private let defaults: UserDefaults
@@ -156,6 +158,23 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(searchEngine.rawValue, forKey: Key.searchEngine) }
     }
 
+    /// Request desktop HTML and use a desktop UA for the current pages. Off by default.
+    @Published var requestDesktopSite: Bool {
+        didSet { defaults.set(requestDesktopSite, forKey: Key.requestDesktopSite) }
+    }
+
+    /// CSS viewport width used when desktop mode is on. WebKit scales it to the screen.
+    @Published var desktopViewportWidth: Double {
+        didSet {
+            let clamped = min(max(desktopViewportWidth, 800), 1920)
+            if clamped != desktopViewportWidth {
+                desktopViewportWidth = clamped
+                return
+            }
+            defaults.set(clamped, forKey: Key.desktopViewportWidth)
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         if ProcessInfo.processInfo.arguments.contains("-CFResetFloatingBall") {
@@ -200,6 +219,12 @@ final class AppSettings: ObservableObject {
         self.searchEngine = SearchEngine(
             rawValue: defaults.string(forKey: Key.searchEngine) ?? ""
         ) ?? .duckduckgo
+        self.requestDesktopSite =
+            defaults.object(forKey: Key.requestDesktopSite) as? Bool ?? false
+        self.desktopViewportWidth = min(
+            max(defaults.object(forKey: Key.desktopViewportWidth) as? Double ?? 1280, 800),
+            1920
+        )
     }
 
     func markFirstRunCompleted() {
@@ -213,5 +238,7 @@ final class AppSettings: ObservableObject {
         enableBackgroundAudio = true
         verboseDiagnostics = FeatureFlags.isDebugBuild
         allowLocalTestPages = FeatureFlags.localTestServerEnabled
+        requestDesktopSite = false
+        desktopViewportWidth = 1280
     }
 }

@@ -182,6 +182,8 @@ final class AppCoordinator: ObservableObject {
         self.tabs = BrowserTabManager(
             navigationPolicy: policy,
             inPageControlEnabled: settings.enableInPagePiPButton,
+            desktopModeEnabled: settings.requestDesktopSite,
+            desktopViewportWidth: Int(settings.desktopViewportWidth),
             recentlyClosed: recentlyClosed,
             persistence: tabPersistence
         )
@@ -900,6 +902,32 @@ final class AppCoordinator: ObservableObject {
         bookmarks.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)
+        settings.$requestDesktopSite
+            .dropFirst()
+            .sink { [weak self] enabled in
+                guard let self else { return }
+                self.tabs.applyDesktopMode(
+                    enabled: enabled,
+                    viewportWidth: Int(self.settings.desktopViewportWidth),
+                    reloadActive: true
+                )
+                self.showToast(
+                    enabled ? "已请求桌面版网站，正在重新加载" : "已切换为移动版网站",
+                    .info
+                )
+            }
+            .store(in: &cancellables)
+        settings.$desktopViewportWidth
+            .dropFirst()
+            .sink { [weak self] width in
+                guard let self, self.settings.requestDesktopSite else { return }
+                self.tabs.applyDesktopMode(
+                    enabled: true,
+                    viewportWidth: Int(width),
+                    reloadActive: true
+                )
+            }
+            .store(in: &cancellables)
         tabs.recentlyClosed.objectWillChange.sink { [weak self] _ in
             self?.objectWillChange.send()
         }.store(in: &cancellables)

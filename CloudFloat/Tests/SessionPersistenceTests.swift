@@ -66,6 +66,40 @@ final class SessionPersistenceTests: XCTestCase {
         )
     }
 
+    func testDesktopModeUsesDesktopUAAndConfiguredViewport() async throws {
+        let (server, port) = try await startServer()
+        self.server = server
+        let directory = LocalHTTPServer.testPagesDirectory()
+        let policy = NavigationPolicy(
+            allowsLocalTestPages: true,
+            localTestPorts: [Int(port)],
+            allowedFileDirectory: directory
+        )
+        let session = BrowserSession(
+            navigationPolicy: policy,
+            websiteDataStore: .nonPersistent(),
+            desktopModeEnabled: true,
+            desktopViewportWidth: 1280
+        )
+        defer { session.tearDown() }
+        session.webView.frame = CGRect(x: 0, y: 0, width: 390, height: 844)
+
+        try await load(primaryURL("desktop-mode.html", port: port), in: session)
+        let ua = try await evaluate("navigator.userAgent", in: session.webView) as? String ?? ""
+        XCTAssertTrue(ua.contains("Macintosh"), "desktop UA was not applied: \(ua)")
+
+        let layoutWidth = try await evaluate(
+            "document.documentElement.clientWidth",
+            in: session.webView
+        ) as? Int
+        XCTAssertEqual(layoutWidth, 1280, "desktop layout viewport width was not applied")
+        let desktopMedia = try await evaluate(
+            "window.matchMedia('(min-width:1000px)').matches",
+            in: session.webView
+        ) as? Bool
+        XCTAssertEqual(desktopMedia, true, "desktop media queries were not active")
+    }
+
     // T11/session retention: re-creating the SwiftUI host must not recreate or reload the
     // WebView, and page-level JS state must survive home/game navigation.
     func testSwiftUIHostRecreationKeepsWebViewAndPageState() async throws {

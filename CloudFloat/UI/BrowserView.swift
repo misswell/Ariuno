@@ -19,6 +19,8 @@ struct BrowserView: View {
     @State private var bottomSafeAreaInset: CGFloat = 0
     @State private var compactChrome = false
     @State private var scrollSubscription: AnyCancellable?
+    @State private var pageFitSubscription: AnyCancellable?
+    @State private var pageFitsOneScreen = false
     @FocusState private var addressFieldFocused: Bool
 
     var body: some View {
@@ -149,6 +151,7 @@ struct BrowserView: View {
         .onDisappear {
             autoHideWorkItem?.cancel()
             scrollSubscription?.cancel()
+            pageFitSubscription?.cancel()
         }
         .onChange(of: coordinator.route) { _, newRoute in
             guard newRoute == .game else { return }
@@ -229,13 +232,21 @@ struct BrowserView: View {
             // browsing uses scroll content insets instead, so content can scroll underneath
             // the status bar and bottom chrome.
             let insets = isBallMode ? contentInsets : EdgeInsets()
+            // Short pages reserve the bottom chrome as a real safe area (fixed bottom
+            // elements stay above it). Long pages run under the floating chrome and use a
+            // scroll content inset instead.
+            let bottomFrameInset = (!isBallMode && pageFitsOneScreen)
+                ? bottomChromeHeight + bottomSafeAreaInset
+                : 0
             let width = max(1, proxy.size.width - insets.leading - insets.trailing)
-            let height = max(1, proxy.size.height - insets.top - insets.bottom)
+            let height = max(1, proxy.size.height - insets.top - insets.bottom - bottomFrameInset)
             BrowserTabHostView(
                 sessions: coordinator.tabs.sessions,
                 activeSessionID: coordinator.tabs.activeSessionID,
                 topContentInset: isBallMode ? 0 : topSafeAreaInset,
-                bottomContentInset: isBallMode ? 0 : bottomChromeHeight + bottomSafeAreaInset
+                bottomContentInset: isBallMode
+                    ? 0
+                    : (pageFitsOneScreen ? 0 : bottomChromeHeight + bottomSafeAreaInset)
             )
             .frame(width: width, height: height)
             .position(x: insets.leading + width / 2, y: insets.top + height / 2)
@@ -399,6 +410,15 @@ struct BrowserView: View {
 
     private var compactMoreButton: some View {
         Menu {
+            Toggle(
+                isOn: Binding(
+                    get: { coordinator.settings.requestDesktopSite },
+                    set: { coordinator.settings.requestDesktopSite = $0 }
+                )
+            ) {
+                Label("桌面版网站", systemImage: "desktopcomputer")
+            }
+            Divider()
             Button {
                 collapseToolbarToBall()
             } label: {
@@ -642,13 +662,24 @@ struct BrowserView: View {
 
     private func bindScrollDirection() {
         scrollSubscription?.cancel()
+        pageFitSubscription?.cancel()
         scrollSubscription = coordinator.browser.$isScrollingDown
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { isDown in
-                guard !isBallMode, !addressFieldFocused else { return }
+                guard !isBallMode, !addressFieldFocused, !pageFitsOneScreen else { return }
                 withAnimation(.easeInOut(duration: 0.22)) {
                     compactChrome = isDown
+                }
+            }
+        pageFitsOneScreen = coordinator.browser.pageFitsOneScreen
+        pageFitSubscription = coordinator.browser.$pageFitsOneScreen
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { fits in
+                withAnimation(.easeInOut(duration: 0.22)) {
+                    pageFitsOneScreen = fits
+                    if fits { compactChrome = false }
                 }
             }
     }

@@ -114,6 +114,22 @@ struct SettingsView: View {
             }
 
             Section {
+                Toggle("请求桌面版网站", isOn: $settings.requestDesktopSite)
+                if settings.requestDesktopSite {
+                    Picker("渲染宽度", selection: $settings.desktopViewportWidth) {
+                        Text("1024 px").tag(1024.0)
+                        Text("1280 px").tag(1280.0)
+                        Text("1440 px").tag(1440.0)
+                        Text("1920 px").tag(1920.0)
+                    }
+                }
+            } header: {
+                Text("网页")
+            } footer: {
+                Text("开启后使用桌面版 User-Agent，并把网页 CSS 视口宽度设为所选值，适合需要桌面排版的网站。切换会重新加载当前标签；其他标签在下次打开时生效。")
+            }
+
+            Section {
                 Picker("搜索引擎", selection: $settings.searchEngine) {
                     ForEach(SearchEngine.allCases) { engine in
                         Text(engine.displayName).tag(engine)
