@@ -23,10 +23,9 @@
 | App Review | **已重新提交**：2026-11-20，submission `3898c371-45e4-4f69-86c7-d86595baa709`，build `1.0 (15)`，状态 `WAITING_FOR_REVIEW`；已附 139 秒真机录屏 `Ariuno-1.0-build15-review.mp4` |
 | Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
 
-> **注意（2026-11-18）**：已在审核的 build `1.0 (1)` **不包含**提交后新增的单行控制栏、
-> Safari 式非全屏布局、PiP 占位提示条移除、悬浮球吸附边持久化等改动。这些改动已推送到
-> `main`。若希望它们出现在 App Store 版本中，需要递增 build 号上传 build 2，并在
-> App Store Connect 将版本重新提交审核（会替换当前审核中的 build）。
+> **当前审核（2026-11-20）**：App Store 版本 1.0 已换为 build `15`，包含单行分块玻璃控制栏、
+> Safari 式全屏滚动/底部安全区、桌面版渲染宽度、可编辑常用网站和单一网页内 PiP 按钮。
+> 旧的 build 1 说明已不再适用。
 
 ## 1. 创建 App Store Connect App 记录
 
