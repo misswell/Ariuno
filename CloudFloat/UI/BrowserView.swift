@@ -67,10 +67,11 @@ struct BrowserView: View {
                         preferredEdge: FloatingBallGeometry.Edge(
                             rawValue: coordinator.settings.floatingBallEdge
                         ),
+                        topSafeInset: topSafeAreaInset,
                         diameter: CGFloat(coordinator.settings.floatingBallDiameter),
                         tint: .accentColor,
-                        icon: nil,
-                        showsCenterDot: true,
+                        icon: "arrow.down.right.and.arrow.up.left",
+                        showsCenterDot: false,
                         showsPiPBadge: coordinator.isAnyPiPActive,
                         accessibilityLabel: "全屏菜单",
                         onTap: { showFullscreenMenu = true },
@@ -695,6 +696,7 @@ struct BrowserView: View {
         withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
             isBallMode = true
         }
+        coordinator.showToast("点击悬浮球可打开全屏菜单", .info)
     }
 
     private func expandToolbarFromBall() {
