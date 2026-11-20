@@ -202,6 +202,9 @@ struct FloatingEdgeControl: View {
         .onTapGesture {
             cancelIdleTask()
             onTap()
+            // Opening the fullscreen menu used to cancel the idle timer permanently, so the
+            // first tap on a freshly shown ball left it fully expanded until it was dragged.
+            scheduleIdleCollapse()
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(accessibilityLabel)
@@ -232,9 +235,11 @@ struct FloatingEdgeControl: View {
         }
         .onChange(of: containerSize) { oldSize, newSize in
             relayout(from: oldSize, to: newSize)
+            if !isIdleCollapsed { scheduleIdleCollapse() }
         }
         .onChange(of: diameter) { _, _ in
             relayout(from: containerSize, to: containerSize)
+            if !isIdleCollapsed { scheduleIdleCollapse() }
         }
     }
 

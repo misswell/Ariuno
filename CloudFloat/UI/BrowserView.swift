@@ -16,8 +16,14 @@ struct BrowserView: View {
     @State private var showFullscreenMenu = false
     @State private var isEditingAddress = false
     @State private var topSafeAreaInset: CGFloat = BrowserView.windowSafeAreaTop
+    /// At rest the web view itself starts below the status bar, exactly like Safari. A scroll
+    /// content inset alone cannot move `position: fixed` page headers, and WKWebView maps the
+    /// inset back into page coordinates on some sites, so the page still ended up underneath
+    /// the status bar. Only after the user scrolls down do we extend the web view edge to edge.
+    @State private var contentScrolledUnderStatusBar = false
     @State private var compactChrome = false
     @State private var scrollSubscription: AnyCancellable?
+    @State private var atTopSubscription: AnyCancellable?
     @State private var pageFitSubscription: AnyCancellable?
     @State private var pageFitsOneScreen = false
     @FocusState private var addressFieldFocused: Bool
@@ -137,6 +143,7 @@ struct BrowserView: View {
         .onDisappear {
             autoHideWorkItem?.cancel()
             scrollSubscription?.cancel()
+            atTopSubscription?.cancel()
             pageFitSubscription?.cancel()
         }
         .onChange(of: coordinator.route) { _, newRoute in
@@ -155,10 +162,21 @@ struct BrowserView: View {
         }
         .onChange(of: coordinator.tabs.activeSessionID) { _, _ in
             compactChrome = false
+            contentScrolledUnderStatusBar = false
             isEditingAddress = false
             syncAddressText()
             bindScrollDirection()
         }
+        .onChange(of: coordinator.browser.loadGeneration) { _, _ in
+            // A newly opened page always starts below the status bar, even when the previous
+            // page was left scrolled underneath it.
+            compactChrome = false
+            contentScrolledUnderStatusBar = false
+        }
+        .onChange(of: isBallMode) { _, ballMode in
+            if !ballMode { contentScrolledUnderStatusBar = false }
+        }
+
         .onChange(of: addressFieldFocused) { _, focused in
             if focused { compactChrome = false }
         }
@@ -230,18 +248,27 @@ struct BrowserView: View {
             let bottomFrameInset = (!isBallMode && pageFitsOneScreen)
                 ? bottomChromeContentInset
                 : 0
+            let topFrameInset = (!isBallMode && !contentScrolledUnderStatusBar)
+                ? topSafeAreaInset
+                : 0
             let width = max(1, proxy.size.width - insets.leading - insets.trailing)
-            let height = max(1, proxy.size.height - insets.top - insets.bottom - bottomFrameInset)
+            let height = max(
+                1,
+                proxy.size.height - topFrameInset - insets.top - insets.bottom - bottomFrameInset
+            )
             BrowserTabHostView(
                 sessions: coordinator.tabs.sessions,
                 activeSessionID: coordinator.tabs.activeSessionID,
-                topContentInset: isBallMode ? 0 : topSafeAreaInset,
+                topContentInset: 0,
                 bottomContentInset: isBallMode
                     ? 0
                     : (pageFitsOneScreen ? 0 : bottomChromeContentInset)
             )
             .frame(width: width, height: height)
-            .position(x: insets.leading + width / 2, y: insets.top + height / 2)
+            .position(
+                x: insets.leading + width / 2,
+                y: topFrameInset + insets.top + height / 2
+            )
         }
     }
 
@@ -658,11 +685,25 @@ struct BrowserView: View {
     private func bindScrollDirection() {
         scrollSubscription?.cancel()
         pageFitSubscription?.cancel()
+        atTopSubscription?.cancel()
+        atTopSubscription = coordinator.browser.$isAtTop
+            .removeDuplicates()
+            .receive(on: DispatchQueue.main)
+            .sink { atTop in
+                guard !isBallMode, !addressFieldFocused else { return }
+                let extendUnderStatusBar = !atTop
+                if contentScrolledUnderStatusBar != extendUnderStatusBar {
+                    withAnimation(.easeInOut(duration: 0.22)) {
+                        contentScrolledUnderStatusBar = extendUnderStatusBar
+                    }
+                }
+            }
         scrollSubscription = coordinator.browser.$isScrollingDown
             .removeDuplicates()
             .receive(on: DispatchQueue.main)
             .sink { isDown in
-                guard !isBallMode, !addressFieldFocused, !pageFitsOneScreen else { return }
+                guard !isBallMode, !addressFieldFocused else { return }
+                guard !pageFitsOneScreen else { return }
                 withAnimation(.easeInOut(duration: 0.22)) {
                     compactChrome = isDown
                 }

@@ -216,13 +216,18 @@ final class BrowserUITests: XCTestCase {
         XCTAssertFalse(fullscreen.exists, "全屏模式下底部工具栏应隐藏")
         XCTAssertFalse(app.buttons["添加书签"].exists, "全屏模式下两行工具栏应隐藏")
 
-        // After 3 seconds of inactivity the ball should tuck into the right edge.
+        // After 3 seconds of inactivity the ball should tuck halfway into the nearest edge.
         sleep(4)
         XCTAssertTrue(ball.exists, "空闲后悬浮球应仍可找到")
+        let idleFrame = ball.frame
         XCTAssertGreaterThan(
-            ball.frame.midX,
-            app.frame.midX,
-            "悬浮球应吸附在右侧边缘"
+            idleFrame.midX,
+            app.frame.maxX - 6,
+            "空闲后悬浮球应半收进右侧边缘，实际：\(idleFrame)"
+        )
+        XCTAssertTrue(
+            (ball.value as? String ?? "").contains("已半收"),
+            "空闲后悬浮球应进入半收状态，实际：\(String(describing: ball.value))"
         )
 
         let collapsed = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
@@ -357,6 +362,41 @@ final class BrowserUITests: XCTestCase {
         XCTAssertTrue(addressButton.waitForExistence(timeout: 5), "从菜单选择退出全屏后应恢复控制栏")
     }
 
+    func testFloatingBallResumesIdleTuckAfterOpeningMenu() {
+        app.launch()
+        let start = app.buttons["开始浏览"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+
+        let more = app.buttons["更多操作"]
+        XCTAssertTrue(more.waitForExistence(timeout: 15))
+        more.tap()
+        let fullscreen = app.buttons["全屏"]
+        XCTAssertTrue(fullscreen.waitForExistence(timeout: 5))
+        fullscreen.tap()
+
+        let ball = app.buttons["全屏菜单"]
+        XCTAssertTrue(ball.waitForExistence(timeout: 5))
+        // Tap before the first 3-second idle deadline. This used to cancel the timer forever.
+        ball.tap()
+        let refresh = app.buttons["刷新页面"]
+        XCTAssertTrue(refresh.waitForExistence(timeout: 5), "点击悬浮球应打开全屏菜单")
+        // Tap above the action sheet to dismiss it without selecting an action.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.06)).tap()
+        let dismissed = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
+            object: refresh
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [dismissed], timeout: 5), .completed)
+        XCTAssertTrue(ball.waitForExistence(timeout: 5))
+
+        sleep(4)
+        XCTAssertTrue(
+            (ball.value as? String ?? "").contains("已半收"),
+            "关闭全屏菜单后悬浮球应重新自动半收，实际：\(String(describing: ball.value))"
+        )
+    }
+
     func testAddressBarNavigatesToTypedHost() throws {
         app.launch()
         let field = app.textFields["搜索或输入网址"]
@@ -369,12 +409,27 @@ final class BrowserUITests: XCTestCase {
             NSPredicate(format: "label BEGINSWITH %@", "标签页，共 ")
         ).firstMatch
         XCTAssertTrue(tabsButton.waitForExistence(timeout: 15))
+        let loading = app.staticTexts["正在加载页面"]
+        if loading.exists {
+            let gone = XCTNSPredicateExpectation(
+                predicate: NSPredicate(format: "exists == false"),
+                object: loading
+            )
+            _ = XCTWaiter.wait(for: [gone], timeout: 30)
+        }
+        sleep(1)
 
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         shot.name = "appstore-browser"
         shot.lifetime = .keepAlways
         add(shot)
 
+        let restWebViewFrame = app.webViews.firstMatch.frame
+        XCTAssertGreaterThan(
+            restWebViewFrame.minY,
+            20,
+            "初始页面应位于状态栏下方，实际 WebView 位置：\(restWebViewFrame)"
+        )
         sleep(8)
         let topSafeArea = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         topSafeArea.name = "top-safe-area-rest"
@@ -393,6 +448,12 @@ final class BrowserUITests: XCTestCase {
         if (addressButton.value as? String) != "compact" {
             throw XCTSkip("this run did not load a scrollable page; chrome collapse is covered by the physical-device probe")
         }
+        let scrolledWebViewFrame = app.webViews.firstMatch.frame
+        XCTAssertLessThan(
+            scrolledWebViewFrame.minY,
+            10,
+            "向下滚动后页面应延伸到状态栏下方，实际 WebView 位置：\(scrolledWebViewFrame)"
+        )
         let scrolled = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         scrolled.name = "top-safe-area-scrolled"
         scrolled.lifetime = .keepAlways

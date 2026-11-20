@@ -61,6 +61,9 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     @Published private(set) var currentHost: String?
     @Published private(set) var pageTitle: String = ""
     @Published private(set) var isScrollingDown = false
+    /// True while the document is at its resting top position. The browser uses this (rather
+    /// than scroll velocity) to decide when the page may extend under the status bar.
+    @Published private(set) var isAtTop = true
     @Published private(set) var pageFitsOneScreen = false
     @Published private(set) var lastVisitedAt: Date
     @Published private(set) var isClosed = false
@@ -83,6 +86,9 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
     private var contentSizeObservation: NSKeyValueObservation?
     private var contentInsetObservation: NSKeyValueObservation?
     private var lastScrollOffsetY: CGFloat = 0
+    /// Page script can move the scroll view while loading (Bing focuses its search field).
+    /// Only a real user drag may give the page the status-bar area.
+    private var hasUserScrolled = false
     private var pendingScrollDown: Bool?
     private var pendingScrollSince: Date?
     private var objectWillChangeObservation: AnyCancellable?
@@ -403,6 +409,11 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         isLoading = true
         hasCommittedPage = false
         lastNavigationFailure = nil
+        pendingScrollDown = nil
+        pendingScrollSince = nil
+        hasUserScrolled = false
+        setScrollingDown(false)
+        setAtTop(true)
         mediaDetector.clearFrames(reason: "navigation-started")
         onEvent?(.loadStarted)
     }
@@ -412,7 +423,6 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         hasCommittedPage = true
         isLoading = true
         currentHost = webView.url?.host
-        pinTopContentInset()
         onEvent?(.navigationCommitted(host: currentHost))
     }
 
@@ -423,29 +433,8 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         lastNavigationFailure = nil
         lastVisitedAt = now()
         currentHost = webView.url?.host
-        pinTopContentInset()
         mediaDetector.refreshNow()
         onEvent?(.loadFinished(host: currentHost))
-    }
-
-    /// Use the top inset as the resting position on a newly loaded page; scrolling can then
-    /// carry content under the status bar, matching Safari's behavior.
-    private func pinTopContentInset() {
-        let scrollView = webView.scrollView
-        let top = max(0, scrollView.contentInset.top)
-        guard top > 0 else { return }
-        if scrollView.contentOffset.y >= -1, scrollView.contentOffset.y <= 1 {
-            scrollView.contentOffset.y = -top
-        }
-        // WebKit can restore offset 0 after layout/JS runs. Re-pin once after the page settles.
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(nanoseconds: 400_000_000)
-            guard let self else { return }
-            let sv = self.webView.scrollView
-            if sv.contentOffset.y >= -1, sv.contentOffset.y <= 1 {
-                sv.contentOffset.y = -top
-            }
-        }
     }
 
     func handleNavigationFailure(error: Error, isProvisional: Bool) {
@@ -612,6 +601,10 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
             Task { @MainActor in
                 guard let self else { return }
                 self.lastScrollOffsetY = y
+                if scrollView.isDragging || scrollView.isDecelerating || scrollView.isTracking {
+                    self.hasUserScrolled = true
+                }
+                self.setAtTop(!self.hasUserScrolled || y <= top + 4)
                 if y <= top + 4 {
                     self.pendingScrollDown = nil
                     self.pendingScrollSince = nil
@@ -646,9 +639,16 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         isScrollingDown = value
     }
 
+    private func setAtTop(_ value: Bool) {
+        guard isAtTop != value else { return }
+        isAtTop = value
+    }
+
     func resetScrollDirection() {
         lastScrollOffsetY = webView.scrollView.contentOffset.y
+        hasUserScrolled = false
         setScrollingDown(false)
+        setAtTop(true)
     }
 
     private func observeWebView() {
