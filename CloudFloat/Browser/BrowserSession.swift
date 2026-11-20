@@ -141,7 +141,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
             inPageControlEnabled: inPageControlEnabled,
             now: now
         )
-        self.webView = WKWebView(frame: .zero, configuration: configuration)
+        self.webView = BrowserWebView(frame: .zero, configuration: configuration)
         self.cookieStore = CookieStore(dataStore: configuration.websiteDataStore, now: now)
         self.navigationPolicy = navigationPolicy
 
@@ -412,6 +412,7 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         hasCommittedPage = true
         isLoading = true
         currentHost = webView.url?.host
+        pinTopContentInset()
         onEvent?(.navigationCommitted(host: currentHost))
     }
 
@@ -422,8 +423,29 @@ final class BrowserSession: NSObject, ObservableObject, Identifiable {
         lastNavigationFailure = nil
         lastVisitedAt = now()
         currentHost = webView.url?.host
+        pinTopContentInset()
         mediaDetector.refreshNow()
         onEvent?(.loadFinished(host: currentHost))
+    }
+
+    /// Use the top inset as the resting position on a newly loaded page; scrolling can then
+    /// carry content under the status bar, matching Safari's behavior.
+    private func pinTopContentInset() {
+        let scrollView = webView.scrollView
+        let top = max(0, scrollView.contentInset.top)
+        guard top > 0 else { return }
+        if scrollView.contentOffset.y >= -1, scrollView.contentOffset.y <= 1 {
+            scrollView.contentOffset.y = -top
+        }
+        // WebKit can restore offset 0 after layout/JS runs. Re-pin once after the page settles.
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)
+            guard let self else { return }
+            let sv = self.webView.scrollView
+            if sv.contentOffset.y >= -1, sv.contentOffset.y <= 1 {
+                sv.contentOffset.y = -top
+            }
+        }
     }
 
     func handleNavigationFailure(error: Error, isProvisional: Bool) {

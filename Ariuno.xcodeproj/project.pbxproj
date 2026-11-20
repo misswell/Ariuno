@@ -63,6 +63,7 @@
 		9CC91C5AA2639068E55E5FC0 /* BrowserFeatureTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9655ADBEF80B62E9CE6CB457 /* BrowserFeatureTests.swift */; };
 		9D652632BC33423B5E7945AE /* PrivacyRedactorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19A9BB0AA746C7ABC32C4625 /* PrivacyRedactorTests.swift */; };
 		9F31537A966DF621547E7F76 /* GameSessionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B78CAC10C7FFF8EA81BC37A4 /* GameSessionState.swift */; };
+		A1143BE915BEAF4468689EC9 /* BrowserWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7291C862CA1B92303F18F467 /* BrowserWebView.swift */; };
 		A54741F371AE744CC23E0684 /* BrowserUIDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11A27FDF0EBC8E900F72BDD8 /* BrowserUIDelegate.swift */; };
 		ABB26EB8DDAE5BBB217B0D65 /* URLInputParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = EDF42184A2747D50E9346299 /* URLInputParser.swift */; };
 		B33002A32CA58E2829C73C9A /* AriunoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17B47BF6523EB72325246D92 /* AriunoApp.swift */; };
@@ -154,6 +155,7 @@
 		6EF99B828AACFA8FCFCF85F2 /* StartPageShortcutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPageShortcutStore.swift; sourceTree = "<group>"; };
 		710A120384FBAEB1FEDB7E2E /* TabThumbnailAndContainerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TabThumbnailAndContainerTests.swift; sourceTree = "<group>"; };
 		71B0ACEBA33DE68780ACB4FB /* StartPageShortcutStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartPageShortcutStoreTests.swift; sourceTree = "<group>"; };
+		7291C862CA1B92303F18F467 /* BrowserWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserWebView.swift; sourceTree = "<group>"; };
 		76A4C3F63AEB6F86B4CC7F8E /* TestPages */ = {isa = PBXFileReference; lastKnownFileType = folder; name = TestPages; path = CloudFloat/TestPages; sourceTree = SOURCE_ROOT; };
 		782366DF1604B0BCE2DE2BA2 /* BrowserSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserSession.swift; sourceTree = "<group>"; };
 		7907960C58037C62B3BDEB30 /* MediaSchedulingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaSchedulingTests.swift; sourceTree = "<group>"; };
@@ -233,6 +235,7 @@
 				782366DF1604B0BCE2DE2BA2 /* BrowserSession.swift */,
 				5AB59731D581AE98DF6821C5 /* BrowserTabManager.swift */,
 				11A27FDF0EBC8E900F72BDD8 /* BrowserUIDelegate.swift */,
+				7291C862CA1B92303F18F467 /* BrowserWebView.swift */,
 				E971CD89A1F4CE39B19E46A7 /* CloudWebView.swift */,
 				EC72E5F1F9BA20914A1D2C68 /* CookieStore.swift */,
 				D0F6C3B355CC9BF234F7890C /* DownloadManager.swift */,
@@ -537,6 +540,7 @@
 				614E879A5DAD02FEF3F01932 /* BrowserTabManager.swift in Sources */,
 				A54741F371AE744CC23E0684 /* BrowserUIDelegate.swift in Sources */,
 				F5F7AE11137F919BCE667A40 /* BrowserView.swift in Sources */,
+				A1143BE915BEAF4468689EC9 /* BrowserWebView.swift in Sources */,
 				D24E34A43EF1B345417C10C1 /* CloudWebView.swift in Sources */,
 				9412ADD8E6122DA5A24E6C92 /* CookieStore.swift in Sources */,
 				CFD6BDBBC707BE4F2DE302D7 /* DiagnosticEvent.swift in Sources */,
@@ -764,7 +768,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -842,7 +846,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 21;
+				CURRENT_PROJECT_VERSION = 22;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;

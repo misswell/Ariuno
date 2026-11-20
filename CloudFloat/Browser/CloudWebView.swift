@@ -20,12 +20,24 @@ struct CloudWebView: UIViewRepresentable {
         let bottom = max(0, bottomContentInset)
         guard abs(uiView.scrollView.contentInset.top - top) > 0.5
                 || abs(uiView.scrollView.contentInset.bottom - bottom) > 0.5 else { return }
+        if let browserWebView = uiView as? BrowserWebView {
+            browserWebView.pageSafeAreaInsets = UIEdgeInsets(
+                top: top,
+                left: 0,
+                bottom: bottom,
+                right: 0
+            )
+        }
+        let wasAtTop = abs(uiView.scrollView.contentOffset.y) < 1
         var inset = uiView.scrollView.contentInset
         inset.top = top
         inset.bottom = bottom
         uiView.scrollView.contentInset = inset
         uiView.scrollView.verticalScrollIndicatorInsets.top = top
         uiView.scrollView.verticalScrollIndicatorInsets.bottom = bottom
+        if wasAtTop, top > 0 {
+            uiView.scrollView.contentOffset.y = -top
+        }
     }
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: ()) {

@@ -1,0 +1,19 @@
+Ariuno 1.0 (Build 22) — App Review Information
+
+1. Purpose and target audience
+Ariuno is a general-purpose iOS browser built on WKWebView for everyday users who want tabs, bookmarks, history, downloads, and native Picture in Picture (PiP) for compatible web video. It does not host, bundle, or distribute games, and it does not automate gameplay or bypass third-party session limits.
+
+2. Physical-device screen recording
+Attached: Ariuno-1.0-build15-review.mp4. Recorded on a physical iPhone 15 Pro running iOS 27.2.1. The attached recording was captured on build 1.0 (15); builds 1.0 (16–22) are small bug-fix builds with the same user flow (in-page PiP button safe-area, fullscreen status bar, exact earlier floating-ball exit control, and reliable top safe-area inset on long pages). The recording begins on the Home Screen, launches Ariuno, and demonstrates the typical flow: address/search entry, example.com and Bing, tab creation and switching, bookmarks and history, the More menu (fullscreen and desktop mode), and system PiP on a user-entered third-party HTML5 cloud-gaming page. No account identifiers, UIDs, phone numbers, cookies, or credentials are displayed.
+
+3. Setup and access instructions
+No Ariuno account or login is required. Launch Ariuno → Start Browsing → enter a URL or search term. Use the tabs button to create/switch tabs. The More menu contains fullscreen, add bookmark, share, bookmarks, history, downloads, home, desktop mode, and exit. To test PiP, open a page that exposes compatible HTML5 video, start playback, and tap the in-page PIP button. No sample file or demo credentials are required. Third-party website logins are handled by those sites; Ariuno does not receive or store credentials. Ariuno creates no accounts, so no account-deletion flow applies.
+
+4. External services, tools, and platforms
+Apple WebKit/WKWebView, SwiftUI/UIKit, AVKit/AVFoundation, Network, and Combine. Search options: DuckDuckGo (default), Google, and Bing. Start-page shortcuts are user-editable and start empty. The recording includes a manually entered third-party cloud-gaming website used only to demonstrate HTML5 PiP; Ariuno is not affiliated with or endorsed by that provider and does not bundle its content. Ariuno has no backend, third-party browser engine, analytics/advertising SDK, authentication provider, or payment processor. Downloads use WebKit's standard download API; there is no media-ripping or media-conversion feature.
+
+5. UGC, paid content, and regional availability
+Ariuno does not host user-generated content, profiles, comments, chat, or a community. UGC on visited websites is provided and moderated by those website operators. Ariuno has no paid features, subscriptions, in-app purchases, or payment processing. Native features are the same in all enabled storefronts; the app is available in 174 territories, excluding Mainland China. Third-party site access, content, and payment options may vary by region and provider.
+
+6. Regulated industry and third-party rights
+Ariuno is not a regulated-industry service. No third-party game assets, game files, or logos are bundled. Websites load only when entered or selected by the user. Ariuno is not affiliated with or endorsed by those providers. The third-party cloud-gaming page in the recording is a user-entered public website, not hosted content; we do not claim authorization beyond that site's own terms.

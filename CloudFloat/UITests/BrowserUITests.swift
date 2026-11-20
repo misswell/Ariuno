@@ -375,7 +375,7 @@ final class BrowserUITests: XCTestCase {
         shot.lifetime = .keepAlways
         add(shot)
 
-        sleep(4)
+        sleep(8)
         let topSafeArea = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
         topSafeArea.name = "top-safe-area-rest"
         topSafeArea.lifetime = .keepAlways
