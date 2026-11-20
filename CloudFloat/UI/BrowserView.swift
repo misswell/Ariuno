@@ -15,7 +15,7 @@ struct BrowserView: View {
     @State private var isBallMode = false
     @State private var showFullscreenMenu = false
     @State private var isEditingAddress = false
-    @State private var topSafeAreaInset: CGFloat = 0
+    @State private var topSafeAreaInset: CGFloat = BrowserView.windowSafeAreaTop
     @State private var compactChrome = false
     @State private var scrollSubscription: AnyCancellable?
     @State private var pageFitSubscription: AnyCancellable?
@@ -123,18 +123,8 @@ struct BrowserView: View {
             Text("当前为全屏模式")
         }
         .statusBarHidden(isBallMode)
-        .background {
-            GeometryReader { proxy in
-                Color.clear
-                    .onAppear {
-                        topSafeAreaInset = proxy.safeAreaInsets.top
-                    }
-                    .onChange(of: proxy.safeAreaInsets.top) { _, newValue in
-                        topSafeAreaInset = newValue
-                    }
-            }
-        }
         .onAppear {
+            refreshWindowSafeArea()
             syncAddressText()
             bindScrollDirection()
             if coordinator.route == .game, coordinator.settings.collapseToolbarToBallOnOpen {
@@ -174,6 +164,12 @@ struct BrowserView: View {
         }
         .onChange(of: coordinator.settings.autoHideToolbar) { _, _ in
             scheduleAutoHide()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            DispatchQueue.main.async { refreshWindowSafeArea() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            refreshWindowSafeArea()
         }
         .onChange(of: coordinator.recoveryPrompt) { _, prompt in
             if let prompt {
@@ -681,6 +677,17 @@ struct BrowserView: View {
                     if fits { compactChrome = false }
                 }
             }
+    }
+
+    private static var windowSafeAreaTop: CGFloat {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let windows = scenes.flatMap(\.windows)
+        let window = windows.first(where: \.isKeyWindow) ?? windows.first
+        return window?.safeAreaInsets.top ?? 0
+    }
+
+    private func refreshWindowSafeArea() {
+        topSafeAreaInset = Self.windowSafeAreaTop
     }
 
     private func syncAddressText() {

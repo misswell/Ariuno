@@ -13,14 +13,14 @@
 | App Store 描述文件 | 已创建并安装：`Ariuno AppStore`（ID `U3V2UYVTYQ`，有效期至 2027-09-06） |
 | 分发证书 | `Apple Distribution: Guofeng Liu (U8U443D7ZL)`，证书资源 ID `J4Z29X3RMS` |
 | App Store Connect App 记录 | **已创建**：Ariuno，App ID `6835947153`，Bundle ID `com.misswell.Ariuno`，SKU `ARIUNO-IOS-001`，主要语言简体中文 |
-| App Store 版本 | iOS `1.0`，已关联 build `19`，状态 `WAITING_FOR_REVIEW` |
+| App Store 版本 | iOS `1.0`，已关联 build `21`，状态 `WAITING_FOR_REVIEW` |
 | TestFlight 构建 | build `1`–`19` 均已上传并处理完成（`VALID`，`usesNonExemptEncryption=false`）；最新 **build 19** 包含 Safari 式浮动/可收缩玻璃控制栏、全屏铺满的滚动页面、单屏底部安全区、桌面版网站与渲染宽度、可编辑常用网站、单一可拖动网页内 PiP 按钮（带顶部安全区）、全屏隐藏状态栏、始终可见的退出全屏悬浮球和 iOS 26 液态玻璃界面 |
 | TestFlight 内部组 | 已创建「内部测试」；`misswell@foxmail.com` 已加入并发送邀请 |
 | App Store 元数据 | 已填：副标题、描述、关键词、支持/营销/隐私 URL；分类 工具 + 效率；免费；174 个地区（不含中国大陆）；内容权利声明；审核联系人/备注 |
 | App Store 截图 | 已上传 3 张 iPhone 6.5" + 1 张 iPad 13" 截图 |
 | 年龄分级 | 已声明“无限制网页访问”；最终分级以 App Store Connect 计算为准 |
 | App 隐私 | 已发布“未收集数据” |
-| App Review | **已重新提交**：2026-11-20，submission `53a2db0a-739e-41b1-8fab-73caea6dc127`，build `1.0 (19)`，状态 `WAITING_FOR_REVIEW`；已附 139 秒真机录屏 `Ariuno-1.0-build15-review.mp4`；Notes 已说明该录屏拍摄于 build 15，build 16–19 仅修复 PiP 按钮安全区、全屏状态栏和恢复原版悬浮球外观 |
+| App Review | **已重新提交**：2026-11-20，submission `32e8a0b7-5d87-4d17-ab9b-a2920b130e61`，build `1.0 (21)`，状态 `WAITING_FOR_REVIEW`；已附 139 秒真机录屏 `Ariuno-1.0-build15-review.mp4`；Notes 已说明该录屏拍摄于 build 15，build 16–21 仅修复 PiP 按钮安全区、全屏状态栏、恢复原版悬浮球外观和长页面顶部安全区 |
 | Apple 网页会话 | 通过本机 Chrome 已登录（`asc web auth status` 的 CLI 会话仍未登录，不影响 API 上传） |
 
 > **当前审核（2026-11-20）**：App Store 版本 1.0 已换为 build `15`，包含单行分块玻璃控制栏、
