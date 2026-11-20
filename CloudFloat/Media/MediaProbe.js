@@ -456,11 +456,18 @@
 
   function clampButtonPosition(point) {
     const margin = 8;
+    // Keep the in-page PiP control below the status bar / Dynamic Island. WKWebView's
+    // env(safe-area-inset-top) is often 0 when the page runs edge-to-edge, so use a
+    // conservative floor instead of letting a dragged/stored position hide it.
+    const topMargin = Math.max(70, margin);
     const width = Math.max(0, window.innerWidth || 0);
     const height = Math.max(0, window.innerHeight || 0);
     return {
       x: Math.min(Math.max(margin, point.x), Math.max(margin, width - BUTTON_SIZE - margin)),
-      y: Math.min(Math.max(margin, point.y), Math.max(margin, height - BUTTON_SIZE - margin))
+      y: Math.min(
+        Math.max(topMargin, point.y),
+        Math.max(topMargin, height - BUTTON_SIZE - margin)
+      )
     };
   }
 
@@ -569,7 +576,7 @@
       buttonHost.style.cssText = [
         'all: initial !important',
         'position: fixed !important',
-        'top: calc(env(safe-area-inset-top, 0px) + 10px) !important',
+        'top: max(calc(env(safe-area-inset-top, 0px) + 10px), 70px) !important',
         'right: calc(env(safe-area-inset-right, 0px) + 10px) !important',
         'z-index: 2147483647 !important',
         'width: 44px !important',

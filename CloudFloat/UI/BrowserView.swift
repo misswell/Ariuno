@@ -122,6 +122,7 @@ struct BrowserView: View {
         } message: {
             Text("当前为全屏模式")
         }
+        .statusBarHidden(isBallMode)
         .background {
             GeometryReader { proxy in
                 Color.clear
