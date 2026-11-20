@@ -48,7 +48,7 @@ struct BrowserView: View {
                         }
                     chromeBar
                 }
-                .ignoresSafeArea(edges: [.top, .bottom])
+                .ignoresSafeArea(.container, edges: [.top, .bottom])
                 .transition(.opacity)
             }
 
