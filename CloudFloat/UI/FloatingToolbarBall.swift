@@ -15,13 +15,12 @@ enum FloatingBallGeometry {
         _ point: CGPoint,
         in size: CGSize,
         diameter: CGFloat,
-        margin: CGFloat = 6,
-        topSafeInset: CGFloat = 0
+        margin: CGFloat = 6
     ) -> CGPoint {
         let radius = diameter / 2
         let minX = margin + radius
         let maxX = size.width - margin - radius
-        let minY = max(margin + radius, topSafeInset + radius)
+        let minY = margin + radius
         let maxY = size.height - margin - radius
         return CGPoint(
             x: max(minX, min(maxX, point.x)),
@@ -48,13 +47,12 @@ enum FloatingBallGeometry {
         in size: CGSize,
         diameter: CGFloat,
         edge: Edge? = nil,
-        margin: CGFloat = 6,
-        topSafeInset: CGFloat = 0
+        margin: CGFloat = 6
     ) -> CGPoint {
         let radius = diameter / 2
         let minX = margin + radius
         let maxX = size.width - margin - radius
-        let minY = max(margin + radius, topSafeInset + radius)
+        let minY = margin + radius
         let maxY = size.height - margin - radius
         let resolved = edge ?? nearestEdge(point, in: size)
         switch resolved {
@@ -74,18 +72,24 @@ enum FloatingBallGeometry {
         _ point: CGPoint,
         in size: CGSize,
         diameter: CGFloat,
-        edge: Edge? = nil,
-        topSafeInset: CGFloat = 0
+        edge: Edge? = nil
     ) -> CGPoint {
-        // The floating control is the only way out of fullscreen. Do not tuck it half
-        // outside the screen; keep the whole glass button and its exit icon findable.
-        visibleEdgePoint(
-            point,
-            in: size,
-            diameter: diameter,
-            edge: edge,
-            topSafeInset: topSafeInset
-        )
+        let radius = diameter / 2
+        let resolved = edge ?? nearestEdge(point, in: size)
+        let minX = radius
+        let maxX = size.width - radius
+        let minY = radius
+        let maxY = size.height - radius
+        switch resolved {
+        case .left:
+            return CGPoint(x: 0, y: max(minY, min(maxY, point.y)))
+        case .right:
+            return CGPoint(x: size.width, y: max(minY, min(maxY, point.y)))
+        case .top:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: 0)
+        case .bottom:
+            return CGPoint(x: max(minX, min(maxX, point.x)), y: size.height)
+        }
     }
 
     static func normalized(_ point: CGPoint, in size: CGSize) -> CGPoint {
@@ -115,7 +119,6 @@ struct FloatingEdgeControl: View {
     let containerSize: CGSize
     let normalizedPosition: CGPoint
     let preferredEdge: FloatingBallGeometry.Edge?
-    var topSafeInset: CGFloat = 0
     let diameter: CGFloat
     let tint: Color
     let icon: String?
@@ -137,7 +140,7 @@ struct FloatingEdgeControl: View {
 
     var body: some View {
         let point = currentPoint
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             ballBackground
             if let icon {
                 Image(systemName: icon)
@@ -148,8 +151,6 @@ struct FloatingEdgeControl: View {
                     .fill(tint.opacity(0.9))
                     .frame(width: max(5, diameter * 0.11), height: max(5, diameter * 0.11))
             }
-        }
-        .overlay(alignment: .topTrailing) {
             if showsPiPBadge {
                 Circle()
                     .fill(Color.green)
@@ -160,8 +161,7 @@ struct FloatingEdgeControl: View {
         }
         .frame(width: diameter, height: diameter)
         .shadow(color: .black.opacity(isIdleCollapsed ? 0.12 : 0.24), radius: 9, y: 3)
-        .opacity(isIdleCollapsed ? 0.9 : 1.0)
-        .scaleEffect(isIdleCollapsed ? 0.92 : 1.0)
+        .opacity(isIdleCollapsed ? 0.48 : 1.0)
         .contentShape(Circle())
         .position(point)
         .animation(.easeInOut(duration: 0.25), value: isIdleCollapsed)
@@ -178,8 +178,7 @@ struct FloatingEdgeControl: View {
                             y: origin.y + value.translation.height
                         ),
                         in: containerSize,
-                        diameter: diameter,
-                        topSafeInset: topSafeInset
+                        diameter: diameter
                     )
                 }
                 .onEnded { _ in
@@ -191,8 +190,7 @@ struct FloatingEdgeControl: View {
                         currentPoint,
                         in: containerSize,
                         diameter: diameter,
-                        edge: edge,
-                        topSafeInset: topSafeInset
+                        edge: edge
                     )
                     withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
                         position = snapped
@@ -358,8 +356,7 @@ struct FloatingEdgeControl: View {
                 currentPoint,
                 in: containerSize,
                 diameter: diameter,
-                edge: lastEdge,
-                topSafeInset: topSafeInset
+                edge: lastEdge
             )
             withAnimation(.spring(response: 0.32, dampingFraction: 0.86)) {
                 position = snapped

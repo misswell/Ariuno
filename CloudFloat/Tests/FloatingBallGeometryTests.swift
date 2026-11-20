@@ -65,36 +65,36 @@ final class FloatingBallGeometryTests: XCTestCase {
         XCTAssertEqual(bottom.x, 200, accuracy: 0.01)
     }
 
-    func testIdleEdgePointStaysFullyVisibleOnSideEdges() {
+    func testIdleEdgePointTucksHalfOutsideSideEdges() {
         let left = FloatingBallGeometry.idleEdgePoint(
             CGPoint(x: 80, y: 400),
             in: size,
             diameter: diameter
         )
-        XCTAssertEqual(left.x, 34, accuracy: 0.01)
+        XCTAssertEqual(left.x, 0, accuracy: 0.01)
 
         let right = FloatingBallGeometry.idleEdgePoint(
             CGPoint(x: 320, y: 400),
             in: size,
             diameter: diameter
         )
-        XCTAssertEqual(right.x, 356, accuracy: 0.01)
+        XCTAssertEqual(right.x, size.width, accuracy: 0.01)
     }
 
-    func testIdleEdgePointStaysFullyVisible() {
+    func testIdleEdgePointTucksTopAndBottomHalfOutside() {
         let top = FloatingBallGeometry.idleEdgePoint(
             CGPoint(x: 200, y: 70),
             in: size,
             diameter: diameter
         )
-        XCTAssertEqual(top.y, 34, accuracy: 0.01)
+        XCTAssertEqual(top.y, 0, accuracy: 0.01)
 
         let bottom = FloatingBallGeometry.idleEdgePoint(
             CGPoint(x: 200, y: 800),
             in: size,
             diameter: diameter
         )
-        XCTAssertEqual(bottom.y, 810, accuracy: 0.01)
+        XCTAssertEqual(bottom.y, size.height, accuracy: 0.01)
     }
 
     func testNormalizationRoundTrip() {
